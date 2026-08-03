@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"EvidencePackage","type":"object","required":["task","content_hash","missing_evidence"]}
