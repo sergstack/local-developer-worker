@@ -8,6 +8,7 @@
       "evidence_test_ids": [
         "tests/integration/test_stage_a_safety_matrix.py::test_gate_schema_valid_output_for_all_public_commands[doctor]",
         "tests/integration/test_stage_a_safety_matrix.py::test_gate_schema_valid_output_for_all_public_commands[log-parse]",
+        "tests/integration/test_stage_a_safety_matrix.py::test_gate_schema_valid_output_for_all_public_commands[log-process]",
         "tests/integration/test_stage_a_safety_matrix.py::test_gate_schema_valid_output_for_all_public_commands[log-cluster]",
         "tests/integration/test_stage_a_safety_matrix.py::test_gate_schema_valid_output_for_all_public_commands[test-parse]",
         "tests/integration/test_stage_a_safety_matrix.py::test_gate_schema_valid_output_for_all_public_commands[git-facts]",

@@ -40,6 +40,7 @@ def _run(args: list[str], payload: dict) -> subprocess.CompletedProcess[str]:
     [
         (["doctor"], {}),
         (["log", "parse"], {"text": "INFO ready\nopaque"}),
+        (["log", "process"], {"text": "ERROR failed", "semantic": False}),
         (["log", "cluster"], {"events": []}),
         (["test", "parse"], {"text": "PASSED tests/test_ok.py::test_ok", "exit_code": 0, "command_observed": True}),
         (["git", "facts"], {"repository_root": str(ROOT)}),
@@ -58,7 +59,7 @@ def _run(args: list[str], payload: dict) -> subprocess.CompletedProcess[str]:
         (["portfolio", "verify", "--only", "AI-02"], {}),
         (["portfolio", "status"], {}),
     ],
-    ids=["doctor", "log-parse", "log-cluster", "test-parse", "git-facts", "files-inventory", "evidence-build", "context-pack", "report-summarize", "benchmark-run", "telemetry-summary", "portfolio-verify", "portfolio-status"],
+    ids=["doctor", "log-parse", "log-process", "log-cluster", "test-parse", "git-facts", "files-inventory", "evidence-build", "context-pack", "report-summarize", "benchmark-run", "telemetry-summary", "portfolio-verify", "portfolio-status"],
 )
 def test_gate_schema_valid_output_for_all_public_commands(args, payload):
     completed = _run(args, payload)

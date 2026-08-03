@@ -1,0 +1,36 @@
+profile = "balanced"
+network_access = false
+automatic_edit = false
+automatic_commit = false
+automatic_merge = false
+production_deploy = false
+
+[automatic]
+structured_log_parser = true
+test_result_parser = true
+git_facts_collector = true
+file_inventory = true
+context_packer = true
+change_summarizer_facts_only = true
+semantic_log_clustering = true
+
+[semantic]
+enabled = true
+code_artifact = "disabled"
+model = "qwen3:4b"
+endpoint = "http://127.0.0.1:11435/api/generate"
+routing_event_threshold = 8
+
+[limits]
+max_log_size_mb = 20
+max_context_files = 20
+timeout_seconds = 60
+
+[security]
+allowed_repository_roots = []
+
+[fallback]
+on_timeout = "codex"
+on_invalid_schema = "codex"
+on_policy_violation = "codex"
+on_internal_error = "codex"
