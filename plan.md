@@ -2,42 +2,50 @@
 
 ## Missing inputs
 
-- None. `codex-autonomous-brief-v4.md` and its referenced v3 brief are available as the external task package.
+- None for deterministic Phase 1 construction. A real Ollama probe is optional evidence and cannot weaken deterministic gate results.
 
 ## Scope assumptions
 
-- Portfolio run state is generated local data under `.repo_index/`; the canonical definitions remain in `docs/gate_registry.json`.
-- Date filtering uses date-partitioned JSONL files so telemetry events remain restricted to the eight approved fields.
+- Gate/benchmark support code is allowed; production semantic clustering is not.
+- The approved model fact (`qwen3:4b`) is source-reported and is not a reason to enable semantic policy.
 
 ## Affected files / areas
 
-- Portfolio schema, registry, generator, runtime verifier, CLI dispatch, telemetry/session logging, Stage B documentation, and focused tests.
+- `policy.toml`, Phase 1 planning documents, policy/gate source modules, schemas, sanitized fixtures, focused tests, validation scripts, and concise gate documentation.
+- Existing Stage A report implementation and safety-matrix test file are protected from edits.
 
 ## Steps
 
-1. Encode all 20 portfolio objects with exact pytest node IDs and artifact checks; add schema validation.
-2. Add deterministic Markdown rendering and replace the hand-written gate document with generated output.
-3. Add append-only safe telemetry and `ldw telemetry summary`.
-4. Add non-blocking `ldw portfolio verify` and resumable `ldw portfolio status`.
-5. Record the user's advisory AI-02 decision with artifact evidence and a decisionless fallback test; complete AI-03 documentation and AI-04 terminology audit.
-6. Add focused contract, integration, security, drift, and invariant tests.
-7. Record at least 10 real CLI events, run fresh reconciliation, then execute the full acceptance suite.
+1. Update execution artifacts and lock Phase 1 scope around the 10 required portfolio objects.
+2. Implement `POLICY-01`: exact policy comment, deterministic endpoint parsing/resolution, fail-closed loopback guard, and no-I/O rejection evidence.
+3. Build `REF-01` with at least 30 sanitized events plus grouping, separation, and exclusion ground truth; extend fixture validation.
+4. Define `semantic_group` and Stage B portfolio schemas, then implement deterministic candidate validation, sanitized payload construction, fallback, and `needs_review` logic.
+5. Add exact tests for `GATE-01` through `GATE-06` and `NR-01`; link POLICY-01 endpoint enforcement into `GATE-04` evidence.
+6. Prove `GATE-07` by executing the unchanged Stage A safety matrix and comparing its source hash to the Phase 1 baseline.
+7. Add the 10-object registry and runner that establishes pytest status through `ldw test parse`, continues across failures, and emits the required reconciled summary.
+8. Validate schemas, fixtures, secret scan, deterministic reruns, full tests, policy diff, registry reconciliation, and Phase 1 acceptance.
 
 ## Dependencies
 
 - Step 2 depends on Step 1.
-- Step 4 depends on Steps 1 and 2.
-- Step 7 depends on all implementation and test steps.
+- Step 3 depends on Step 2 by required execution order, although its data is otherwise independent.
+- Steps 4–5 depend on REF-01 contracts from Step 3.
+- Step 6 depends on the completed gate integration.
+- Step 7 depends on exact evidence nodes from Steps 2–6.
+- Step 8 depends on all prior steps.
 
 ## Risks
 
-- Exact parameterized pytest node IDs may change and must surface as reconciliation defects.
-- Telemetry or portfolio state writes must never alter CLI evidence output or source-controlled files.
+- DNS resolution must fail closed on empty, mixed, wildcard, or external results.
+- Gate code must not perform classification or clustering; it only validates externally supplied candidates.
+- Registry evidence must not mark objects complete from declarations alone.
 
 ## Validation strategy
 
-- Targeted unit/integration/security tests after each component, followed by the complete suite and every command in the v4/v3 acceptance lists.
+- Capture pytest output with `-rA`, feed it to `ldw test parse`, and use its `run_status` as test evidence.
+- Run schema, fixture, secret, compile, policy-diff, deterministic-output, and portfolio reconciliation checks.
+- Keep a hash-based check that the Stage A safety-matrix source file is unchanged from `5a3d146`.
 
 ## Parallel work
 
-- Gate-node mapping and action-item artifact analysis may run independently before implementation; root integrates and re-verifies all results.
+- None. POLICY-01 then REF-01 is the required user order.

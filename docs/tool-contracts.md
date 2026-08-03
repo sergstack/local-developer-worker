@@ -9,3 +9,5 @@ Every command consumes one JSON object and returns a `ToolResult` v1.0.0. Tool f
 `related_test` matching is intentionally limited to relative `src/` and `tests/` paths.
 
 `ldw telemetry summary` reads privacy-safe local session events. `ldw portfolio verify` reconciles all declared gate tests and action artifacts without stopping after an item failure; `--only ID` resumes one item while preserving 20 output rows. `ldw portfolio status` reports saved evidence and marks completed evidence stale when the commit or workspace fingerprint changes.
+
+Stage B Phase 1 is intentionally outside the public `ldw` command set. `inference_endpoint_policy` returns a normal `ToolResult`; any non-loopback or unresolved inference endpoint returns `policy_blocked` with `non_loopback_inference_endpoint`. `guarded_inference_call` pins accepted calls to the validated loopback IP before invoking a supplied transport.

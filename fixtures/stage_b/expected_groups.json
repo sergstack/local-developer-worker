@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0.0",
+  "groups": [
+    {"group_id":"GT-ASSERT","classification":"test_failure","members":["EV-000001","EV-000002","EV-000003","EV-000004","EV-000005","EV-000006"]},
+    {"group_id":"GT-CONNECTION","classification":"local_connectivity","members":["EV-000007","EV-000008","EV-000009","EV-000010","EV-000011","EV-000012"]},
+    {"group_id":"GT-SCHEMA","classification":"contract_failure","members":["EV-000013","EV-000014","EV-000015","EV-000016","EV-000017","EV-000018"]},
+    {"group_id":"GT-TIMEOUT","classification":"test_timeout","members":["EV-000019","EV-000020","EV-000021","EV-000022","EV-000023","EV-000024"]},
+    {"group_id":"GT-IMPORT","classification":"import_failure","members":["EV-000025","EV-000026","EV-000027","EV-000028","EV-000029","EV-000030"]}
+  ],
+  "must_remain_separate": [
+    ["EV-000001","EV-000007"],
+    ["EV-000007","EV-000013"],
+    ["EV-000013","EV-000019"],
+    ["EV-000019","EV-000025"],
+    ["EV-000001","EV-000025"]
+  ],
+  "excluded": [
+    {"event_id":"EV-000031","reason":"informational_non_failure"},
+    {"event_id":"EV-000032","reason":"warning_without_failure"},
+    {"event_id":"EV-000033","reason":"informational_policy_fact"},
+    {"event_id":"EV-000034","reason":"informational_report_fact"}
+  ]
+}

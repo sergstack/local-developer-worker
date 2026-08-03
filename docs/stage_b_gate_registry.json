@@ -1,0 +1,97 @@
+{
+  "schema_version": "1.0.0",
+  "items": [
+    {
+      "id": "POLICY-01",
+      "objective": "Document and architecturally enforce the loopback-only inference exemption.",
+      "initial_status": "ready",
+      "evidence_test_ids": [
+        "tests/security/test_loopback_inference_policy.py::test_policy_01_policy_file_changes_only_by_approved_comment",
+        "tests/security/test_loopback_inference_policy.py::test_policy_01_accepts_only_loopback_inference_endpoints",
+        "tests/security/test_loopback_inference_policy.py::test_policy_01_actual_localhost_resolves_strictly_to_loopback",
+        "tests/security/test_loopback_inference_policy.py::test_gate_04_rejects_non_loopback_endpoint_before_transport",
+        "tests/security/test_loopback_inference_policy.py::test_gate_04_rejects_resolution_failure_before_transport",
+        "tests/security/test_loopback_inference_policy.py::test_policy_01_allows_transport_only_after_loopback_guard",
+        "tests/security/test_loopback_inference_policy.py::test_gate_04_pins_localhost_transport_to_prevalidated_loopback_address"
+      ],
+      "owner_action": "Keep external network denial and semantic disablement unchanged."
+    },
+    {
+      "id": "REF-01",
+      "objective": "Provide at least 30 sanitized reference events with explicit ground truth.",
+      "initial_status": "ready",
+      "evidence_test_ids": ["tests/stage_b/test_phase_1_gates.py::test_ref_01_contains_sanitized_reference_corpus_and_ground_truth"],
+      "owner_action": "Revise the corpus if any event lacks sanitization, provenance, or accounting."
+    },
+    {
+      "id": "GATE-01",
+      "objective": "Require complete resolvable source-span recall.",
+      "initial_status": "ready",
+      "evidence_test_ids": [
+        "tests/stage_b/test_phase_1_gates.py::test_gate_01_source_span_recall_accounts_for_every_reference_event",
+        "tests/stage_b/test_phase_1_gates.py::test_gate_01_unaccounted_source_requires_an_explicit_exclusion"
+      ],
+      "owner_action": "Reject candidates with missing or unexplained source events."
+    },
+    {
+      "id": "GATE-02",
+      "objective": "Reject invented source references before output.",
+      "initial_status": "ready",
+      "evidence_test_ids": ["tests/stage_b/test_phase_1_gates.py::test_gate_02_invented_source_is_rejected_before_output"],
+      "owner_action": "Reject candidates containing source IDs absent from input."
+    },
+    {
+      "id": "GATE-03",
+      "objective": "Fall back deterministically to observed Stage A events.",
+      "initial_status": "ready",
+      "evidence_test_ids": ["tests/stage_b/test_phase_1_gates.py::test_gate_03_timeout_or_invalid_response_falls_back_to_observed_events"],
+      "owner_action": "Keep observed events unchanged on timeout or invalid candidate data."
+    },
+    {
+      "id": "GATE-04",
+      "objective": "Preserve payload privacy and enforce loopback-only inference.",
+      "initial_status": "ready",
+      "evidence_test_ids": [
+        "tests/stage_b/test_phase_1_gates.py::test_gate_04_payload_contains_only_log_event_schema_fields",
+        "tests/stage_b/test_phase_1_gates.py::test_gate_04_sensitive_event_is_rejected_before_payload_creation",
+        "tests/security/test_loopback_inference_policy.py::test_policy_01_actual_localhost_resolves_strictly_to_loopback",
+        "tests/security/test_loopback_inference_policy.py::test_gate_04_rejects_non_loopback_endpoint_before_transport",
+        "tests/security/test_loopback_inference_policy.py::test_gate_04_rejects_resolution_failure_before_transport",
+        "tests/security/test_loopback_inference_policy.py::test_gate_04_pins_localhost_transport_to_prevalidated_loopback_address"
+      ],
+      "owner_action": "Treat any non-loopback resolution or sensitive payload as policy-blocking."
+    },
+    {
+      "id": "GATE-05",
+      "objective": "Keep model-derived groups distinct from observed facts.",
+      "initial_status": "ready",
+      "evidence_test_ids": [
+        "tests/stage_b/test_phase_1_gates.py::test_gate_05_semantic_groups_are_model_derived_and_observed_events_stay_observed",
+        "tests/stage_b/test_phase_1_gates.py::test_gate_05_candidate_without_model_derived_origin_is_rejected",
+        "tests/stage_b/test_phase_1_gates.py::test_gate_05_malformed_semantic_group_contract_is_rejected"
+      ],
+      "owner_action": "Reject semantic groups without explicit model-derived origin."
+    },
+    {
+      "id": "GATE-06",
+      "objective": "Enforce numeric confidence bounds without trusting confidence as sole review signal.",
+      "initial_status": "ready",
+      "evidence_test_ids": ["tests/stage_b/test_phase_1_gates.py::test_gate_06_confidence_outside_numeric_bounds_is_rejected"],
+      "owner_action": "Reject non-numeric or out-of-range confidence values."
+    },
+    {
+      "id": "GATE-07",
+      "objective": "Keep Stage A safety behavior and evidence unchanged.",
+      "initial_status": "ready",
+      "evidence_test_ids": ["tests/stage_b/test_phase_1_gates.py::test_gate_07_stage_a_safety_matrix_is_unchanged_and_passes_via_test_parser"],
+      "owner_action": "Stop Phase 1 if the Stage A safety matrix changes or regresses."
+    },
+    {
+      "id": "NR-01",
+      "objective": "Force review when deterministic path signals disagree with model classification.",
+      "initial_status": "ready",
+      "evidence_test_ids": ["tests/stage_b/test_phase_1_gates.py::test_nr_01_path_disagreement_forces_review_independent_of_confidence"],
+      "owner_action": "Never let model confidence override deterministic path disagreement."
+    }
+  ]
+}

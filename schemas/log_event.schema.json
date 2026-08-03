@@ -1,1 +1,21 @@
-{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"LogEvent","type":"object","required":["event_id","raw_hash","raw_line_start","raw_line_end","parse_status"]}
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LogEvent",
+  "type": "object",
+  "required": ["event_id", "level", "component", "message", "raw_hash", "raw_line_start", "raw_line_end", "parse_status"],
+  "properties": {
+    "event_id": {"type": "string", "pattern": "^EV-[0-9]{6}$"},
+    "level": {"type": "string"},
+    "component": {"type": "string"},
+    "message": {"type": "string"},
+    "exception_type": {"type": ["string", "null"]},
+    "source_file": {"type": ["string", "null"]},
+    "source_line": {"type": ["integer", "null"], "minimum": 1},
+    "raw_line_start": {"type": "integer", "minimum": 1},
+    "raw_line_end": {"type": "integer", "minimum": 1},
+    "raw_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "parse_status": {"enum": ["parsed", "part_of_event", "unknown_event", "unsupported_format", "parse_failed"]},
+    "origin": {"const": "observed"}
+  },
+  "additionalProperties": false
+}
