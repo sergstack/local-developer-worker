@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+*.egg-info/
+reports/
+benchmarks/reports/
+.repo_index/
+План создания Local Developer Utility Layer для Codex.docx

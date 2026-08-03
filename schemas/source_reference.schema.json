@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"SourceReference","type":"object","required":["source","raw_hash","parse_status"],"properties":{"source":{"type":"string"},"raw_hash":{"type":"string"},"line_start":{"type":["integer","null"]},"line_end":{"type":["integer","null"]},"parse_status":{"type":"string"}}}

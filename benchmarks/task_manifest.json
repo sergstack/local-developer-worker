@@ -1,0 +1,180 @@
+{
+  "schema_version": "1.0.0",
+  "cases": [
+    {
+      "case_id": "single-01",
+      "task_class": "short_single_file",
+      "input_manifest": {"source": "local_repository", "sanitized": true},
+      "raw_context": "Inspect the ToolResult contract boundary.",
+      "files": [
+        {"path": "src/local_developer_worker/contracts.py", "size_bytes": 3083},
+        {"path": "src/local_developer_worker/cli.py", "size_bytes": 4990},
+        {"path": "src/local_developer_worker/policy.py", "size_bytes": 1030},
+        {"path": "src/local_developer_worker/telemetry.py", "size_bytes": 604},
+        {"path": "scripts/secret_scan.py", "size_bytes": 622},
+        {"path": "scripts/validate_schemas.py", "size_bytes": 362},
+        {"path": "docs/architecture.md", "size_bytes": 377},
+        {"path": "docs/authority-boundary.md", "size_bytes": 707},
+        {"path": "docs/telemetry.md", "size_bytes": 200},
+        {"path": "docs/testing.md", "size_bytes": 277},
+        {"path": "schemas/context_package.schema.json", "size_bytes": 161},
+        {"path": "schemas/evidence_package.schema.json", "size_bytes": 155},
+        {"path": "schemas/file_inventory.schema.json", "size_bytes": 160},
+        {"path": "schemas/git_facts.schema.json", "size_bytes": 144},
+        {"path": "schemas/log_event.schema.json", "size_bytes": 176}
+      ],
+      "named_files": ["src/local_developer_worker/contracts.py"],
+      "critical_files": ["src/local_developer_worker/contracts.py"],
+      "distractor_files": ["src/local_developer_worker/cli.py", "src/local_developer_worker/policy.py", "src/local_developer_worker/telemetry.py", "scripts/secret_scan.py", "scripts/validate_schemas.py", "docs/architecture.md", "docs/authority-boundary.md", "docs/telemetry.md", "docs/testing.md", "schemas/context_package.schema.json", "schemas/evidence_package.schema.json", "schemas/file_inventory.schema.json", "schemas/git_facts.schema.json", "schemas/log_event.schema.json"],
+      "expected_facts": {}, "expected_test_status": "unknown", "expected_exclusions": ["docs/architecture.md"], "expected_fallback": "codex", "expected_output_hash": null
+    },
+    {
+      "case_id": "single-02",
+      "task_class": "short_single_file",
+      "input_manifest": {"source": "local_repository", "sanitized": true},
+      "raw_context": "Inspect deterministic CLI dispatch.",
+      "files": [
+        {"path": "src/local_developer_worker/contracts.py", "size_bytes": 3083}, {"path": "src/local_developer_worker/cli.py", "size_bytes": 4990}, {"path": "src/local_developer_worker/policy.py", "size_bytes": 1030}, {"path": "src/local_developer_worker/telemetry.py", "size_bytes": 604}, {"path": "scripts/secret_scan.py", "size_bytes": 622}, {"path": "scripts/validate_schemas.py", "size_bytes": 362}, {"path": "docs/architecture.md", "size_bytes": 377}, {"path": "docs/authority-boundary.md", "size_bytes": 707}, {"path": "docs/telemetry.md", "size_bytes": 200}, {"path": "docs/testing.md", "size_bytes": 277}, {"path": "schemas/context_package.schema.json", "size_bytes": 161}, {"path": "schemas/evidence_package.schema.json", "size_bytes": 155}, {"path": "schemas/file_inventory.schema.json", "size_bytes": 160}, {"path": "schemas/git_facts.schema.json", "size_bytes": 144}, {"path": "schemas/log_event.schema.json", "size_bytes": 176}
+      ],
+      "named_files": ["src/local_developer_worker/cli.py"],
+      "critical_files": ["src/local_developer_worker/cli.py"],
+      "distractor_files": ["src/local_developer_worker/contracts.py", "src/local_developer_worker/policy.py", "src/local_developer_worker/telemetry.py", "scripts/secret_scan.py", "scripts/validate_schemas.py", "docs/architecture.md", "docs/authority-boundary.md", "docs/telemetry.md", "docs/testing.md", "schemas/context_package.schema.json", "schemas/evidence_package.schema.json", "schemas/file_inventory.schema.json", "schemas/git_facts.schema.json", "schemas/log_event.schema.json"],
+      "expected_facts": {}, "expected_test_status": "unknown", "expected_exclusions": ["docs/authority-boundary.md"], "expected_fallback": "codex", "expected_output_hash": null
+    },
+    {
+      "case_id": "single-03",
+      "task_class": "short_single_file",
+      "input_manifest": {"source": "local_repository", "sanitized": true},
+      "raw_context": "Inspect schema validation entry point.",
+      "files": [
+        {"path": "src/local_developer_worker/contracts.py", "size_bytes": 3083}, {"path": "src/local_developer_worker/cli.py", "size_bytes": 4990}, {"path": "src/local_developer_worker/policy.py", "size_bytes": 1030}, {"path": "src/local_developer_worker/telemetry.py", "size_bytes": 604}, {"path": "scripts/secret_scan.py", "size_bytes": 622}, {"path": "scripts/validate_schemas.py", "size_bytes": 362}, {"path": "docs/architecture.md", "size_bytes": 377}, {"path": "docs/authority-boundary.md", "size_bytes": 707}, {"path": "docs/telemetry.md", "size_bytes": 200}, {"path": "docs/testing.md", "size_bytes": 277}, {"path": "schemas/context_package.schema.json", "size_bytes": 161}, {"path": "schemas/evidence_package.schema.json", "size_bytes": 155}, {"path": "schemas/file_inventory.schema.json", "size_bytes": 160}, {"path": "schemas/git_facts.schema.json", "size_bytes": 144}, {"path": "schemas/log_event.schema.json", "size_bytes": 176}
+      ],
+      "named_files": ["scripts/validate_schemas.py"],
+      "critical_files": ["scripts/validate_schemas.py"],
+      "distractor_files": ["src/local_developer_worker/contracts.py", "src/local_developer_worker/cli.py", "src/local_developer_worker/policy.py", "src/local_developer_worker/telemetry.py", "scripts/secret_scan.py", "docs/architecture.md", "docs/authority-boundary.md", "docs/telemetry.md", "docs/testing.md", "schemas/context_package.schema.json", "schemas/evidence_package.schema.json", "schemas/file_inventory.schema.json", "schemas/git_facts.schema.json", "schemas/log_event.schema.json"],
+      "expected_facts": {}, "expected_test_status": "unknown", "expected_exclusions": ["docs/telemetry.md"], "expected_fallback": "codex", "expected_output_hash": null
+    },
+    {
+      "case_id": "multi-01",
+      "task_class": "multi_file",
+      "input_manifest": {"source": "local_repository", "sanitized": true},
+      "raw_context": "Review CLI output validation and policy loading.",
+      "files": [
+        {"path": "src/local_developer_worker/contracts.py", "size_bytes": 3083}, {"path": "src/local_developer_worker/cli.py", "size_bytes": 4990}, {"path": "src/local_developer_worker/policy.py", "size_bytes": 1030}, {"path": "src/local_developer_worker/telemetry.py", "size_bytes": 604}, {"path": "scripts/secret_scan.py", "size_bytes": 622}, {"path": "scripts/validate_schemas.py", "size_bytes": 362}, {"path": "docs/architecture.md", "size_bytes": 377}, {"path": "docs/authority-boundary.md", "size_bytes": 707}, {"path": "docs/telemetry.md", "size_bytes": 200}, {"path": "docs/testing.md", "size_bytes": 277}, {"path": "schemas/context_package.schema.json", "size_bytes": 161}, {"path": "schemas/evidence_package.schema.json", "size_bytes": 155}, {"path": "schemas/file_inventory.schema.json", "size_bytes": 160}, {"path": "schemas/git_facts.schema.json", "size_bytes": 144}, {"path": "schemas/log_event.schema.json", "size_bytes": 176}
+      ],
+      "named_files": ["src/local_developer_worker/cli.py"],
+      "import_edges": {"src/local_developer_worker/cli.py": ["src/local_developer_worker/contracts.py", "src/local_developer_worker/policy.py"]},
+      "critical_files": ["src/local_developer_worker/cli.py", "src/local_developer_worker/contracts.py", "src/local_developer_worker/policy.py"],
+      "distractor_files": ["src/local_developer_worker/telemetry.py", "scripts/secret_scan.py", "scripts/validate_schemas.py", "docs/architecture.md", "docs/authority-boundary.md", "docs/telemetry.md", "docs/testing.md", "schemas/context_package.schema.json", "schemas/evidence_package.schema.json", "schemas/file_inventory.schema.json", "schemas/git_facts.schema.json", "schemas/log_event.schema.json"],
+      "expected_facts": {}, "expected_test_status": "unknown", "expected_exclusions": ["docs/architecture.md"], "expected_fallback": "codex", "expected_output_hash": null
+    },
+    {
+      "case_id": "multi-02",
+      "task_class": "multi_file",
+      "input_manifest": {"source": "local_repository", "sanitized": true},
+      "raw_context": "Review policy contract integration.",
+      "files": [
+        {"path": "src/local_developer_worker/contracts.py", "size_bytes": 3083}, {"path": "src/local_developer_worker/cli.py", "size_bytes": 4990}, {"path": "src/local_developer_worker/policy.py", "size_bytes": 1030}, {"path": "src/local_developer_worker/telemetry.py", "size_bytes": 604}, {"path": "scripts/secret_scan.py", "size_bytes": 622}, {"path": "scripts/validate_schemas.py", "size_bytes": 362}, {"path": "docs/architecture.md", "size_bytes": 377}, {"path": "docs/authority-boundary.md", "size_bytes": 707}, {"path": "docs/telemetry.md", "size_bytes": 200}, {"path": "docs/testing.md", "size_bytes": 277}, {"path": "schemas/context_package.schema.json", "size_bytes": 161}, {"path": "schemas/evidence_package.schema.json", "size_bytes": 155}, {"path": "schemas/file_inventory.schema.json", "size_bytes": 160}, {"path": "schemas/git_facts.schema.json", "size_bytes": 144}, {"path": "schemas/log_event.schema.json", "size_bytes": 176}
+      ],
+      "changed_files": ["src/local_developer_worker/policy.py"],
+      "import_edges": {"src/local_developer_worker/policy.py": ["src/local_developer_worker/contracts.py"]},
+      "critical_files": ["src/local_developer_worker/policy.py", "src/local_developer_worker/contracts.py"],
+      "distractor_files": ["src/local_developer_worker/cli.py", "src/local_developer_worker/telemetry.py", "scripts/secret_scan.py", "scripts/validate_schemas.py", "docs/architecture.md", "docs/authority-boundary.md", "docs/telemetry.md", "docs/testing.md", "schemas/context_package.schema.json", "schemas/evidence_package.schema.json", "schemas/file_inventory.schema.json", "schemas/git_facts.schema.json", "schemas/log_event.schema.json"],
+      "expected_facts": {}, "expected_test_status": "unknown", "expected_exclusions": ["docs/authority-boundary.md"], "expected_fallback": "codex", "expected_output_hash": null
+    },
+    {
+      "case_id": "multi-03",
+      "task_class": "multi_file",
+      "input_manifest": {"source": "local_repository_with_synthetic_sensitive_path", "sanitized": true},
+      "raw_context": "Review telemetry hashing without exposing secrets.",
+      "files": [
+        {"path": "src/local_developer_worker/contracts.py", "size_bytes": 3083}, {"path": "src/local_developer_worker/cli.py", "size_bytes": 4990}, {"path": "src/local_developer_worker/policy.py", "size_bytes": 1030}, {"path": "src/local_developer_worker/telemetry.py", "size_bytes": 604}, {"path": "scripts/secret_scan.py", "size_bytes": 622}, {"path": "scripts/validate_schemas.py", "size_bytes": 362}, {"path": "docs/architecture.md", "size_bytes": 377}, {"path": "docs/authority-boundary.md", "size_bytes": 707}, {"path": "docs/telemetry.md", "size_bytes": 200}, {"path": "docs/testing.md", "size_bytes": 277}, {"path": "schemas/context_package.schema.json", "size_bytes": 161}, {"path": "schemas/evidence_package.schema.json", "size_bytes": 155}, {"path": "schemas/file_inventory.schema.json", "size_bytes": 160}, {"path": "schemas/git_facts.schema.json", "size_bytes": 144}, {"path": ".env", "size_bytes": 128, "potentially_sensitive": true}
+      ],
+      "failure_files": ["src/local_developer_worker/telemetry.py"],
+      "import_edges": {"src/local_developer_worker/telemetry.py": ["src/local_developer_worker/contracts.py"]},
+      "critical_files": ["src/local_developer_worker/telemetry.py", "src/local_developer_worker/contracts.py"],
+      "distractor_files": ["src/local_developer_worker/cli.py", "src/local_developer_worker/policy.py", "scripts/secret_scan.py", "scripts/validate_schemas.py", "docs/architecture.md", "docs/authority-boundary.md", "docs/telemetry.md", "docs/testing.md", "schemas/context_package.schema.json", "schemas/evidence_package.schema.json", "schemas/file_inventory.schema.json", "schemas/git_facts.schema.json", ".env"],
+      "expected_facts": {}, "expected_test_status": "failed", "expected_exclusions": [".env", "docs/telemetry.md"], "expected_fallback": "codex", "expected_output_hash": null
+    },
+    {
+      "case_id": "log-01",
+      "task_class": "log_heavy",
+      "input_manifest": {"source": "local_repository", "sanitized": true},
+      "raw_context": "Analyze an interrupted CLI validation trace.",
+      "files": [
+        {"path": "src/local_developer_worker/contracts.py", "size_bytes": 3083}, {"path": "src/local_developer_worker/cli.py", "size_bytes": 4990}, {"path": "src/local_developer_worker/policy.py", "size_bytes": 1030}, {"path": "src/local_developer_worker/telemetry.py", "size_bytes": 604}, {"path": "scripts/secret_scan.py", "size_bytes": 622}, {"path": "scripts/validate_schemas.py", "size_bytes": 362}, {"path": "docs/architecture.md", "size_bytes": 377}, {"path": "docs/authority-boundary.md", "size_bytes": 707}, {"path": "docs/telemetry.md", "size_bytes": 200}, {"path": "docs/testing.md", "size_bytes": 277}, {"path": "schemas/context_package.schema.json", "size_bytes": 161}, {"path": "schemas/evidence_package.schema.json", "size_bytes": 155}, {"path": "schemas/file_inventory.schema.json", "size_bytes": 160}, {"path": "schemas/git_facts.schema.json", "size_bytes": 144}, {"path": "schemas/log_event.schema.json", "size_bytes": 176}
+      ],
+      "failure_files": ["src/local_developer_worker/cli.py"],
+      "import_edges": {"src/local_developer_worker/cli.py": ["src/local_developer_worker/contracts.py"]},
+      "critical_files": ["src/local_developer_worker/cli.py", "src/local_developer_worker/contracts.py"],
+      "distractor_files": ["src/local_developer_worker/policy.py", "src/local_developer_worker/telemetry.py", "scripts/secret_scan.py", "scripts/validate_schemas.py", "docs/architecture.md", "docs/authority-boundary.md", "docs/telemetry.md", "docs/testing.md", "schemas/context_package.schema.json", "schemas/evidence_package.schema.json", "schemas/file_inventory.schema.json", "schemas/git_facts.schema.json", "schemas/log_event.schema.json"],
+      "expected_facts": {}, "expected_test_status": "incomplete", "expected_exclusions": ["docs/testing.md"], "expected_fallback": "codex", "expected_output_hash": null
+    },
+    {
+      "case_id": "log-02",
+      "task_class": "log_heavy",
+      "input_manifest": {"source": "local_repository", "sanitized": true},
+      "raw_context": "Analyze a repository-root policy failure trace.",
+      "files": [
+        {"path": "src/local_developer_worker/contracts.py", "size_bytes": 3083}, {"path": "src/local_developer_worker/cli.py", "size_bytes": 4990}, {"path": "src/local_developer_worker/policy.py", "size_bytes": 1030}, {"path": "src/local_developer_worker/telemetry.py", "size_bytes": 604}, {"path": "scripts/secret_scan.py", "size_bytes": 622}, {"path": "scripts/validate_schemas.py", "size_bytes": 362}, {"path": "docs/architecture.md", "size_bytes": 377}, {"path": "docs/authority-boundary.md", "size_bytes": 707}, {"path": "docs/telemetry.md", "size_bytes": 200}, {"path": "docs/testing.md", "size_bytes": 277}, {"path": "schemas/context_package.schema.json", "size_bytes": 161}, {"path": "schemas/evidence_package.schema.json", "size_bytes": 155}, {"path": "schemas/file_inventory.schema.json", "size_bytes": 160}, {"path": "schemas/git_facts.schema.json", "size_bytes": 144}, {"path": "schemas/log_event.schema.json", "size_bytes": 176}
+      ],
+      "failure_files": ["src/local_developer_worker/policy.py"],
+      "import_edges": {"src/local_developer_worker/policy.py": ["src/local_developer_worker/contracts.py"]},
+      "critical_files": ["src/local_developer_worker/policy.py", "src/local_developer_worker/contracts.py"],
+      "distractor_files": ["src/local_developer_worker/cli.py", "src/local_developer_worker/telemetry.py", "scripts/secret_scan.py", "scripts/validate_schemas.py", "docs/architecture.md", "docs/authority-boundary.md", "docs/telemetry.md", "docs/testing.md", "schemas/context_package.schema.json", "schemas/evidence_package.schema.json", "schemas/file_inventory.schema.json", "schemas/git_facts.schema.json", "schemas/log_event.schema.json"],
+      "expected_facts": {}, "expected_test_status": "unknown", "expected_exclusions": ["docs/architecture.md"], "expected_fallback": "codex", "expected_output_hash": null
+    },
+    {
+      "case_id": "log-03",
+      "task_class": "log_heavy",
+      "input_manifest": {"source": "local_repository", "sanitized": true},
+      "raw_context": "Analyze a truncated contract-validation trace.",
+      "files": [
+        {"path": "src/local_developer_worker/contracts.py", "size_bytes": 3083}, {"path": "src/local_developer_worker/cli.py", "size_bytes": 4990}, {"path": "src/local_developer_worker/policy.py", "size_bytes": 1030}, {"path": "src/local_developer_worker/telemetry.py", "size_bytes": 604}, {"path": "scripts/secret_scan.py", "size_bytes": 622}, {"path": "scripts/validate_schemas.py", "size_bytes": 362}, {"path": "docs/architecture.md", "size_bytes": 377}, {"path": "docs/authority-boundary.md", "size_bytes": 707}, {"path": "docs/telemetry.md", "size_bytes": 200}, {"path": "docs/testing.md", "size_bytes": 277}, {"path": "schemas/context_package.schema.json", "size_bytes": 161}, {"path": "schemas/evidence_package.schema.json", "size_bytes": 155}, {"path": "schemas/file_inventory.schema.json", "size_bytes": 160}, {"path": "schemas/git_facts.schema.json", "size_bytes": 144}, {"path": "schemas/log_event.schema.json", "size_bytes": 176}
+      ],
+      "failure_files": ["src/local_developer_worker/contracts.py"],
+      "critical_files": ["src/local_developer_worker/contracts.py"],
+      "distractor_files": ["src/local_developer_worker/cli.py", "src/local_developer_worker/policy.py", "src/local_developer_worker/telemetry.py", "scripts/secret_scan.py", "scripts/validate_schemas.py", "docs/architecture.md", "docs/authority-boundary.md", "docs/telemetry.md", "docs/testing.md", "schemas/context_package.schema.json", "schemas/evidence_package.schema.json", "schemas/file_inventory.schema.json", "schemas/git_facts.schema.json", "schemas/log_event.schema.json"],
+      "expected_facts": {}, "expected_test_status": "incomplete", "expected_exclusions": ["docs/authority-boundary.md"], "expected_fallback": "codex", "expected_output_hash": null
+    },
+    {
+      "case_id": "report-01",
+      "task_class": "reporting",
+      "input_manifest": {"source": "local_repository", "sanitized": true},
+      "raw_context": "Summarize observed telemetry changes.",
+      "files": [
+        {"path": "src/local_developer_worker/contracts.py", "size_bytes": 3083}, {"path": "src/local_developer_worker/cli.py", "size_bytes": 4990}, {"path": "src/local_developer_worker/policy.py", "size_bytes": 1030}, {"path": "src/local_developer_worker/telemetry.py", "size_bytes": 604}, {"path": "scripts/secret_scan.py", "size_bytes": 622}, {"path": "scripts/validate_schemas.py", "size_bytes": 362}, {"path": "docs/architecture.md", "size_bytes": 377}, {"path": "docs/authority-boundary.md", "size_bytes": 707}, {"path": "docs/telemetry.md", "size_bytes": 200}, {"path": "docs/testing.md", "size_bytes": 277}, {"path": "schemas/context_package.schema.json", "size_bytes": 161}, {"path": "schemas/evidence_package.schema.json", "size_bytes": 155}, {"path": "schemas/file_inventory.schema.json", "size_bytes": 160}, {"path": "schemas/git_facts.schema.json", "size_bytes": 144}, {"path": "schemas/log_event.schema.json", "size_bytes": 176}
+      ],
+      "changed_files": ["src/local_developer_worker/telemetry.py"],
+      "critical_files": ["src/local_developer_worker/telemetry.py"],
+      "distractor_files": ["src/local_developer_worker/contracts.py", "src/local_developer_worker/cli.py", "src/local_developer_worker/policy.py", "scripts/secret_scan.py", "scripts/validate_schemas.py", "docs/architecture.md", "docs/authority-boundary.md", "docs/telemetry.md", "docs/testing.md", "schemas/context_package.schema.json", "schemas/evidence_package.schema.json", "schemas/file_inventory.schema.json", "schemas/git_facts.schema.json", "schemas/log_event.schema.json"],
+      "expected_facts": {}, "expected_test_status": "not_run", "expected_exclusions": ["docs/telemetry.md"], "expected_fallback": "codex", "expected_output_hash": null
+    },
+    {
+      "case_id": "report-02",
+      "task_class": "reporting",
+      "input_manifest": {"source": "local_repository", "sanitized": true},
+      "raw_context": "Summarize observed secret-scan changes.",
+      "files": [
+        {"path": "src/local_developer_worker/contracts.py", "size_bytes": 3083}, {"path": "src/local_developer_worker/cli.py", "size_bytes": 4990}, {"path": "src/local_developer_worker/policy.py", "size_bytes": 1030}, {"path": "src/local_developer_worker/telemetry.py", "size_bytes": 604}, {"path": "scripts/secret_scan.py", "size_bytes": 622}, {"path": "scripts/validate_schemas.py", "size_bytes": 362}, {"path": "docs/architecture.md", "size_bytes": 377}, {"path": "docs/authority-boundary.md", "size_bytes": 707}, {"path": "docs/telemetry.md", "size_bytes": 200}, {"path": "docs/testing.md", "size_bytes": 277}, {"path": "schemas/context_package.schema.json", "size_bytes": 161}, {"path": "schemas/evidence_package.schema.json", "size_bytes": 155}, {"path": "schemas/file_inventory.schema.json", "size_bytes": 160}, {"path": "schemas/git_facts.schema.json", "size_bytes": 144}, {"path": "schemas/log_event.schema.json", "size_bytes": 176}
+      ],
+      "changed_files": ["scripts/secret_scan.py"],
+      "critical_files": ["scripts/secret_scan.py"],
+      "distractor_files": ["src/local_developer_worker/contracts.py", "src/local_developer_worker/cli.py", "src/local_developer_worker/policy.py", "src/local_developer_worker/telemetry.py", "scripts/validate_schemas.py", "docs/architecture.md", "docs/authority-boundary.md", "docs/telemetry.md", "docs/testing.md", "schemas/context_package.schema.json", "schemas/evidence_package.schema.json", "schemas/file_inventory.schema.json", "schemas/git_facts.schema.json", "schemas/log_event.schema.json"],
+      "expected_facts": {}, "expected_test_status": "incomplete", "expected_exclusions": ["docs/testing.md"], "expected_fallback": "codex", "expected_output_hash": null
+    },
+    {
+      "case_id": "report-03",
+      "task_class": "reporting",
+      "input_manifest": {"source": "local_repository_with_synthetic_sensitive_path", "sanitized": true},
+      "raw_context": "Summarize schema validation without exposing sensitive paths.",
+      "files": [
+        {"path": "src/local_developer_worker/contracts.py", "size_bytes": 3083}, {"path": "src/local_developer_worker/cli.py", "size_bytes": 4990}, {"path": "src/local_developer_worker/policy.py", "size_bytes": 1030}, {"path": "src/local_developer_worker/telemetry.py", "size_bytes": 604}, {"path": "scripts/secret_scan.py", "size_bytes": 622}, {"path": "scripts/validate_schemas.py", "size_bytes": 362}, {"path": "docs/architecture.md", "size_bytes": 377}, {"path": "docs/authority-boundary.md", "size_bytes": 707}, {"path": "docs/telemetry.md", "size_bytes": 200}, {"path": "docs/testing.md", "size_bytes": 277}, {"path": "schemas/context_package.schema.json", "size_bytes": 161}, {"path": "schemas/evidence_package.schema.json", "size_bytes": 155}, {"path": "schemas/file_inventory.schema.json", "size_bytes": 160}, {"path": "schemas/git_facts.schema.json", "size_bytes": 144}, {"path": "secrets.txt", "size_bytes": 256, "potentially_sensitive": true}
+      ],
+      "changed_files": ["scripts/validate_schemas.py"],
+      "critical_files": ["scripts/validate_schemas.py"],
+      "distractor_files": ["src/local_developer_worker/contracts.py", "src/local_developer_worker/cli.py", "src/local_developer_worker/policy.py", "src/local_developer_worker/telemetry.py", "scripts/secret_scan.py", "docs/architecture.md", "docs/authority-boundary.md", "docs/telemetry.md", "docs/testing.md", "schemas/context_package.schema.json", "schemas/evidence_package.schema.json", "schemas/file_inventory.schema.json", "schemas/git_facts.schema.json", "secrets.txt"],
+      "expected_facts": {}, "expected_test_status": "unknown", "expected_exclusions": ["secrets.txt", "docs/architecture.md"], "expected_fallback": "codex", "expected_output_hash": null
+    }
+  ]
+}

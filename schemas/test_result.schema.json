@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"TestResult","type":"object","required":["status"],"properties":{"status":{"enum":["passed","failed","error","skipped","xfailed","xpassed","timeout","killed","not_collected","not_run","incomplete","unknown"]}}}
