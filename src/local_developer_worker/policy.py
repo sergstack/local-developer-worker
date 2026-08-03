@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ipaddress
+import os
 import socket
 import tomllib
 from pathlib import Path
@@ -12,7 +13,15 @@ from .contracts import canonical_json, result
 
 def load_policy(path: str | None = None) -> dict:
     default = Path(__file__).parents[2] / "policy.toml"
-    with (Path(path) if path else default).open("rb") as handle:
+    configured = path or os.environ.get("LDW_POLICY_PATH")
+    global_policy = Path.home() / ".config" / "local-developer-worker" / "policy.toml"
+    active = Path(configured) if configured else default
+    if not configured and global_policy.is_file():
+        try:
+            Path.cwd().resolve().relative_to(default.parent.resolve())
+        except ValueError:
+            active = global_policy
+    with active.open("rb") as handle:
         return tomllib.load(handle)
 
 

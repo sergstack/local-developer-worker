@@ -26,11 +26,12 @@ def expected_phase_2_safety_matrix(baseline: str) -> str:
     expected = baseline.replace(
         '        (["log", "parse"], {"text": "INFO ready\\nopaque"}),\n',
         '        (["log", "parse"], {"text": "INFO ready\\nopaque"}),\n'
+        '        (["log", "process"], {"text": "ERROR failed", "semantic": False}),\n'
         '        (["log", "cluster"], {"events": []}),\n',
     )
     expected = expected.replace(
         'ids=["doctor", "log-parse", "test-parse",',
-        'ids=["doctor", "log-parse", "log-cluster", "test-parse",',
+        'ids=["doctor", "log-parse", "log-process", "log-cluster", "test-parse",',
     )
     expected = expected.replace(
         "    assert completed.returncode == 0\n",
