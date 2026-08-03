@@ -384,5 +384,40 @@
         "tests/stage_b/test_phase_2_report.py::test_pb2_04_report_rejects_malformed_semantic_candidate_types"
       ]
     }
-  ]
+  ],
+  "wave_2_acceptance": {
+    "title": "Context and Evidence Layer",
+    "status": "complete",
+    "overall_state": "accepted_not_activated",
+    "global_activation": "waiting_for_owner",
+    "services": {
+      "context_packer": {"implemented": true, "accepted": true},
+      "evidence_package": {"implemented": true, "accepted": true}
+    },
+    "acceptance": {
+      "critical_file_omissions": 0,
+      "sensitive_file_leaks": 0,
+      "included_traceability": 1.0,
+      "excluded_visibility": 1.0,
+      "expansion_supported": true,
+      "expansion_policy_reapplied": true,
+      "median_context_reduction_min": 0.4,
+      "cross_repository_smoke_min": 3,
+      "evidence_lineage_complete": true
+    },
+    "evidence_test_ids": [
+      "tests/wave2/test_context_and_evidence.py::test_context_selection_is_traceable_and_exclusions_are_visible",
+      "tests/wave2/test_context_and_evidence.py::test_expansion_links_previous_package_and_reapplies_policy",
+      "tests/wave2/test_context_and_evidence.py::test_evidence_lineage_and_resume_state_are_complete",
+      "tests/wave2/test_evaluator.py::test_frozen_wave2_evaluator_passes_all_mandatory_gates"
+    ],
+    "forbidden": [
+      "automatic repository-wide reading",
+      "unsupported factual claims",
+      "sensitive content inclusion",
+      "automatic edits",
+      "automatic commit",
+      "automatic merge"
+    ]
+  }
 }

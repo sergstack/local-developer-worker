@@ -45,3 +45,42 @@ Selected option: `a`.
 | a | Keep advisory | Preserves normal pytest behavior and requires no new mechanism. | Relies on prompt and operating instructions; Codex can still bypass ldw test parse. |
 | b | Session shell wrapper | Physically routes pytest invocations through ldw test parse in the configured session. | Rejected: changes ordinary pytest behavior in the user's terminal and may affect workflows outside the Worker. |
 | c | Passive reminder | Makes the expected workflow visible through doctor or a system message without intercepting commands. | Improves discoverability but remains non-blocking and therefore advisory. |
+
+## Wave 2 — Context and Evidence Layer
+
+Status: `complete`.
+Overall state: `accepted_not_activated`.
+Global activation: `waiting_for_owner`.
+
+| Service | Implemented | Accepted |
+|---|---|---|
+| context_packer | true | True |
+| evidence_package | true | True |
+
+| Acceptance requirement | Value |
+|---|---|
+| critical_file_omissions | 0 |
+| sensitive_file_leaks | 0 |
+| included_traceability | 1.0 |
+| excluded_visibility | 1.0 |
+| expansion_supported | true |
+| expansion_policy_reapplied | true |
+| median_context_reduction_min | 0.4 |
+| cross_repository_smoke_min | 3 |
+| evidence_lineage_complete | true |
+
+Exact evidence tests:
+
+- `tests/wave2/test_context_and_evidence.py::test_context_selection_is_traceable_and_exclusions_are_visible`
+- `tests/wave2/test_context_and_evidence.py::test_expansion_links_previous_package_and_reapplies_policy`
+- `tests/wave2/test_context_and_evidence.py::test_evidence_lineage_and_resume_state_are_complete`
+- `tests/wave2/test_evaluator.py::test_frozen_wave2_evaluator_passes_all_mandatory_gates`
+
+Forbidden:
+
+- automatic repository-wide reading
+- unsupported factual claims
+- sensitive content inclusion
+- automatic edits
+- automatic commit
+- automatic merge

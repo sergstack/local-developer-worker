@@ -4,12 +4,15 @@ import json
 import os
 import re
 import subprocess
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from .contracts import SourceReference, canonical_json, manifest, result, sha256, stable_hash
 
-SECRET_NAME = re.compile(r"(^|/)(\.env(?:\..*)?|.*(?:secret|credential|password|token|private[_-]?key).*)(?:$|/)", re.I)
+SECRET_NAME = re.compile(
+    r"(^|/)(?:\.env(?:\..*)?|\.repo_index(?:/.*)?|.*(?:secret|credential|password|token|private[_-]?key|auth[_-]?store|provider[_-]?raw[_-]?response).*)(?:$|/)",
+    re.I,
+)
 ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 PY_LOCATION = re.compile(r'File "(?P<file>[^\"]+)", line (?P<line>\d+)')
 PYTEST_FAILURE = re.compile(r"^FAILED\s+(?P<test>\S+)")
@@ -18,6 +21,16 @@ PYTEST_OTHER = re.compile(r"^(?P<state>SKIPPED|XFAIL|XPASS|ERROR)\s+(?P<test>\S+
 DOCKER_ERROR = re.compile(r"(?:ERROR|error|failed|Exited \(\d+\))", re.I)
 TIMEOUT_LINE = re.compile(r"^(?!PASSED\s|FAILED\s|SKIPPED\s|XFAIL\s|XPASS\s|ERROR\s).*\b(?:timeout|timed out)\b", re.I | re.M)
 TEST_STATUS_REMINDER = "Test status must be established via ldw test parse. Reading pytest or other test-runner output directly to determine pass/fail is not permitted."
+WAVE2_CONTRACT_VERSION = "2.0.0"
+WAVE2_ORIGINS = {"observed", "deterministic-derived", "model-derived-candidate", "user-provided", "unknown"}
+WAVE2_EXCLUSION_REASONS = {
+    "outside_repository_root", "sensitive_path", "ignored_by_policy", "binary",
+    "generated_not_required", "over_context_limit", "not_selected", "unsupported",
+}
+
+
+def _is_sensitive_path(path: str) -> bool:
+    return PurePosixPath(path).name != "secret_scan.py" and bool(SECRET_NAME.search(path))
 
 
 def _safe_root(value: str) -> Path:
@@ -161,7 +174,7 @@ def file_inventory(payload: dict[str, Any]) -> dict[str, Any]:
     for path in sorted(root.rglob("*")):
         relative = path.relative_to(root).as_posix()
         if ".git/" in relative or relative == ".git": continue
-        sensitive = bool(SECRET_NAME.search(relative))
+        sensitive = _is_sensitive_path(relative)
         if path.is_symlink() and not _inside(root, path):
             records.append({"path": relative, "type": "symlink", "readable": False, "blocked": "symlink_escape", "potentially_sensitive": sensitive})
             continue
@@ -186,13 +199,325 @@ def file_inventory(payload: dict[str, Any]) -> dict[str, Any]:
     return result("file_inventory", str(root), raw, {"files": records}, status="partial" if any(r.get("ignored_by_policy") or r.get("blocked") for r in records) else "success")
 
 
+def _wave2_root(payload: dict[str, Any]) -> tuple[Path, bool]:
+    value = payload.get("repository_root")
+    if value is None:
+        return Path.cwd().resolve(), False
+    if not isinstance(value, str) or not value:
+        raise ValueError("repository_root must be a non-empty string")
+    return _safe_root(value), True
+
+
+def _safe_relative_path(root: Path, value: Any) -> tuple[str | None, str | None]:
+    if not isinstance(value, str) or not value or "\\" in value:
+        return None, "unsupported"
+    relative = PurePosixPath(value)
+    if relative.is_absolute() or ".." in relative.parts or "." in relative.parts:
+        return None, "outside_repository_root"
+    normalized = relative.as_posix()
+    candidate = root / normalized
+    if not _inside(root, candidate):
+        return None, "outside_repository_root"
+    if candidate.is_symlink() and not _inside(root, candidate):
+        return None, "outside_repository_root"
+    return normalized, None
+
+
+def _legacy_exclusion_reason(reason_code: str, *, duplicate: bool = False) -> str:
+    if duplicate:
+        return "duplicate_path"
+    return {
+        "sensitive_path": "sensitive_blocked",
+        "over_context_limit": "context_budget",
+        "not_selected": "no_deterministic_signal",
+    }.get(reason_code, reason_code)
+
+
+def _excluded_file(path: str, reason_code: str, policy_rule: str, *, duplicate: bool = False) -> dict[str, Any]:
+    if reason_code not in WAVE2_EXCLUSION_REASONS:
+        raise ValueError(f"unsupported exclusion reason: {reason_code}")
+    return {
+        "path": path,
+        "included": False,
+        "reason": _legacy_exclusion_reason(reason_code, duplicate=duplicate),
+        "reason_code": reason_code,
+        "policy_rule": policy_rule,
+    }
+
+
+def _selection_signals(payload: dict[str, Any]) -> tuple[dict[str, list[dict[str, str]]], set[str]]:
+    signals: dict[str, list[dict[str, str]]] = {}
+
+    def add(path: Any, reason: str, source: str, relevance: str) -> None:
+        if isinstance(path, str) and path:
+            signals.setdefault(path, []).append({
+                "selection_reason": reason,
+                "evidence_source": source,
+                "relevance_status": relevance,
+            })
+
+    target_files = set(payload.get("target_files", [])) | set(payload.get("named_files", []))
+    changed_files = set(payload.get("changed_files", []))
+    failure_files = set(payload.get("failure_files", []))
+    for failure in payload.get("observed_failures", []):
+        if isinstance(failure, dict):
+            candidate = failure.get("source_path") or failure.get("source_file") or failure.get("path")
+            if isinstance(candidate, str):
+                failure_files.add(candidate)
+    related_tests = set(payload.get("related_tests", []))
+    for path in sorted(target_files):
+        add(path, "explicit_target", "target_files", "explicit")
+    for path in sorted(changed_files):
+        add(path, "changed_file", "changed_files", "candidate")
+    for path in sorted(failure_files):
+        add(path, "observed_failure_source", "observed_failures", "deterministic_dependency")
+    for path in sorted(related_tests):
+        add(path, "related_test", "related_tests", "deterministic_dependency")
+    import_edges = payload.get("imports", payload.get("import_edges", {}))
+    direct = target_files | changed_files | failure_files
+    if isinstance(import_edges, dict):
+        for origin, targets in sorted(import_edges.items()):
+            if origin in direct and isinstance(targets, list):
+                for target in targets:
+                    add(target, "direct_import", f"imports:{origin}", "deterministic_dependency")
+    return signals, direct
+
+
+def _select_context(payload: dict[str, Any], root: Path, limit: int, forced_paths: set[str] | None = None) -> dict[str, Any]:
+    files = payload.get("files", [])
+    if not isinstance(files, list):
+        raise TypeError("files_must_be_list")
+    signals, direct = _selection_signals(payload)
+    forced = forced_paths or set()
+    for path in sorted(forced):
+        signals.setdefault(path, []).insert(0, {
+            "selection_reason": "bounded_expansion_request",
+            "evidence_source": "requested_paths",
+            "relevance_status": "explicit",
+        })
+    target_symbols = set(payload.get("target_symbols", []))
+    candidates: dict[str, dict[str, Any]] = {}
+    excluded: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    eligible_input_bytes = 0
+    for raw_item in files:
+        item = raw_item if isinstance(raw_item, dict) else {"path": str(raw_item)}
+        raw_path = item.get("path")
+        path, path_issue = _safe_relative_path(root, raw_path)
+        display_path = raw_path if isinstance(raw_path, str) and raw_path else "<invalid>"
+        if path_issue:
+            excluded.append(_excluded_file(display_path, path_issue, "repository_root_boundary"))
+            continue
+        assert path is not None
+        if path in seen:
+            excluded.append(_excluded_file(path, "not_selected", "duplicate_candidate", duplicate=True))
+            continue
+        seen.add(path)
+        sensitive = bool(item.get("potentially_sensitive")) or _is_sensitive_path(path)
+        if sensitive:
+            excluded.append(_excluded_file(path, "sensitive_path", "sensitive_path_policy"))
+            continue
+        if item.get("ignored_by_policy"):
+            excluded.append(_excluded_file(path, "ignored_by_policy", "inventory_policy"))
+            continue
+        if item.get("binary"):
+            excluded.append(_excluded_file(path, "binary", "binary_content_policy"))
+            continue
+        size = item.get("size_bytes", item.get("size", 0))
+        size = size if isinstance(size, int) and not isinstance(size, bool) and size >= 0 else 0
+        eligible_input_bytes += size
+        reasons = list(signals.get(path, []))
+        symbols = item.get("symbols", [])
+        matched_symbols = sorted(target_symbols & set(symbols if isinstance(symbols, list) else []))
+        if matched_symbols:
+            reasons.insert(0, {
+                "selection_reason": "explicit_symbol",
+                "evidence_source": "target_symbols",
+                "relevance_status": "explicit",
+            })
+        if path.startswith("tests/") and path not in signals:
+            test_relative = Path(path).relative_to("tests")
+            source_relatives = {test_relative}
+            if test_relative.name.startswith("test_"):
+                source_relatives.add(test_relative.with_name(test_relative.name.removeprefix("test_")))
+            related_sources = {Path("src", relative).as_posix() for relative in source_relatives}
+            if related_sources & direct:
+                reasons.append({
+                    "selection_reason": "related_test",
+                    "evidence_source": "pytest_path_convention",
+                    "relevance_status": "deterministic_dependency",
+                })
+        explicit = any(reason["relevance_status"] == "explicit" for reason in reasons)
+        if item.get("generated_candidate") and not explicit:
+            excluded.append(_excluded_file(path, "generated_not_required", "generated_artifact_policy"))
+            continue
+        if not reasons:
+            excluded.append(_excluded_file(path, "not_selected", "no_deterministic_signal"))
+            continue
+        primary = reasons[0]
+        legacy_reasons = [
+            {
+                "explicit_target": "explicitly_named",
+                "explicit_symbol": "explicitly_named",
+                "observed_failure_source": "failure_source",
+                "bounded_expansion_request": "explicitly_named",
+            }.get(reason["selection_reason"], reason["selection_reason"])
+            for reason in reasons
+        ]
+        candidates[path] = {
+            "path": path,
+            "included": True,
+            "reasons": legacy_reasons,
+            "selection_reason": primary["selection_reason"],
+            "selection_reasons": reasons,
+            "evidence_source": primary["evidence_source"],
+            "relevance_status": primary["relevance_status"],
+            "size_bytes": size,
+            "symbols": matched_symbols,
+        }
+    for signaled_path in sorted(set(signals) - seen):
+        path, path_issue = _safe_relative_path(root, signaled_path)
+        if path_issue:
+            excluded.append(_excluded_file(signaled_path, path_issue, "repository_root_boundary"))
+        elif path is not None and _is_sensitive_path(path):
+            excluded.append(_excluded_file(path, "sensitive_path", "sensitive_path_policy"))
+        else:
+            excluded.append(_excluded_file(path or signaled_path, "unsupported", "candidate_not_in_inventory"))
+    ranked = sorted(
+        candidates.values(),
+        key=lambda item: (
+            {"explicit": 0, "deterministic_dependency": 1, "candidate": 2, "unknown": 3}[item["relevance_status"]],
+            -len(item["selection_reasons"]),
+            item["path"],
+        ),
+    )
+    included = ranked[:limit]
+    for item in ranked[limit:]:
+        excluded.append(_excluded_file(item["path"], "over_context_limit", "max_context_files"))
+    included_paths = {item["path"] for item in included}
+    selected_bytes = sum(item["size_bytes"] for item in included)
+    reduction = round((eligible_input_bytes - selected_bytes) / eligible_input_bytes, 4) if eligible_input_bytes else None
+    safe_expandable = any(
+        item["reason_code"] in {"not_selected", "generated_not_required", "over_context_limit"}
+        for item in excluded
+    )
+    selection_status = "selected"
+    if not included:
+        selection_status = "unsupported"
+    elif reduction is not None and reduction < 0.25:
+        selection_status = "low_benefit_bypass"
+    return {
+        "included_files": included,
+        "excluded_files": sorted(excluded, key=lambda item: (item["path"], item["reason_code"])),
+        "included_paths": included_paths,
+        "eligible_input_bytes": eligible_input_bytes,
+        "selected_bytes": selected_bytes,
+        "context_reduction": reduction,
+        "selection_status": selection_status,
+        "expansion_available": safe_expandable,
+    }
+
+
+def _context_common(payload: dict[str, Any], root: Path, explicit_root: bool, selected: dict[str, Any], limit: int) -> dict[str, Any]:
+    included = selected["included_files"]
+    excluded = selected["excluded_files"]
+    data = {
+        "contract_version": WAVE2_CONTRACT_VERSION,
+        "mode": payload.get("mode", "audit"),
+        "task": payload.get("task", ""),
+        "repository_root": str(root),
+        "repository_root_explicit": explicit_root,
+        "target_files": sorted(set(payload.get("target_files", [])) | set(payload.get("named_files", []))),
+        "related_files": [item["path"] for item in included if item["relevance_status"] == "deterministic_dependency"],
+        "symbols": sorted(set(payload.get("target_symbols", []))),
+        "observed_failures": payload.get("observed_failures", []),
+        "included_files": included,
+        "excluded_files": excluded,
+        "excluded_candidates": excluded,
+        "selection_reasons": [
+            {"path": item["path"], "reasons": item["selection_reasons"]}
+            for item in included
+        ],
+        "warnings": ([{"code": "legacy_implicit_repository_root"}] if not explicit_root else []),
+        "selection_status": selected["selection_status"],
+        "expansion_available": selected["expansion_available"],
+        "expansion": {"command": "ldw context pack", "available": selected["expansion_available"]},
+        "budget": {"max_context_files": limit, "consumed": len(included)},
+        "metrics": {
+            "eligible_input_bytes": selected["eligible_input_bytes"],
+            "selected_bytes": selected["selected_bytes"],
+            "context_reduction": selected["context_reduction"],
+            "input_file_count": len(payload.get("files", [])),
+            "selected_file_count": len(included),
+            "excluded_file_count": len(excluded),
+            "sensitive_block_count": sum(item["reason_code"] == "sensitive_path" for item in excluded),
+        },
+        "unresolved_references": payload.get("unresolved_references", []),
+        "constraints": payload.get("constraints", []),
+    }
+    data["package_hash"] = stable_hash(data)
+    return data
+
+
+def _lineage_findings(item: Any, index: int, root: Path) -> list[str]:
+    prefix = f"evidence_items[{index}]"
+    if not isinstance(item, dict):
+        return [f"{prefix}:not_object"]
+    findings: list[str] = []
+    required = {"evidence_type", "source_tool", "source_run_id", "source_type", "source_path", "event_id", "test_run_id", "git_observation_id", "origin", "value"}
+    for key in sorted(required - set(item)):
+        findings.append(f"{prefix}:missing_{key}")
+    if item.get("origin") not in WAVE2_ORIGINS:
+        findings.append(f"{prefix}:invalid_origin")
+    source_path = item.get("source_path")
+    if source_path is not None:
+        path, issue = _safe_relative_path(root, source_path)
+        if issue or path is None:
+            findings.append(f"{prefix}:unsafe_source_path")
+        elif _is_sensitive_path(path):
+            findings.append(f"{prefix}:sensitive_source_path")
+    evidence_type = item.get("evidence_type")
+    if evidence_type == "test_status" and (
+        item.get("source_tool") != "test_result_parser" or not item.get("source_run_id") or not item.get("test_run_id")
+    ):
+        findings.append(f"{prefix}:test_status_requires_ldw_test_parse")
+    if evidence_type == "git_state" and not (
+        item.get("source_tool") == "git_facts_collector" or item.get("origin") == "user-provided"
+    ):
+        findings.append(f"{prefix}:git_state_requires_ldw_git_facts_or_user")
+    if evidence_type == "git_state" and not item.get("git_observation_id"):
+        findings.append(f"{prefix}:missing_git_observation_id")
+    if evidence_type == "error_group" and item.get("origin") == "model-derived-candidate" and not item.get("source_run_id"):
+        findings.append(f"{prefix}:missing_model_source_run_id")
+    if evidence_type == "root_cause" or any(key in item for key in ("root_cause", "conclusion")):
+        findings.append(f"{prefix}:unsupported_conclusion")
+    return findings
+
+
 def evidence_build(payload: dict[str, Any]) -> dict[str, Any]:
     raw = canonical_json(payload)
+    try:
+        root, explicit_root = _wave2_root(payload)
+    except (FileNotFoundError, OSError, ValueError) as exc:
+        return result("evidence_package_builder", "stdin", raw, {}, status="invalid_input", errors=[{"code": "invalid_repository_root", "detail": str(exc)}])
     required = ["task", "repository_state", "observed_log_events", "observed_test_results", "file_inventory"]
     missing = [name for name in required if name not in payload]
     evidence = {name: payload.get(name, [] if name != "task" else "") for name in required}
-    evidence.update({"constraints": payload.get("constraints", []), "warnings": payload.get("warnings", []), "missing_evidence": missing + payload.get("missing_evidence", []), "open_questions": payload.get("open_questions", []), "tool_versions": payload.get("tool_versions", {"local_developer_worker": "0.1.0"})})
+    evidence.update({
+        "contract_version": WAVE2_CONTRACT_VERSION,
+        "repository_root": str(root),
+        "repository_root_explicit": explicit_root,
+        "constraints": payload.get("constraints", []),
+        "warnings": payload.get("warnings", []),
+        "missing_evidence": sorted(set(missing + payload.get("missing_evidence", []))),
+        "open_questions": payload.get("open_questions", []),
+        "tool_versions": payload.get("tool_versions", {"local_developer_worker": "0.1.0"}),
+        "context_package_reference": payload.get("context_package_reference"),
+        "relevant_files": payload.get("relevant_files", []),
+    })
     all_events = evidence["observed_log_events"]
+    if not isinstance(all_events, list):
+        return result("evidence_package_builder", "stdin", raw, {}, status="invalid_input", errors=[{"code": "observed_log_events_must_be_list"}])
     ids = [event.get("event_id") for event in all_events if isinstance(event, dict)]
     duplicate_ids = sorted({item for item in ids if item and ids.count(item) > 1})
     if duplicate_ids:
@@ -207,51 +532,118 @@ def evidence_build(payload: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(start, int) or not isinstance(end, int) or start < 1 or end < start: invalid_events.append(event["event_id"])
     if invalid_events:
         return result("evidence_package_builder", "stdin", raw, {}, status="invalid_input", errors=[{"code": "invalid_evidence_reference", "items": sorted(set(invalid_events))}])
+    evidence_items = payload.get("evidence_items", [])
+    if not isinstance(evidence_items, list):
+        return result("evidence_package_builder", "stdin", raw, {}, status="invalid_input", errors=[{"code": "evidence_items_must_be_list"}])
+    lineage_findings = [finding for index, item in enumerate(evidence_items) for finding in _lineage_findings(item, index, root)]
+    if any(finding.endswith(("unsafe_source_path", "sensitive_source_path", "unsupported_conclusion")) for finding in lineage_findings):
+        return result("evidence_package_builder", "stdin", raw, {}, status="invalid_input", errors=[{"code": "unsafe_or_unsupported_evidence", "findings": lineage_findings}])
+    evidence["evidence_items"] = evidence_items
+    evidence["lineage_complete"] = bool(evidence_items) and not lineage_findings
+    evidence["lineage_findings"] = lineage_findings
+    evidence["observed_facts"] = [item for item in evidence_items if item.get("origin") in {"observed", "user-provided"}]
+    evidence["deterministic_derived"] = [item for item in evidence_items if item.get("origin") == "deterministic-derived"]
+    evidence["model_derived_candidates"] = [item for item in evidence_items if item.get("origin") == "model-derived-candidate"]
+    evidence["test_statuses"] = [item for item in evidence_items if item.get("evidence_type") == "test_status"]
+    evidence["error_groups"] = [item for item in evidence_items if item.get("evidence_type") == "error_group"]
+    evidence["git_state"] = [item for item in evidence_items if item.get("evidence_type") == "git_state"]
+    if not evidence["test_statuses"]:
+        evidence["missing_evidence"] = sorted(set(evidence["missing_evidence"] + ["tests: NOT RUN"]))
+    files_considered = payload.get("files_already_considered")
+    if files_considered is None and isinstance(evidence["file_inventory"], list):
+        files_considered = [item.get("path") for item in evidence["file_inventory"] if isinstance(item, dict) and item.get("path")]
+    evidence["resume_state"] = {
+        "objective": evidence["task"],
+        "current_observed_state": payload.get("current_observed_state", "unknown"),
+        "files_already_considered": sorted(set(files_considered or [])),
+        "tests_actually_observed": evidence["test_statuses"],
+        "known_failures": [item for item in evidence_items if item.get("evidence_type") in {"log_event", "error_group"}],
+        "constraints": evidence["constraints"],
+        "missing_evidence": evidence["missing_evidence"],
+        "next_bounded_action": payload.get("next_bounded_action", "unknown"),
+    }
     evidence["content_hash"] = stable_hash(evidence)
-    return result("evidence_package_builder", "stdin", raw, {"evidence_package": evidence}, status="partial" if evidence["missing_evidence"] else "success")
+    partial = bool(evidence["missing_evidence"] or lineage_findings or not explicit_root)
+    warnings = ([{"code": "legacy_implicit_repository_root"}] if not explicit_root else [])
+    return result("evidence_package_builder", "stdin", raw, {"evidence_package": evidence}, status="partial" if partial else "success", warnings=warnings)
 
 
 def context_pack(payload: dict[str, Any]) -> dict[str, Any]:
     raw = canonical_json(payload)
-    files = payload.get("files", [])
-    if not isinstance(files, list):
+    try:
+        root, explicit_root = _wave2_root(payload)
+        limit = int(payload.get("max_context_files", 20))
+        if limit < 1:
+            raise ValueError("max_context_files must be positive")
+    except (FileNotFoundError, OSError, TypeError, ValueError) as exc:
+        return result("context_packer", "stdin", raw, {}, status="invalid_input", errors=[{"code": "invalid_context_input", "detail": str(exc)}])
+    mode = payload.get("mode", "audit")
+    if mode not in {"audit", "context", "expand"}:
+        return result("context_packer", "stdin", raw, {}, status="invalid_input", errors=[{"code": "unsupported_context_mode"}])
+    if mode == "expand":
+        previous = payload.get("previous_package")
+        previous_run_id = payload.get("previous_run_id")
+        requested_paths = payload.get("requested_paths", [])
+        if not isinstance(previous, dict) or not isinstance(previous_run_id, str) or previous.get("run_id") != previous_run_id:
+            return result("context_packer", "stdin", raw, {}, status="invalid_input", errors=[{"code": "previous_package_link_required"}])
+        if not isinstance(requested_paths, list) or not all(isinstance(path, str) for path in requested_paths):
+            return result("context_packer", "stdin", raw, {}, status="invalid_input", errors=[{"code": "requested_paths_must_be_list"}])
+        previous_data = previous.get("data") if isinstance(previous.get("data"), dict) else previous
+        previous_included = previous_data.get("included_files", [])
+        if not isinstance(previous_included, list):
+            return result("context_packer", "stdin", raw, {}, status="invalid_input", errors=[{"code": "invalid_previous_package"}])
+        try:
+            selected = _select_context(payload, root, limit, set(requested_paths))
+        except TypeError:
+            return result("context_packer", "stdin", raw, {}, status="invalid_input", errors=[{"code": "files_must_be_list"}])
+        safe_previous: list[dict[str, Any]] = []
+        still_excluded = list(selected["excluded_files"])
+        for item in previous_included:
+            path = item.get("path") if isinstance(item, dict) else None
+            normalized, issue = _safe_relative_path(root, path)
+            if issue or normalized is None:
+                still_excluded.append(_excluded_file(path or "<invalid>", issue or "unsupported", "expansion_revalidation"))
+            elif _is_sensitive_path(normalized):
+                still_excluded.append(_excluded_file(normalized, "sensitive_path", "expansion_revalidation"))
+            else:
+                safe_previous.append(item)
+        previous_paths = {item["path"] for item in safe_previous}
+        requested_set = set(requested_paths)
+        added = [item for item in selected["included_files"] if item["path"] in requested_set and item["path"] not in previous_paths]
+        combined = safe_previous + added
+        data = _context_common(payload, root, explicit_root, selected, limit)
+        data.update({
+            "mode": "expand",
+            "previous_run_id": previous_run_id,
+            "previous_context_hash": stable_hash(previous_data),
+            "requested_paths": requested_paths,
+            "requested_symbols": payload.get("requested_symbols", []),
+            "expansion_reason": payload.get("reason", ""),
+            "added_files": added,
+            "still_excluded": sorted(still_excluded, key=lambda item: (item["path"], item["reason_code"])),
+            "included_files": combined,
+            "relevant_files": [item["path"] for item in combined],
+        })
+        data["package_hash"] = stable_hash({key: value for key, value in data.items() if key != "package_hash"})
+        blocked_requested = requested_set - {item["path"] for item in added} - previous_paths
+        status = "partial" if blocked_requested or not explicit_root else "success"
+        return result("context_packer", "stdin", raw, data, status=status, warnings=data["warnings"])
+    try:
+        selected = _select_context(payload, root, limit)
+    except TypeError:
         return result("context_packer", "stdin", raw, {}, status="invalid_input", errors=[{"code": "files_must_be_list"}])
-    limit = int(payload.get("max_context_files", 20))
-    named, changed = set(payload.get("named_files", [])), set(payload.get("changed_files", []))
-    failure_files = set(payload.get("failure_files", []))
-    import_edges = payload.get("import_edges", {})
-    related_imports = {target for origin, targets in import_edges.items() if origin in named | changed | failure_files for target in targets}
-    candidates, seen = [], set()
-    for item in files:
-        path = item.get("path") if isinstance(item, dict) else str(item)
-        if not path: continue
-        if path in seen:
-            candidates.append({"path": path, "included": False, "reason": "duplicate_path"}); continue
-        seen.add(path)
-        reasons = []
-        if path in named: reasons.append("explicitly_named")
-        if path in changed: reasons.append("changed_file")
-        if path in failure_files: reasons.append("failure_source")
-        if path in related_imports: reasons.append("direct_import")
-        if path.startswith("tests/"):
-            test_relative = Path(path).relative_to("tests")
-            source_relatives = {test_relative}
-            if test_relative.name.startswith("test_"):
-                source_relatives.add(test_relative.with_name(test_relative.name.removeprefix("test_")))
-            related_sources = {Path("src", relative).as_posix() for relative in source_relatives}
-            if related_sources & (named | changed | failure_files):
-                reasons.append("related_test")
-        if item.get("potentially_sensitive") if isinstance(item, dict) else False:
-            candidates.append({"path": path, "included": False, "reason": "sensitive_blocked"}); continue
-        if reasons: candidates.append({"path": path, "included": True, "reasons": reasons})
-        else: candidates.append({"path": path, "included": False, "reason": "no_deterministic_signal"})
-    ranked = sorted((c for c in candidates if c["included"]), key=lambda c: (-len(c["reasons"]), c["path"]))
-    included = ranked[:limit]
-    excluded = [c for c in candidates if not c["included"]] + [{"path": c["path"], "included": False, "reason": "context_budget"} for c in ranked[limit:]]
-    audit = {"mode": "audit", "included_files": included, "excluded_candidates": excluded, "budget": {"max_context_files": limit, "consumed": len(included)}, "unresolved_references": payload.get("unresolved_references", []), "expansion": {"command": "ldw context pack", "available": bool(ranked[limit:])}}
-    if payload.get("mode", "audit") == "context":
-        return result("context_packer", "stdin", raw, {"mode": "context", "task": payload.get("task"), "relevant_files": [item["path"] for item in included], "relevant_failures": sorted(payload.get("failure_event_ids", [])), "test_status": payload.get("test_status", "unknown"), "constraints": payload.get("constraints", []), "missing_checks": payload.get("missing_checks", []), "evidence_references": sorted(payload.get("evidence_references", [])), "expansion": audit["expansion"]})
-    return result("context_packer", "stdin", raw, audit)
+    data = _context_common(payload, root, explicit_root, selected, limit)
+    if mode == "context":
+        data.update({
+            "mode": "context",
+            "relevant_files": [item["path"] for item in selected["included_files"]],
+            "relevant_failures": sorted(payload.get("failure_event_ids", [])),
+            "test_status": payload.get("test_status", "unknown"),
+            "missing_checks": payload.get("missing_checks", []),
+            "evidence_references": sorted(payload.get("evidence_references", [])),
+        })
+    status = "unsupported" if selected["selection_status"] == "unsupported" else ("partial" if not explicit_root else "success")
+    return result("context_packer", "stdin", raw, data, status=status, warnings=data["warnings"])
 
 
 def report_summarize(payload: dict[str, Any]) -> dict[str, Any]:

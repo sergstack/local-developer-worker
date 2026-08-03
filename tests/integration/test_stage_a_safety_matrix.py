@@ -47,9 +47,9 @@ def _run(args: list[str], payload: dict) -> subprocess.CompletedProcess[str]:
         (["files", "inventory"], {"repository_root": str(ROOT), "max_file_size": 1}),
         (
             ["evidence", "build"],
-            {"task": "inspect", "repository_state": {}, "observed_log_events": [], "observed_test_results": [], "file_inventory": []},
+            {"repository_root": str(ROOT), "task": "inspect", "repository_state": {}, "observed_log_events": [], "observed_test_results": [], "file_inventory": []},
         ),
-        (["context", "pack"], {"files": [{"path": "src/a.py"}], "named_files": ["src/a.py"]}),
+        (["context", "pack"], {"repository_root": str(ROOT), "files": [{"path": "src/a.py"}], "named_files": ["src/a.py"]}),
         (
             ["report", "summarize"],
             {"evidence_package": {"repository_state": {}, "observed_test_results": [], "missing_evidence": [], "warnings": []}},

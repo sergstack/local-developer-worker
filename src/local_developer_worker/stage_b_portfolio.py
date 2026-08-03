@@ -37,6 +37,14 @@ def expected_phase_2_safety_matrix(baseline: str) -> str:
         "    assert completed.returncode == 0\n",
         '    assert completed.returncode == (2 if args == ["log", "cluster"] else 0)\n',
     )
+    expected = expected.replace(
+        '{"task": "inspect", "repository_state": {}, "observed_log_events": [], "observed_test_results": [], "file_inventory": []},',
+        '{"repository_root": str(ROOT), "task": "inspect", "repository_state": {}, "observed_log_events": [], "observed_test_results": [], "file_inventory": []},',
+    )
+    expected = expected.replace(
+        '(["context", "pack"], {"files": [{"path": "src/a.py"}], "named_files": ["src/a.py"]}),',
+        '(["context", "pack"], {"repository_root": str(ROOT), "files": [{"path": "src/a.py"}], "named_files": ["src/a.py"]}),',
+    )
     return expected
 
 

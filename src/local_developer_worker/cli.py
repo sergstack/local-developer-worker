@@ -37,7 +37,7 @@ CAPABILITIES = {
     ("log", "parse"): "structured_log_parser", ("log", "cluster"): "semantic_log_clustering", ("log", "process"): "structured_log_parser",
     ("test", "parse"): "test_result_parser",
     ("git", "facts"): "git_facts_collector", ("files", "inventory"): "file_inventory",
-    ("context", "pack"): "context_packer", ("report", "summarize"): "change_summarizer_facts_only",
+    ("evidence", "build"): "context_packer", ("context", "pack"): "context_packer", ("report", "summarize"): "change_summarizer_facts_only",
 }
 
 
@@ -66,6 +66,9 @@ def _context_reduction(key: tuple[str, ...], payload: dict, output: dict) -> tup
     tool = " ".join(key)
     if key != ("context", "pack") or payload.get("mode") != "context":
         return tool, None
+    observed = output.get("data", {}).get("metrics", {}).get("context_reduction")
+    if isinstance(observed, (int, float)) and not isinstance(observed, bool):
+        return f"{tool}/context", float(observed)
     files = payload.get("files", [])
     if not files or not all(isinstance(item, dict) and isinstance(item.get("size_bytes"), int) for item in files):
         return f"{tool}/context", None
@@ -132,7 +135,11 @@ def main(argv: list[str] | None = None) -> int:
         timeout_seconds = int(limits.get("timeout_seconds", 60))
         if timeout_seconds <= 0 and key != ("log", "process"):
             output = result(" ".join(key), "stdin", raw, {"fallback": policy.get("fallback", {}).get("on_timeout", "codex")}, status="timeout", errors=[{"code": "timeout_before_execution"}])
-        elif key in {("git", "facts"), ("files", "inventory")} and not root_allowed(policy, str(payload.get("repository_root", "")), Path.cwd()):
+        elif key in {("git", "facts"), ("files", "inventory"), ("evidence", "build"), ("context", "pack")} and (
+            not isinstance(payload.get("repository_root"), str)
+            or not payload["repository_root"]
+            or not root_allowed(policy, payload["repository_root"], Path.cwd())
+        ):
             output = result(" ".join(key), "stdin", raw, {"fallback": policy.get("fallback", {}).get("on_policy_violation", "codex")}, status="policy_blocked", errors=[{"code": "repository_root_not_allowed"}])
         elif key in {("log", "parse"), ("log", "process")} and len(raw.encode("utf-8")) > max_log_bytes:
             output = result(" ".join(key), "stdin", raw, {"fallback": policy.get("fallback", {}).get("on_policy_violation", "codex")}, status="policy_blocked", errors=[{"code": "input_size_exceeded", "limit_bytes": max_log_bytes}])

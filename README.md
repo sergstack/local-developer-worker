@@ -34,6 +34,18 @@ Stage B Phase 1 remains a validation workflow. Run its separate 10-object regres
 
 `ldw log process` accepts raw log text, runs Stage A first, and routes only valid observed parsed events to Stage B. It bypasses semantic processing for short logs unless `semantic: true` is supplied, recognises repeated failure signatures, records source accounting and semantic attempt/acceptance/fallback state, and preserves the Stage A observed-event fallback if inference is unavailable or rejected. The balanced global policy has no allowed repository roots: `ldw git facts` and `ldw files inventory` remain blocked until a policy explicitly names the requested root.
 
+## Wave 2 context and evidence
+
+`ldw context pack` accepts an explicit allowed `repository_root`, caller-supplied safe candidate metadata, and deterministic task signals. Contract `2.0.0` keeps every considered inclusion and exclusion visible, labels candidate relevance honestly, reports byte reduction without claiming token savings, and supports bounded expansion linked to a previous package.
+
+`ldw evidence build` accepts only supplied evidence. Contract `2.0.0` preserves per-item origin and source lineage, keeps missing tests visible, and emits resumable handoff state without asserting root cause.
+
+```bash
+printf '%s' '{"repository_root":".","task":"Inspect CLI","files":[{"path":"src/local_developer_worker/cli.py","size_bytes":9537}],"target_files":["src/local_developer_worker/cli.py"]}' | uv run ldw context pack
+```
+
+Use direct bounded reading instead for a short task with one known file. A root outside the active policy allowlist remains blocked. See `docs/wave-2-migration.md` for compatibility and expansion details.
+
 ## Safety
 
-Repository tools require an explicit `repository_root`. The inventory blocks secret-like paths and symlinks escaping that root. Git collection is read-only. Unsupported or partial input is visible in the result; it is never silently treated as success.
+Repository, context, and evidence tools require an explicit allowed `repository_root`. The inventory and selector block secret-like paths and symlinks escaping that root. Git collection is read-only. Unsupported, low-benefit, or partial input is visible in the result; it is never silently treated as success.
