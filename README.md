@@ -23,6 +23,8 @@ uv run ldw telemetry summary --from-date 2026-08-01 --to-date 2026-08-31
 
 The 20-item Stage A portfolio is defined in `docs/gate_registry.json`; `docs/release-gates.md` is generated from it. Verification runs each declared gate test independently, checks transition artifacts, and saves resumable local state under `.repo_index/`. CLI calls append privacy-safe events to date-partitioned local JSONL files; source text, logs, prompts, secrets, and provider responses are never recorded.
 
+Stage B Phase 1 remains a validation-only workflow. After Stage A is merged and explicitly accepted, run its separate 10-object regression portfolio with `PYTHONPATH=src python scripts/run_stage_b_portfolio.py`; see `docs/stage-b-phase-1.md`. This does not enable semantic policy or implement production clustering.
+
 ## Safety
 
 Repository tools require an explicit `repository_root`. The inventory blocks secret-like paths and symlinks escaping that root. Git collection is read-only. Unsupported or partial input is visible in the result; it is never silently treated as success.

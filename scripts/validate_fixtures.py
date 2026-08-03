@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import re
+from hashlib import sha256
 from pathlib import Path
 
 manifest = Path(__file__).parents[1] / "benchmarks" / "task_manifest.json"
@@ -48,4 +50,39 @@ for case in data["cases"]:
         assert item["path"].split("/", 1)[0] in {"src", "tests", "scripts", "docs", "schemas", "benchmarks"}
         assert candidate.is_file()
         assert item["size_bytes"] == candidate.stat().st_size
-print("benchmark manifest valid")
+
+stage_b_root = repository_root / "fixtures" / "stage_b"
+reference = json.loads((stage_b_root / "reference_events.json").read_text())
+ground_truth = json.loads((stage_b_root / "expected_groups.json").read_text())
+events = reference["events"]
+event_ids = [event["event_id"] for event in events]
+allowed_event_fields = {
+    "event_id", "level", "component", "message", "exception_type", "source_file", "source_line",
+    "raw_line_start", "raw_line_end", "raw_hash", "parse_status", "origin",
+}
+assert reference["schema_version"] == ground_truth["schema_version"] == "1.0.0"
+assert len(events) >= 30
+assert len(event_ids) == len(set(event_ids))
+assert all(set(event) == allowed_event_fields for event in events)
+assert all(re.fullmatch(r"EV-\d{6}", event["event_id"]) for event in events)
+assert all(event["origin"] == "observed" and event["parse_status"] == "parsed" for event in events)
+assert all(event["raw_hash"] == sha256(event["message"].encode()).hexdigest() for event in events)
+assert all(not Path(event["source_file"]).is_absolute() and ".." not in Path(event["source_file"]).parts for event in events)
+assert not any(re.search(r"(?:AKIA[0-9A-Z]{16}|-----BEGIN .*PRIVATE KEY-----|password\s*[:=]|token\s*[:=])", event["message"], re.I) for event in events)
+
+groups = ground_truth["groups"]
+group_ids = [group["group_id"] for group in groups]
+grouped_ids = [event_id for group in groups for event_id in group["members"]]
+excluded_ids = [row["event_id"] for row in ground_truth["excluded"]]
+assert len(group_ids) == len(set(group_ids))
+assert all(len(group["members"]) >= 2 for group in groups)
+assert len(grouped_ids) == len(set(grouped_ids))
+assert len(excluded_ids) == len(set(excluded_ids))
+assert set(grouped_ids).isdisjoint(excluded_ids)
+assert set(grouped_ids) | set(excluded_ids) == set(event_ids)
+membership = {event_id: group["group_id"] for group in groups for event_id in group["members"]}
+for left, right in ground_truth["must_remain_separate"]:
+    assert left in event_ids and right in event_ids
+    assert membership.get(left) != membership.get(right)
+
+print(f"benchmark manifest and Stage B reference fixtures valid ({len(events)} reference events)")

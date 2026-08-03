@@ -2,46 +2,47 @@
 
 ## Goal
 
-Replace the static Stage A gate table with a self-verifying 20-item portfolio, record the user's advisory SA-16 choice, and complete the actionable v3 transition work without enabling Stage B.
+Build and execute the Stage B Phase 1 regression gate before any production log-clustering code is written. The portfolio contains exactly 10 objects: `POLICY-01`, `REF-01`, `GATE-01` through `GATE-07`, and `NR-01`.
 
 ## Current state
 
-- `docs/release-gates.md` contains 16 hand-written gate rows whose test references can drift.
-- The repository has privacy-filtered telemetry helpers but no append-only session journal or `ldw telemetry summary`.
-- The SA-16 decision, Stage B entry document, and terminology audit are not represented as resumable portfolio items.
+- Stage A is merged and accepted at `main` commit `5a3d146`.
+- `policy.toml` denies network access and keeps `[semantic].enabled = false`, but does not document or enforce the approved loopback-only inference exemption.
+- No Stage B reference corpus, semantic-group schema, gate evaluator, Phase 1 registry, or reconciliation report exists.
+- `docs/stage-b-entry-gate.md` defines seven required regression properties but contains no executable Phase 1 evidence.
 
 ## Requirements
 
-- Define 16 `gate` items (`SA-01` through `SA-16`) and four `action_item` items (`AI-01` through `AI-04`) in `docs/gate_registry.json`, validated by `schemas/portfolio_item.schema.json`.
-- Generate `docs/release-gates.md` from the registry and verify byte-for-byte generation determinism.
-- Add `ldw portfolio verify` and `ldw portfolio status`. Verification must collect and execute every declared gate test independently, continue after failures, reconcile classification, check action artifacts, preserve 20 inputs as 20 outputs, and persist resumable local state outside source control.
-- Keep `AI-02` in `waiting_for_input` when `decision` is absent. When `decision.chosen_option` is explicitly recorded, verify it as a normal evidence-backed action item. Record option (a) through the exact AGENTS.md rule and `ldw doctor` reminder, and reject option (b); no session wrapper may be implemented.
-- Add append-only, date-partitioned local CLI telemetry containing only `tool`, `input_bytes`, `output_bytes`, `latency_ms`, `status`, `fallback_used`, `context_reduction`, and `run_id`; add `ldw telemetry summary` with date filtering and v3 aggregates.
-- Create `docs/stage-b-entry-gate.md` covering the first bounded semantic task, its evidence contract, and a pre-code regression gate while preserving all Stage A guarantees.
-- Audit `PROJECT_DESCRIPTION.md` for market/team framing and change it only if a mismatch exists.
+- Complete `POLICY-01` first: add the exact approved comment above `network_access = false`; resolve the configured inference endpoint host; permit only addresses that resolve exclusively to loopback; reject `0.0.0.0`, non-loopback IPs, mixed DNS results, resolution failures, and external hosts before any network call with `policy_blocked` and `non_loopback_inference_endpoint`.
+- Include the endpoint rejection and sanitized inference-payload checks in `GATE-04`, not a separate gate. Unit and integration tests must prove no network call is attempted for rejected endpoints.
+- Complete `REF-01` second: add at least 30 sanitized log fragments derived from repository test/CI patterns, with explicit ground truth for grouping, separation, and accounted exclusions.
+- Keep benchmark/model probing separate from the gated validator. Gate logic must be deterministic and testable with mocked candidate responses; any optional real Ollama probe must use the same loopback guard and sanitized payload.
+- Implement executable evidence for `GATE-01` source-span recall, `GATE-02` zero invented sources, `GATE-03` deterministic fallback, `GATE-04` privacy plus loopback enforcement, `GATE-05` model-derived labeling, `GATE-06` confidence bounds, `GATE-07` unchanged Stage A reports, and `NR-01` deterministic `needs_review` on path/extension disagreement.
+- Define and validate a `semantic_group` JSON Schema. Observed Stage A events remain `origin = observed`; semantic groups use `origin = model-derived`.
+- Add a separate 10-object Phase 1 registry and deterministic portfolio runner. Every object must have a status and exact evidence; `POLICY-01` starts `ready`, not `waiting_for_owner`; the final summary must reconcile registry, fixtures, schemas, tests, and observed checks.
 
 ## Constraints
 
-- Do not change `policy.toml`, enable `[semantic]`, implement an SA-16 enforcement option, or add/change/remove Git remotes.
-- Do not run `git push`, `git fetch`, or `git pull` without a new explicit confirmation.
-- Do not store code, logs, prompts, secrets, or provider responses in telemetry.
-- Public behavior may change only by adding the three specified CLI commands and the documented local telemetry side effect.
+- Do not enable `[semantic]`; do not implement production clustering, routing, daemon behavior, embeddings, automatic edits, or Phase 2.
+- Do not relax `network_access = false` for external traffic and do not treat a textual exemption as enforcement.
+- Use only Python 3.12 standard library plus existing dev dependencies. Do not add runtime or dev dependencies.
+- Model output is untrusted candidate data. Confidence alone cannot suppress deterministic review.
+- Preserve all Stage A behavior and SA-01 through SA-16. `tests/integration/test_stage_a_safety_matrix.py` remains unchanged.
+- Do not push, open a PR, merge, or change remotes without separate authorization.
 
 ## Acceptance criteria
 
-- The registry contains exactly 20 unique objects in the required categories and ID ranges.
-- Regenerating `docs/release-gates.md` produces byte-identical content.
-- A fresh portfolio verification executes every gate evidence node and returns one status per object without stopping at the first failure.
-- No item is `complete` without fresh executable or artifact evidence; removing `AI-02.decision` must restore `waiting_for_input`.
-- AI-02 evidence must verify the new AGENTS.md rule and the actual `data.test_status_reminder` value returned by `ldw doctor`, not pre-existing advisory documentation.
-- At least 10 real local CLI events produce a non-empty telemetry summary; append-only and safe-field tests pass.
-- The Stage B entry document answers all three v3 questions and does not weaken Stage A.
-- Local verification does not open Stage B; Stage A must first be merged and explicitly accepted.
-- The full test suite, schema validation, fixture validation, secret scan, `ldw doctor`, portfolio commands, and telemetry summary pass.
+- The Phase 1 registry contains exactly the 10 required unique IDs; no item is `not_started` without an explicit explanation.
+- `policy.toml` changes only by the approved loopback comment, with `[semantic].enabled = false` unchanged.
+- Tests prove `127.0.0.1`, `::1`, and strictly loopback-resolving `localhost` are accepted; `0.0.0.0`, external IP/host, mixed results, and resolution failure are rejected before I/O with the required status and error code.
+- REF-01 contains at least 30 sanitized fragments and machine-readable grouping/separation ground truth.
+- GATE-01 through GATE-07 and NR-01 have executable tests linked from the registry; the Stage A safety matrix has zero regressions.
+- Schema validation includes `semantic_group`; fixture validation includes REF-01; secret scan passes.
+- Test status is established through `ldw test parse`; the final Phase 1 portfolio summary reports all 10 items, reconciliation results, observed checks, missing checks, next action, and `phase_1_complete` or `phase_1_partial`.
 
 ## Risks
 
-- Pytest parameterization can hide missing cases unless exact collected node IDs are stored and checked.
-- Shared evidence tests must retain per-gate attribution.
-- Date filtering must not add unsafe timestamp fields to telemetry events; journal files are partitioned by date instead.
-- A source change after verification makes stored evidence stale and must not be reported as fresh.
+- DNS names may resolve to mixed loopback/non-loopback addresses; fail closed rather than accepting one safe result.
+- A gate harness can accidentally become production clustering code; keep it limited to validation, fallback, sanitization, and evidence reconciliation.
+- Sanitized fixtures can drift from their expected group IDs or source spans; validate both directions.
+- Direct pytest return-code handling would violate the accepted test-status rule; route observed runner output through `ldw test parse`.
