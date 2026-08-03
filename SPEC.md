@@ -2,39 +2,54 @@
 
 ## Goal
 
-Implement Stage B Phase 2: a production `ldw log cluster` path that reuses the accepted Phase 1 payload validator, loopback guard, candidate evaluator, and deterministic fallback.
+Accept Wave 2 as a portable, deterministic Context Packer and Evidence Package layer for bounded use across local repositories.
+
+## Current state
+
+- `ldw context pack` and `ldw evidence build` exist in canonical commit `1e738256dfbd72fcac4386d8a3c9a0d776f3e6d9`.
+- Context selection accepts caller-supplied file metadata and deterministic signals, but does not require a repository root, expose full selection lineage, or implement expansion.
+- Evidence packages preserve legacy observed inputs and a content hash, but do not provide complete per-item lineage or a resumable state contract.
+- Context and evidence schemas validate only minimal required keys.
+- Cross-repository portability and the required reduction thresholds are not yet established.
 
 ## Requirements
 
-- PB2-01: apply the owner-approved SA-14 option (b). Network, edit, commit, merge, and deploy remain denied by default. Semantic authority remains default-off and may be enabled only for `[automatic].semantic_log_clustering`; `code_artifact` remains disabled.
-- PB2-02: read `model = "qwen3:4b"` and `endpoint = "http://127.0.0.1:11435/api/generate"` only from the active policy. Production code has no 11434/model default.
-- PB2-03: expose `ldw log cluster` for sanitized parsed events. Dispatch requires both semantic gates and uses `build_inference_payload`, `guarded_inference_call`, and `evaluate_candidate_response` without duplicating their security logic.
-- PB2-04: add optional `semantic_candidates` to reports without mixing them into observed files, commands, or tests. Reports without semantic data remain byte-identical to the Phase 1 baseline.
-- PB2-05: synchronize SA-01, schemas, governance, README, and tool contracts without creating SA-17.
-- PB2-06: Stage A must remain 20/20 complete and Stage B Phase 1 10/10 complete.
-- PB2-07: record one supervised production call on REF-01. A real response is mandatory; unavailable runtime means `waiting_for_input`. Invalid model candidates must produce honest fallback, never mock success.
-- PB2-08: document disablement and the immutable status of historical model-derived evidence.
+- Require an explicit, allowed repository root and block lexical, resolved-path, and symlink escapes.
+- Preserve sensitive, binary, ignored, generated, budget, unsupported, and unselected exclusions visibly.
+- Give every included file a selection reason, evidence source, and relevance status without promoting candidates to observed facts.
+- Support deterministic bounded expansion linked to a previous context package and reapply all safety checks.
+- Build evidence only from supplied observed, deterministic-derived, model-derived-candidate, user-provided, or unknown items with applicable lineage.
+- Preserve visible missing evidence, open questions, constraints, next bounded action, and resumable task state.
+- Freeze at least 15 sanitized reference cases and evaluate critical omissions, traceability, exclusions, safety, expansion, determinism, and context reduction.
+- Run read-only smoke checks in at least three real repositories without changing them.
+- Record global CLI source provenance and prepare, but do not apply, the owner-gated global Codex integration text.
+- Synchronize public schemas, migration notes, documentation, and the canonical governance registry.
 
 ## Constraints
 
-- Default `policy.toml` keeps both semantic gates false and all mutation/deploy capabilities false.
-- Never enable `code_artifact`.
-- Never emit or persist a raw model response, prompt, raw log, secret, or provider response in telemetry or evidence.
-- Only loopback inference is permitted; the existing Phase 1 guard remains authoritative.
-- No new dependencies, daemon, embeddings, automatic edits, commits, merges, deploys, or external-network authority.
-- No push, PR, or merge without separate authorization.
+- Do not use network access, semantic indexing, embeddings, model inference for facts, automatic routing, source edits, or mutating Git operations.
+- Do not read or emit sensitive contents, provider responses, neighboring repositories, or an entire repository as an implicit fallback.
+- Do not change global configuration, global `AGENTS.md`, or the global `ldw` installation.
+- Keep legacy input and output fields readable where downstream consumers already use them; add an explicit Wave 2 contract version for new fields.
+- Test status must be established through `ldw test parse`.
+- Do not stage, commit, push, create or update a PR, merge, or deploy without separate approval.
 
 ## Acceptance criteria
 
-- Phase 2 registry contains exactly PB2-01 through PB2-08 and its runner reports `phase_2_complete` only when all evidence and reconciliation checks pass.
-- Every public command emits schema-valid ToolResult; `log cluster` is included in SA-01.
-- Non-loopback endpoints and disabled capabilities block before transport.
-- Success exposes only normalized model-derived groups; transport or validation failure exposes only deterministic observed fallback.
-- Full tests, schemas, fixtures, secret scan, Stage A 20/20, Phase 1 10/10, and Phase 2 8/8 pass.
-- Supervised evidence proves qwen3:4b responded on 11435; raw response storage remains false.
+- Frozen corpus has at least 15 cases and cannot rewrite expected critical files from evaluator output.
+- Critical omissions, sensitive inclusions, outside-root reads, symlink escapes, and silent exclusions are all zero.
+- Included traceability and excluded visibility are both 100%.
+- Eligible multi-file cases have median context reduction of at least 40%, and at least 80% reduce context by at least 25%.
+- Allowed expansion, sensitive blocking, outside-root blocking, and previous-package linkage are each 100% on the acceptance set.
+- Evidence lineage is complete for accepted packages; missing tests remain `NOT RUN`, `incomplete`, or `unknown`; no root cause is asserted.
+- Resume and handoff checks recover objective, observed state, considered files, tests, failures, constraints, missing evidence, and next bounded action.
+- Three real repositories pass read-only portability smoke.
+- Global CLI works outside the Worker repository, with accepted-source activation reported honestly as active or pending.
+- Schemas, fixtures, release-gate generation, secret scan, compilation, full tests, evaluator, and deterministic reruns pass.
 
 ## Risks
 
-- A model can return invented or duplicated source IDs; the accepted gate must reject them.
-- Changes to the Stage A safety matrix can weaken legacy coverage; Phase 1 GATE-07 permits only the exact authorized `log cluster` delta.
-- A policy override can enable clustering, but it must not grant unrelated semantic or mutation authority.
+- Adding lineage and expansion can break downstream consumers unless legacy fields remain available.
+- Caller-supplied inventories can contain misleading or unsafe paths; every path needs deterministic validation.
+- Reduction metrics can be misleading on already-minimal inputs; such cases must be visibly bypassed.
+- The globally installed editable CLI may point to a different or unaudited worktree, so global activation may remain pending after repository acceptance.

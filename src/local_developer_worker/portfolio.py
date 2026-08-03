@@ -145,6 +145,46 @@ def render_release_gates(registry: dict[str, Any]) -> str:
         lines.append(
             f"| {option['id']} | {_cell(option['option'])} | {_cell(option['benefit'])} | {_cell(option['tradeoff'])} |"
         )
+    wave2 = registry.get("wave_2_acceptance")
+    if wave2:
+        lines.extend(
+            [
+                "",
+                "## Wave 2 — Context and Evidence Layer",
+                "",
+                f"Status: `{wave2['status']}`.",
+                f"Overall state: `{wave2['overall_state']}`.",
+                f"Global activation: `{wave2['global_activation']}`.",
+                "",
+                "| Service | Implemented | Accepted |",
+                "|---|---|---|",
+            ]
+        )
+        for service, state in wave2["services"].items():
+            lines.append(f"| {service} | {str(state['implemented']).lower()} | {state['accepted']} |")
+        acceptance = wave2["acceptance"]
+        lines.extend(
+            [
+                "",
+                "| Acceptance requirement | Value |",
+                "|---|---|",
+            ]
+        )
+        for key, value in acceptance.items():
+            rendered_value = str(value).lower() if isinstance(value, bool) else str(value)
+            lines.append(f"| {key} | {rendered_value} |")
+        lines.extend(
+            [
+                "",
+                "Exact evidence tests:",
+                "",
+                *[f"- `{node}`" for node in wave2["evidence_test_ids"]],
+                "",
+                "Forbidden:",
+                "",
+                *[f"- {item}" for item in wave2["forbidden"]],
+            ]
+        )
     return "\n".join(lines) + "\n"
 
 

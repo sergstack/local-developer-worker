@@ -13,3 +13,5 @@ The CLI appends one canonical JSON event to `.repo_index/ldw_sessions/YYYY-MM-DD
 ## Summary
 
 `ldw telemetry summary` reads the date partitions and returns total input/output bytes, measured context-mode calls and average context reduction, fallback count and ratio, and evidence/report automation calls. Optional `--from-date` and `--to-date` filters use ISO dates. The summary reads the journal before its own event is appended, so the current summary call appears only in the next summary.
+
+Wave 2 does not expand `SAFE_FIELDS`. Detailed candidate counts, byte volumes, exclusion counts, sensitive blocks, expansion results, and lineage completeness live in the command output and sanitized acceptance evaluator rather than the production journal. Repository identifiers, paths, raw contents, prompts, and provider data are not added to telemetry. Operator time, raw-reread rate, and time-to-actionable-context remain `NOT MEASURED` until directly observed.

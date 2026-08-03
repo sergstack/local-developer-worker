@@ -94,4 +94,20 @@ assert live_evidence["code_artifact"] == "disabled"
 assert live_evidence["mutation_capabilities_granted"] is False
 assert re.fullmatch(r"[0-9a-f]{64}", live_evidence["stdout_sha256"])
 
-print(f"benchmark manifest and Stage B reference fixtures valid ({len(events)} reference events)")
+wave2 = json.loads((repository_root / "fixtures" / "wave2" / "reference_corpus.json").read_text())
+wave2_required = {
+    "case_id", "repository_fixture_or_root", "task", "explicit_target_files", "critical_files",
+    "allowed_related_files", "acceptable_exclusions", "forbidden_sensitive_files", "required_symbols",
+    "required_tests", "expected_git_facts", "expected_observed_failures", "expansion_requests",
+    "source_type", "sensitive_content_present",
+}
+assert wave2["schema_version"] == "1.0.0"
+assert wave2["frozen"] is True
+assert len(wave2["cases"]) == 15
+assert len({case["case_id"] for case in wave2["cases"]}) == 15
+assert all(wave2_required <= set(case) for case in wave2["cases"])
+assert all(case["source_type"] in {"real_repository", "sanitized_fixture"} for case in wave2["cases"])
+assert all(case["sensitive_content_present"] is False for case in wave2["cases"])
+assert all(set(case["critical_files"]).isdisjoint(case["forbidden_sensitive_files"]) for case in wave2["cases"])
+
+print(f"benchmark manifest, {len(events)} Stage B reference events, and {len(wave2['cases'])} frozen Wave 2 cases valid")

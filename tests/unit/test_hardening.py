@@ -37,12 +37,14 @@ def test_context_packer_deduplicates_paths_and_has_reasons():
     assert output["data"]["excluded_candidates"][0]["reason"] == "duplicate_path"
 
 
-def test_context_mode_omits_audit_metadata_but_keeps_expansion_handle():
+def test_context_mode_keeps_visible_exclusions_and_expansion_handle():
     output = context_pack({"mode": "context", "task": "fix", "files": [{"path": "src/a.py"}, {"path": "docs/a.md"}], "named_files": ["src/a.py"], "failure_event_ids": ["EV-002"]})["data"]
     assert output["mode"] == "context"
     assert output["relevant_files"] == ["src/a.py"]
     assert output["relevant_failures"] == ["EV-002"]
-    assert "excluded_candidates" not in output
+    assert output["contract_version"] == "2.0.0"
+    assert output["excluded_files"][0]["path"] == "docs/a.md"
+    assert output["excluded_files"][0]["reason_code"] == "not_selected"
 
 
 def test_context_packer_includes_standard_pytest_layout():

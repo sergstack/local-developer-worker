@@ -1,1 +1,116 @@
-{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"ContextPackage","type":"object","required":["included_files","excluded_candidates","budget"]}
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ContextPackage",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "mode",
+    "task",
+    "repository_root",
+    "repository_root_explicit",
+    "included_files",
+    "excluded_files",
+    "selection_reasons",
+    "expansion_available",
+    "budget",
+    "metrics",
+    "package_hash"
+  ],
+  "properties": {
+    "contract_version": {"const": "2.0.0"},
+    "mode": {"enum": ["audit", "context", "expand"]},
+    "task": {"type": "string"},
+    "repository_root": {"type": "string", "minLength": 1},
+    "repository_root_explicit": {"type": "boolean"},
+    "target_files": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "related_files": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "symbols": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "observed_failures": {"type": "array"},
+    "included_files": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/includedFile"}
+    },
+    "excluded_files": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/excludedFile"}
+    },
+    "selection_reasons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "reasons"],
+        "properties": {
+          "path": {"type": "string", "minLength": 1},
+          "reasons": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/selectionReason"}}
+        }
+      }
+    },
+    "warnings": {"type": "array"},
+    "selection_status": {"enum": ["selected", "low_benefit_bypass", "unsupported"]},
+    "expansion_available": {"type": "boolean"},
+    "budget": {
+      "type": "object",
+      "required": ["max_context_files", "consumed"],
+      "properties": {
+        "max_context_files": {"type": "integer", "minimum": 1},
+        "consumed": {"type": "integer", "minimum": 0}
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "required": ["eligible_input_bytes", "selected_bytes", "context_reduction", "input_file_count", "selected_file_count", "excluded_file_count", "sensitive_block_count"],
+      "properties": {
+        "eligible_input_bytes": {"type": "integer", "minimum": 0},
+        "selected_bytes": {"type": "integer", "minimum": 0},
+        "context_reduction": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "input_file_count": {"type": "integer", "minimum": 0},
+        "selected_file_count": {"type": "integer", "minimum": 0},
+        "excluded_file_count": {"type": "integer", "minimum": 0},
+        "sensitive_block_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "package_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "previous_run_id": {"type": "string", "pattern": "^RUN-"},
+    "previous_context_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "added_files": {"type": "array", "items": {"$ref": "#/$defs/includedFile"}},
+    "still_excluded": {"type": "array", "items": {"$ref": "#/$defs/excludedFile"}}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"mode": {"const": "expand"}}},
+      "then": {"required": ["previous_run_id", "previous_context_hash", "added_files", "still_excluded"]}
+    }
+  ],
+  "$defs": {
+    "selectionReason": {
+      "type": "object",
+      "required": ["selection_reason", "evidence_source", "relevance_status"],
+      "properties": {
+        "selection_reason": {"type": "string", "minLength": 1},
+        "evidence_source": {"type": "string", "minLength": 1},
+        "relevance_status": {"enum": ["explicit", "deterministic_dependency", "candidate", "unknown"]}
+      }
+    },
+    "includedFile": {
+      "type": "object",
+      "required": ["path", "selection_reason", "selection_reasons", "evidence_source", "relevance_status", "size_bytes"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "selection_reason": {"type": "string", "minLength": 1},
+        "selection_reasons": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/selectionReason"}},
+        "evidence_source": {"type": "string", "minLength": 1},
+        "relevance_status": {"enum": ["explicit", "deterministic_dependency", "candidate", "unknown"]},
+        "size_bytes": {"type": "integer", "minimum": 0}
+      }
+    },
+    "excludedFile": {
+      "type": "object",
+      "required": ["path", "reason_code", "policy_rule"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "reason_code": {"enum": ["outside_repository_root", "sensitive_path", "ignored_by_policy", "binary", "generated_not_required", "over_context_limit", "not_selected", "unsupported"]},
+        "policy_rule": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}
