@@ -26,7 +26,7 @@ def _resolver(*addresses):
     return resolve
 
 
-def test_policy_01_policy_file_changes_only_by_approved_comment():
+def test_policy_01_policy_file_changes_only_by_approved_comment_and_phase_2_config():
     current = (ROOT / "policy.toml").read_text()
     baseline = subprocess.run(
         ["git", "show", f"{BASE_COMMIT}:policy.toml"],
@@ -36,9 +36,18 @@ def test_policy_01_policy_file_changes_only_by_approved_comment():
         check=True,
     ).stdout
 
-    assert current.count(POLICY_COMMENT) == 1
-    assert current.replace(POLICY_COMMENT, "") == baseline
-    assert tomllib.loads(current) == tomllib.loads(baseline)
+    expected = baseline.replace("network_access = false\n", POLICY_COMMENT + "network_access = false\n")
+    expected = expected.replace(
+        "change_summarizer_facts_only = true\n",
+        "change_summarizer_facts_only = true\nsemantic_log_clustering = false\n",
+    )
+    expected = expected.replace(
+        'code_artifact = "disabled"\n',
+        'code_artifact = "disabled"\nmodel = "qwen3:4b"\n'
+        'endpoint = "http://127.0.0.1:11435/api/generate"\n',
+    )
+
+    assert current == expected
     assert tomllib.loads(current)["semantic"]["enabled"] is False
 
 

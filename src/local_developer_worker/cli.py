@@ -12,12 +12,14 @@ from .contracts import canonical_json, result, valid_tool_result
 from .policy import allowed, load_policy, root_allowed
 from .portfolio import portfolio_status, portfolio_verify
 from .session_log import append_event
+from .stage_b_cluster import log_cluster
 from .telemetry import telemetry_event, telemetry_summary
 from .tools import benchmark_run, context_pack, doctor, evidence_build, file_inventory, git_facts, parse_log, parse_tests, report_summarize
 
 COMMANDS: dict[tuple[str, ...], Callable[[dict], dict]] = {
     ("doctor",): doctor,
     ("log", "parse"): parse_log,
+    ("log", "cluster"): log_cluster,
     ("test", "parse"): parse_tests,
     ("git", "facts"): git_facts,
     ("files", "inventory"): file_inventory,
@@ -30,7 +32,8 @@ COMMANDS: dict[tuple[str, ...], Callable[[dict], dict]] = {
     ("portfolio", "status"): portfolio_status,
 }
 CAPABILITIES = {
-    ("log", "parse"): "structured_log_parser", ("test", "parse"): "test_result_parser",
+    ("log", "parse"): "structured_log_parser", ("log", "cluster"): "semantic_log_clustering",
+    ("test", "parse"): "test_result_parser",
     ("git", "facts"): "git_facts_collector", ("files", "inventory"): "file_inventory",
     ("context", "pack"): "context_packer", ("report", "summarize"): "change_summarizer_facts_only",
 }
@@ -40,7 +43,10 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="ldw", description="Deterministic local developer evidence worker")
     sub = parser.add_subparsers(dest="tool", required=True)
     sub.add_parser("doctor")
-    for name, action in [("log", "parse"), ("test", "parse"), ("git", "facts"), ("files", "inventory"), ("evidence", "build"), ("context", "pack"), ("report", "summarize"), ("benchmark", "run")]:
+    log = sub.add_parser("log").add_subparsers(dest="action", required=True)
+    log.add_parser("parse")
+    log.add_parser("cluster")
+    for name, action in [("test", "parse"), ("git", "facts"), ("files", "inventory"), ("evidence", "build"), ("context", "pack"), ("report", "summarize"), ("benchmark", "run")]:
         group = sub.add_parser(name)
         group.add_subparsers(dest="action", required=True).add_parser(action)
     telemetry = sub.add_parser("telemetry").add_subparsers(dest="action", required=True).add_parser("summary")
@@ -79,7 +85,7 @@ def _emit(output: dict, key: tuple[str, ...], payload: dict, raw: str, started: 
                 "output_bytes": len(stdout_text.encode("utf-8")),
                 "latency_ms": round((time.perf_counter() - started) * 1000),
                 "status": output["status"],
-                "fallback_used": bool(output.get("data", {}).get("fallback")),
+                "fallback_used": bool(output.get("data", {}).get("fallback_used", output.get("data", {}).get("fallback"))),
                 "context_reduction": context_reduction,
                 "run_id": output["run_id"],
             }
@@ -127,12 +133,16 @@ def main(argv: list[str] | None = None) -> int:
             output = result(" ".join(key), "stdin", raw, {"fallback": policy.get("fallback", {}).get("on_policy_violation", "codex")}, status="policy_blocked", errors=[{"code": "repository_root_not_allowed"}])
         elif key == ("log", "parse") and len(raw.encode("utf-8")) > max_log_bytes:
             output = result(" ".join(key), "stdin", raw, {"fallback": policy.get("fallback", {}).get("on_policy_violation", "codex")}, status="policy_blocked", errors=[{"code": "input_size_exceeded", "limit_bytes": max_log_bytes}])
+        elif key == ("log", "cluster") and policy.get("semantic", {}).get("enabled") is not True:
+            output = result(" ".join(key), "stdin", raw, {"fallback_used": False, "semantic_groups": []}, status="policy_blocked", errors=[{"code": "semantic_disabled"}])
+        elif key == ("log", "cluster") and policy.get("semantic", {}).get("code_artifact") != "disabled":
+            output = result(" ".join(key), "stdin", raw, {"fallback_used": False, "semantic_groups": []}, status="policy_blocked", errors=[{"code": "semantic_code_artifact_prohibited"}])
         elif capability and not allowed(policy, capability):
             output = result(" ".join(key), "stdin", raw, {"fallback": policy.get("fallback", {}).get("on_policy_violation", "codex")}, status="policy_blocked", errors=[{"code": "capability_disabled", "capability": capability}])
         else:
             if key == ("context", "pack"):
                 payload["max_context_files"] = min(int(payload.get("max_context_files", limits.get("max_context_files", 20))), int(limits.get("max_context_files", 20)))
-            output = COMMANDS[key](payload)
+            output = log_cluster(payload, policy) if key == ("log", "cluster") else COMMANDS[key](payload)
         if not valid_tool_result(output):
             output = result(" ".join(key), "stdin", raw, {"fallback": policy.get("fallback", {}).get("on_invalid_schema", "codex")}, status="internal_error", errors=[{"code": "invalid_output_schema"}])
     except (OSError, ValueError):

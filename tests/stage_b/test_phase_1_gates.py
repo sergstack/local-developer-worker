@@ -13,6 +13,7 @@ from local_developer_worker.stage_b_gate import (
     evaluate_candidate_response,
     validate_candidate_response,
 )
+from local_developer_worker.stage_b_portfolio import expected_phase_2_safety_matrix
 from local_developer_worker.tools import parse_tests
 
 ROOT = Path(__file__).parents[2]
@@ -197,15 +198,15 @@ def test_nr_01_path_disagreement_forces_review_independent_of_confidence():
     assert result["groups"][0]["needs_review"] is True
 
 
-def test_gate_07_stage_a_safety_matrix_is_unchanged_and_passes_via_test_parser():
+def test_gate_07_stage_a_safety_matrix_preserves_legacy_cases_and_adds_log_cluster():
     relative = "tests/integration/test_stage_a_safety_matrix.py"
     baseline = subprocess.run(
         ["git", "show", f"{BASE_COMMIT}:{relative}"],
         cwd=ROOT,
         capture_output=True,
         check=True,
-    ).stdout
-    assert (ROOT / relative).read_bytes() == baseline
+    ).stdout.decode()
+    assert (ROOT / relative).read_text() == expected_phase_2_safety_matrix(baseline)
 
     completed = subprocess.run(
         [sys.executable, "-m", "pytest", "-q", "-rA", relative],

@@ -17,10 +17,13 @@ git_facts_collector = true
 file_inventory = true
 context_packer = true
 change_summarizer_facts_only = true
+semantic_log_clustering = false
 
 [semantic]
 enabled = false
 code_artifact = "disabled"
+model = "qwen3:4b"
+endpoint = "http://127.0.0.1:11435/api/generate"
 
 [limits]
 max_log_size_mb = 20

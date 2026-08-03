@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0.0",
+  "classification": "OBSERVED",
+  "observed_date": "2026-08-03",
+  "command": "ldw log cluster",
+  "corpus": "REF-01",
+  "model": "qwen3:4b",
+  "endpoint": "http://127.0.0.1:11435/api/generate",
+  "model_response_observed": true,
+  "tool_status": "partial",
+  "run_id": "RUN-0e2e7c6e4aab7e54",
+  "stdout_sha256": "e853af02c2e7998e52eef1a1a8168f94e9229cccc17a8df553e773393da04f00",
+  "observed_event_count": 34,
+  "semantic_group_count": 0,
+  "fallback_used": true,
+  "fallback_reason": [
+    "duplicate_event_accounting",
+    "invented_source",
+    "source_span_recall_failed"
+  ],
+  "raw_response_stored": false,
+  "code_artifact": "disabled",
+  "mutation_capabilities_granted": false
+}

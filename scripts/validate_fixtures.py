@@ -85,4 +85,13 @@ for left, right in ground_truth["must_remain_separate"]:
     assert left in event_ids and right in event_ids
     assert membership.get(left) != membership.get(right)
 
+live_evidence = json.loads((stage_b_root / "phase_2_live_run_evidence.json").read_text())
+assert live_evidence["schema_version"] == "1.0.0"
+assert live_evidence["classification"] == "OBSERVED"
+assert live_evidence["model_response_observed"] is True
+assert live_evidence["raw_response_stored"] is False
+assert live_evidence["code_artifact"] == "disabled"
+assert live_evidence["mutation_capabilities_granted"] is False
+assert re.fullmatch(r"[0-9a-f]{64}", live_evidence["stdout_sha256"])
+
 print(f"benchmark manifest and Stage B reference fixtures valid ({len(events)} reference events)")

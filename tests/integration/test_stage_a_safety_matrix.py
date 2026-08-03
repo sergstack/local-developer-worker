@@ -40,6 +40,7 @@ def _run(args: list[str], payload: dict) -> subprocess.CompletedProcess[str]:
     [
         (["doctor"], {}),
         (["log", "parse"], {"text": "INFO ready\nopaque"}),
+        (["log", "cluster"], {"events": []}),
         (["test", "parse"], {"text": "PASSED tests/test_ok.py::test_ok", "exit_code": 0, "command_observed": True}),
         (["git", "facts"], {"repository_root": str(ROOT)}),
         (["files", "inventory"], {"repository_root": str(ROOT), "max_file_size": 1}),
@@ -57,11 +58,11 @@ def _run(args: list[str], payload: dict) -> subprocess.CompletedProcess[str]:
         (["portfolio", "verify", "--only", "AI-02"], {}),
         (["portfolio", "status"], {}),
     ],
-    ids=["doctor", "log-parse", "test-parse", "git-facts", "files-inventory", "evidence-build", "context-pack", "report-summarize", "benchmark-run", "telemetry-summary", "portfolio-verify", "portfolio-status"],
+    ids=["doctor", "log-parse", "log-cluster", "test-parse", "git-facts", "files-inventory", "evidence-build", "context-pack", "report-summarize", "benchmark-run", "telemetry-summary", "portfolio-verify", "portfolio-status"],
 )
 def test_gate_schema_valid_output_for_all_public_commands(args, payload):
     completed = _run(args, payload)
-    assert completed.returncode == 0
+    assert completed.returncode == (2 if args == ["log", "cluster"] else 0)
     assert completed.stderr == ""
     validate(instance=json.loads(completed.stdout), schema=TOOL_RESULT_SCHEMA)
 
