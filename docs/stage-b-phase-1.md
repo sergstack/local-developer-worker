@@ -8,7 +8,7 @@ Phase 1 validates candidate semantic groups; it does not create production group
 PYTHONPATH=src python scripts/run_stage_b_portfolio.py
 ```
 
-The runner executes every declared evidence node independently, passes captured runner output through `ldw test parse`, continues after failures, and emits only deterministic evidence metadata. `phase_1_complete` requires all 10 objects plus reconciliation of the registry, reference corpus, semantic policy, schema, and unchanged Stage A safety matrix.
+The runner executes every declared evidence node independently, passes captured runner output through `ldw test parse`, continues after failures, and emits only deterministic evidence metadata. `phase_1_complete` requires all 10 objects plus reconciliation of the registry, reference corpus, semantic policy, schema, and the Stage A safety matrix. Phase 2 permits only an exact audited matrix delta for the new `log cluster` public-command case; all legacy cases remain frozen.
 
 ## Loopback enforcement
 

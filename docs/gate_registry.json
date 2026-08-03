@@ -8,6 +8,7 @@
       "evidence_test_ids": [
         "tests/integration/test_stage_a_safety_matrix.py::test_gate_schema_valid_output_for_all_public_commands[doctor]",
         "tests/integration/test_stage_a_safety_matrix.py::test_gate_schema_valid_output_for_all_public_commands[log-parse]",
+        "tests/integration/test_stage_a_safety_matrix.py::test_gate_schema_valid_output_for_all_public_commands[log-cluster]",
         "tests/integration/test_stage_a_safety_matrix.py::test_gate_schema_valid_output_for_all_public_commands[test-parse]",
         "tests/integration/test_stage_a_safety_matrix.py::test_gate_schema_valid_output_for_all_public_commands[git-facts]",
         "tests/integration/test_stage_a_safety_matrix.py::test_gate_schema_valid_output_for_all_public_commands[files-inventory]",
@@ -186,13 +187,16 @@
       "id": "SA-14",
       "category": "gate",
       "status": "not_started",
-      "evidence_test_ids": ["tests/security/test_stage_a_boundaries.py::test_gate_default_policy_denies_network_mutation_and_deployment"],
+      "evidence_test_ids": [
+        "tests/security/test_stage_a_boundaries.py::test_gate_default_policy_denies_network_mutation_and_deployment",
+        "tests/security/test_stage_a_boundaries.py::test_gate_sa14_records_the_narrow_semantic_clustering_exception"
+      ],
       "classification": "architectural",
       "last_verified_commit": null,
       "title": "Default policy denies mutation and network authority",
-      "guarantee": "The default policy grants no network, edit, commit, merge, deploy, or semantic authority.",
-      "enforcement": "The shipped policy denies these capabilities and the CLI enforces declared capabilities before dispatch.",
-      "owner_action": "Treat any default-policy relaxation as a separate user decision."
+      "guarantee": "denies network, edit, commit, merge, deploy by default; semantic authority is default-off but may be narrowly enabled for the gated bounded clustering task under [automatic].semantic_log_clustering, never for code_artifact",
+      "enforcement": "The shipped policy denies network and mutation capabilities, keeps semantic clustering default-off, and requires both [semantic].enabled and [automatic].semantic_log_clustering before dispatch; code_artifact remains disabled.",
+      "owner_action": "Keep the semantic exception limited to gated bounded clustering and never enable code_artifact."
     },
     {
       "id": "SA-15",
@@ -354,6 +358,29 @@
           "required_phrases": ["Ожидаемый результат для пользователя", "меньше ручной работы", "сокращению контекста", "времени выполнения", "fallback-сценариям"],
           "forbidden_patterns": ["product[- ]market", "(доказать\\s+)?польз[аы]\\s+для\\s+(рынка|команды)"]
         }
+      ]
+    }
+  ],
+  "governed_features": [
+    {
+      "id": "PB2-LOG-CLUSTERING",
+      "command": "ldw log cluster",
+      "scope": "Gated bounded clustering of sanitized Stage A log events",
+      "default_enabled": false,
+      "capability": "[automatic].semantic_log_clustering",
+      "semantic_gate": "[semantic].enabled",
+      "code_artifact": "disabled",
+      "evidence_test_ids": [
+        "tests/stage_b/test_phase_2_cluster.py::test_pb2_03_default_policy_blocks_semantic_dispatch",
+        "tests/stage_b/test_phase_2_cluster.py::test_pb2_03_rejects_non_parsed_event_shape_before_model_dispatch",
+        "tests/stage_b/test_phase_2_cluster.py::test_pb2_03_rejects_empty_event_set_before_model_dispatch",
+        "tests/stage_b/test_phase_2_cluster.py::test_pb2_03_pipeline_uses_policy_config_and_existing_gate_functions",
+        "tests/stage_b/test_phase_2_cluster.py::test_pb2_03_non_loopback_endpoint_is_blocked_before_transport",
+        "tests/stage_b/test_phase_2_cluster.py::test_pb2_03_transport_failure_returns_honest_observed_fallback",
+        "tests/stage_b/test_phase_2_cluster.py::test_pb2_03_code_artifact_is_rejected_before_dispatch",
+        "tests/stage_b/test_phase_2_report.py::test_pb2_04_report_without_semantic_data_is_byte_identical_to_phase_1",
+        "tests/stage_b/test_phase_2_report.py::test_pb2_04_report_keeps_semantic_candidates_separate_from_observed_facts",
+        "tests/stage_b/test_phase_2_report.py::test_pb2_04_report_rejects_malformed_semantic_candidate_types"
       ]
     }
   ]

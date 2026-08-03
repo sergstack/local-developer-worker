@@ -23,4 +23,11 @@ assert len(stage_b_registry["items"]) == 10
 for item in stage_b_registry["items"]:
     Draft202012Validator(stage_b_schema).validate(item)
 
-print(f"validated {len(list(root.glob('*.schema.json')))} schemas, {len(registry['items'])} Stage A items, and {len(stage_b_registry['items'])} Stage B Phase 1 items")
+phase_2_schema = json.loads((root / "stage_b_phase_2_portfolio_item.schema.json").read_text())
+phase_2_registry = json.loads((root.parent / "docs" / "stage_b_phase_2_registry.json").read_text())
+assert phase_2_registry["schema_version"] == "1.0.0"
+assert len(phase_2_registry["items"]) == 8
+for item in phase_2_registry["items"]:
+    Draft202012Validator(phase_2_schema).validate(item)
+
+print(f"validated {len(list(root.glob('*.schema.json')))} schemas, {len(registry['items'])} Stage A items, {len(stage_b_registry['items'])} Stage B Phase 1 items, and {len(phase_2_registry['items'])} Stage B Phase 2 items")

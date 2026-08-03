@@ -7,7 +7,7 @@ import urllib.request
 from pathlib import Path
 
 from local_developer_worker.contracts import canonical_json, stable_hash
-from local_developer_worker.policy import guarded_inference_call
+from local_developer_worker.policy import guarded_inference_call, load_policy
 from local_developer_worker.stage_b_gate import build_inference_payload, validate_candidate_response
 
 ROOT = Path(__file__).parents[1]
@@ -66,9 +66,14 @@ def _transport(endpoint: str, request_payload: dict) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run an observational qwen3:4b probe separate from the Phase 1 gate")
-    parser.add_argument("--endpoint", default="http://127.0.0.1:11434/api/generate")
-    parser.add_argument("--model", default="qwen3:4b")
+    parser.add_argument("--policy-path")
     args = parser.parse_args()
+    semantic_policy = load_policy(args.policy_path).get("semantic", {})
+    endpoint = semantic_policy.get("endpoint")
+    model = semantic_policy.get("model")
+    if not isinstance(endpoint, str) or not endpoint or not isinstance(model, str) or not model:
+        print(canonical_json({"probe_status": "unavailable", "error_type": "invalid_semantic_policy", "raw_response_stored": False}))
+        return 2
 
     fixture_root = ROOT / "fixtures" / "stage_b"
     events = json.loads((fixture_root / "reference_events.json").read_text())["events"]
@@ -81,7 +86,7 @@ def main() -> int:
         + canonical_json(inference_payload)
     )
     request_payload = {
-        "model": args.model,
+        "model": model,
         "prompt": prompt,
         "stream": False,
         "think": False,
@@ -89,15 +94,15 @@ def main() -> int:
         "options": {"temperature": 0},
     }
     try:
-        policy_result, candidate = guarded_inference_call(args.endpoint, request_payload, _transport)
+        policy_result, candidate = guarded_inference_call(endpoint, request_payload, _transport)
         if policy_result["status"] != "success":
-            summary = {"probe_status": "policy_blocked", "policy": policy_result, "model": args.model}
+            summary = {"probe_status": "policy_blocked", "policy": policy_result, "model": model}
             print(canonical_json(summary))
             return 2
         validation = validate_candidate_response(events, candidate, ground_truth=truth)
         summary = {
             "probe_status": "accepted" if validation["accepted"] else "rejected",
-            "model": args.model,
+            "model": model,
             "endpoint_policy": "loopback_only",
             "reference_event_count": len(events),
             "group_count": len(candidate.get("groups", [])),
@@ -109,10 +114,10 @@ def main() -> int:
         print(canonical_json(summary))
         return 0 if validation["accepted"] else 1
     except urllib.error.HTTPError as exc:
-        print(canonical_json({"probe_status": "unavailable", "model": args.model, "error_type": "HTTPError", "http_status": exc.code, "raw_response_stored": False}))
+        print(canonical_json({"probe_status": "unavailable", "model": model, "error_type": "HTTPError", "http_status": exc.code, "raw_response_stored": False}))
         return 2
     except (KeyError, TypeError, ValueError, TimeoutError, urllib.error.URLError, json.JSONDecodeError) as exc:
-        print(canonical_json({"probe_status": "unavailable", "model": args.model, "error_type": type(exc).__name__, "raw_response_stored": False}))
+        print(canonical_json({"probe_status": "unavailable", "model": model, "error_type": type(exc).__name__, "raw_response_stored": False}))
         return 2
 
 

@@ -259,6 +259,26 @@ def report_summarize(payload: dict[str, Any]) -> dict[str, Any]:
     package = payload.get("evidence_package")
     if not isinstance(package, dict):
         return result("change_summarizer", "stdin", raw, {}, status="invalid_input", errors=[{"code": "evidence_package_required"}])
+    semantic_candidates = payload.get("semantic_candidates")
+    semantic_fields = {"group_id", "pattern", "classification", "source_span", "confidence", "origin", "needs_review"}
+    def valid_semantic_group(group: Any) -> bool:
+        if not isinstance(group, dict) or set(group) != semantic_fields or group.get("origin") != "model-derived":
+            return False
+        spans = group.get("source_span")
+        confidence = group.get("confidence")
+        return (
+            isinstance(group.get("group_id"), str) and bool(re.fullmatch(r"SG-[A-Z0-9_-]+", group["group_id"]))
+            and all(isinstance(group.get(field), str) and bool(group[field]) for field in ("pattern", "classification"))
+            and isinstance(spans, list) and bool(spans) and len(spans) == len(set(spans))
+            and all(isinstance(event_id, str) and bool(re.fullmatch(r"EV-\d{6}", event_id)) for event_id in spans)
+            and isinstance(confidence, (int, float)) and not isinstance(confidence, bool) and 0 <= confidence <= 1
+            and isinstance(group.get("needs_review"), bool)
+        )
+    if semantic_candidates is not None and (
+        not isinstance(semantic_candidates, list)
+        or any(not valid_semantic_group(group) for group in semantic_candidates)
+    ):
+        return result("change_summarizer", "stdin", raw, {}, status="invalid_input", errors=[{"code": "invalid_semantic_candidates"}])
     repo = package.get("repository_state", {})
     tests = package.get("observed_test_results", [])
     facts = {
@@ -272,6 +292,8 @@ def report_summarize(payload: dict[str, Any]) -> dict[str, Any]:
         "rollback_facts": {"working_tree_clean": repo.get("working_tree_clean", "unknown")},
         "acceptance_evidence": {"content_hash": package.get("content_hash")},
     }
+    if semantic_candidates is not None:
+        facts["semantic_candidates"] = semantic_candidates
     return result("change_summarizer", "stdin", raw, facts, status="partial" if package.get("missing_evidence") else "success")
 
 

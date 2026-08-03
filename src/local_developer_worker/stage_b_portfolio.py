@@ -22,6 +22,23 @@ VALID_INITIAL_STATUSES = {
 }
 
 
+def expected_phase_2_safety_matrix(baseline: str) -> str:
+    expected = baseline.replace(
+        '        (["log", "parse"], {"text": "INFO ready\\nopaque"}),\n',
+        '        (["log", "parse"], {"text": "INFO ready\\nopaque"}),\n'
+        '        (["log", "cluster"], {"events": []}),\n',
+    )
+    expected = expected.replace(
+        'ids=["doctor", "log-parse", "test-parse",',
+        'ids=["doctor", "log-parse", "log-cluster", "test-parse",',
+    )
+    expected = expected.replace(
+        "    assert completed.returncode == 0\n",
+        '    assert completed.returncode == (2 if args == ["log", "cluster"] else 0)\n',
+    )
+    return expected
+
+
 def load_phase_1_registry(path: Path = REGISTRY_PATH) -> dict[str, Any]:
     registry = json.loads(path.read_text(encoding="utf-8"))
     items = registry.get("items")
@@ -95,13 +112,14 @@ def _reconciliation() -> dict[str, Any]:
         capture_output=True,
         check=False,
     )
-    current = (ROOT / relative).read_bytes()
+    current = (ROOT / relative).read_text()
+    expected_matrix = expected_phase_2_safety_matrix(baseline.stdout.decode()) if baseline.returncode == 0 else None
     return {
         "registry_ids_exact": [item["id"] for item in load_phase_1_registry()["items"]] == EXPECTED_IDS,
         "reference_event_count": len(reference["events"]),
         "reference_minimum_met": len(reference["events"]) >= 30,
         "semantic_enabled": policy.get("semantic", {}).get("enabled"),
-        "stage_a_safety_matrix_unchanged": baseline.returncode == 0 and current == baseline.stdout,
+        "stage_a_safety_matrix_matches_authorized_phase_2_delta": expected_matrix is not None and current == expected_matrix,
         "semantic_group_schema_present": (ROOT / "schemas" / "semantic_group.schema.json").is_file(),
     }
 
@@ -132,7 +150,7 @@ def run_phase_1_portfolio(*, timeout: int = 120) -> dict[str, Any]:
         reconciliation["registry_ids_exact"]
         and reconciliation["reference_minimum_met"]
         and reconciliation["semantic_enabled"] is False
-        and reconciliation["stage_a_safety_matrix_unchanged"]
+        and reconciliation["stage_a_safety_matrix_matches_authorized_phase_2_delta"]
         and reconciliation["semantic_group_schema_present"]
     )
     acceptance = "phase_1_complete" if len(completed) == 10 and reconciliation_ok else "phase_1_partial"

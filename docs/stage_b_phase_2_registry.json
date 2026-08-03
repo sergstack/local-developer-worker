@@ -1,0 +1,82 @@
+{
+  "schema_version": "1.0.0",
+  "items": [
+    {
+      "id": "PB2-01",
+      "objective": "Record the owner-approved narrow SA-14 semantic exception without SA-17.",
+      "evidence_test_ids": [
+        "tests/security/test_stage_a_boundaries.py::test_gate_default_policy_denies_network_mutation_and_deployment",
+        "tests/security/test_stage_a_boundaries.py::test_gate_sa14_records_the_narrow_semantic_clustering_exception"
+      ],
+      "owner_action": "Keep the exception limited to bounded clustering and code_artifact disabled."
+    },
+    {
+      "id": "PB2-02",
+      "objective": "Read qwen3:4b and the 127.0.0.1:11435 endpoint only from policy.",
+      "evidence_test_ids": [
+        "tests/stage_b/test_phase_2_policy.py::test_pb2_02_semantic_runtime_configuration_comes_from_policy",
+        "tests/stage_b/test_phase_2_policy.py::test_pb2_02_model_probe_has_no_endpoint_or_model_literal_defaults"
+      ],
+      "owner_action": "Keep endpoint and model literals out of production dispatch."
+    },
+    {
+      "id": "PB2-03",
+      "objective": "Expose guarded bounded clustering as ldw log cluster with honest fallback.",
+      "evidence_test_ids": [
+        "tests/stage_b/test_phase_2_cluster.py::test_pb2_03_default_policy_blocks_semantic_dispatch",
+        "tests/stage_b/test_phase_2_cluster.py::test_pb2_03_rejects_non_parsed_event_shape_before_model_dispatch",
+        "tests/stage_b/test_phase_2_cluster.py::test_pb2_03_rejects_empty_event_set_before_model_dispatch",
+        "tests/stage_b/test_phase_2_cluster.py::test_pb2_03_pipeline_uses_policy_config_and_existing_gate_functions",
+        "tests/stage_b/test_phase_2_cluster.py::test_pb2_03_non_loopback_endpoint_is_blocked_before_transport",
+        "tests/stage_b/test_phase_2_cluster.py::test_pb2_03_transport_failure_returns_honest_observed_fallback",
+        "tests/stage_b/test_phase_2_cluster.py::test_pb2_03_code_artifact_is_rejected_before_dispatch"
+      ],
+      "owner_action": "Reject unsafe events and never emit raw model responses."
+    },
+    {
+      "id": "PB2-04",
+      "objective": "Keep semantic candidates separate and preserve legacy reports byte-for-byte.",
+      "evidence_test_ids": [
+        "tests/stage_b/test_phase_2_report.py::test_pb2_04_report_without_semantic_data_is_byte_identical_to_phase_1",
+        "tests/stage_b/test_phase_2_report.py::test_pb2_04_report_keeps_semantic_candidates_separate_from_observed_facts",
+        "tests/stage_b/test_phase_2_report.py::test_pb2_04_report_rejects_unlabeled_semantic_candidates",
+        "tests/stage_b/test_phase_2_report.py::test_pb2_04_report_rejects_malformed_semantic_candidate_types"
+      ],
+      "owner_action": "Do not merge semantic candidates into observed fact fields."
+    },
+    {
+      "id": "PB2-05",
+      "objective": "Synchronize schemas, public command coverage, governance, and documentation.",
+      "evidence_test_ids": [
+        "tests/integration/test_stage_a_safety_matrix.py::test_gate_schema_valid_output_for_all_public_commands[log-cluster]",
+        "tests/stage_b/test_phase_2_policy.py::test_pb2_05_governance_registry_contains_the_bounded_feature_without_sa17",
+        "tests/contract/test_stage_b_phase_2_portfolio_registry.py::test_phase_2_registry_has_exactly_eight_schema_valid_objects"
+      ],
+      "owner_action": "Keep the command matrix and governed feature evidence synchronized."
+    },
+    {
+      "id": "PB2-06",
+      "objective": "Re-run Stage A 20/20 and Stage B Phase 1 10/10 without regressions.",
+      "evidence_test_ids": [
+        "tests/stage_b/test_phase_2_portfolio.py::test_pb2_06_runner_requires_both_regression_portfolios"
+      ],
+      "owner_action": "Treat either partial portfolio as judge_revise."
+    },
+    {
+      "id": "PB2-07",
+      "objective": "Record one supervised real qwen3:4b production call on REF-01.",
+      "evidence_test_ids": [
+        "tests/stage_b/test_phase_2_evidence_and_rollback.py::test_pb2_07_supervised_evidence_records_a_real_response_without_raw_content"
+      ],
+      "owner_action": "Keep status waiting_for_input if a real model response was not observed."
+    },
+    {
+      "id": "PB2-08",
+      "objective": "Document reversible disablement and historical evidence behavior.",
+      "evidence_test_ids": [
+        "tests/stage_b/test_phase_2_evidence_and_rollback.py::test_pb2_08_rollback_disables_dispatch_and_preserves_past_candidate_evidence"
+      ],
+      "owner_action": "Disable either gate without deleting historical model-derived evidence."
+    }
+  ]
+}

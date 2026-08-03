@@ -6,7 +6,7 @@
       "objective": "Document and architecturally enforce the loopback-only inference exemption.",
       "initial_status": "ready",
       "evidence_test_ids": [
-        "tests/security/test_loopback_inference_policy.py::test_policy_01_policy_file_changes_only_by_approved_comment",
+        "tests/security/test_loopback_inference_policy.py::test_policy_01_policy_file_changes_only_by_approved_comment_and_phase_2_config",
         "tests/security/test_loopback_inference_policy.py::test_policy_01_accepts_only_loopback_inference_endpoints",
         "tests/security/test_loopback_inference_policy.py::test_policy_01_actual_localhost_resolves_strictly_to_loopback",
         "tests/security/test_loopback_inference_policy.py::test_gate_04_rejects_non_loopback_endpoint_before_transport",
@@ -83,7 +83,7 @@
       "id": "GATE-07",
       "objective": "Keep Stage A safety behavior and evidence unchanged.",
       "initial_status": "ready",
-      "evidence_test_ids": ["tests/stage_b/test_phase_1_gates.py::test_gate_07_stage_a_safety_matrix_is_unchanged_and_passes_via_test_parser"],
+      "evidence_test_ids": ["tests/stage_b/test_phase_1_gates.py::test_gate_07_stage_a_safety_matrix_preserves_legacy_cases_and_adds_log_cluster"],
       "owner_action": "Stop Phase 1 if the Stage A safety matrix changes or regresses."
     },
     {
