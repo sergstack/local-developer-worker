@@ -2,12 +2,17 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
+import time
 from collections.abc import Callable
 from pathlib import Path
 
 from .contracts import canonical_json, result, valid_tool_result
 from .policy import allowed, load_policy, root_allowed
+from .portfolio import portfolio_status, portfolio_verify
+from .session_log import append_event
+from .telemetry import telemetry_event, telemetry_summary
 from .tools import benchmark_run, context_pack, doctor, evidence_build, file_inventory, git_facts, parse_log, parse_tests, report_summarize
 
 COMMANDS: dict[tuple[str, ...], Callable[[dict], dict]] = {
@@ -20,6 +25,9 @@ COMMANDS: dict[tuple[str, ...], Callable[[dict], dict]] = {
     ("context", "pack"): context_pack,
     ("report", "summarize"): report_summarize,
     ("benchmark", "run"): benchmark_run,
+    ("telemetry", "summary"): telemetry_summary,
+    ("portfolio", "verify"): portfolio_verify,
+    ("portfolio", "status"): portfolio_status,
 }
 CAPABILITIES = {
     ("log", "parse"): "structured_log_parser", ("test", "parse"): "test_result_parser",
@@ -35,10 +43,57 @@ def _parser() -> argparse.ArgumentParser:
     for name, action in [("log", "parse"), ("test", "parse"), ("git", "facts"), ("files", "inventory"), ("evidence", "build"), ("context", "pack"), ("report", "summarize"), ("benchmark", "run")]:
         group = sub.add_parser(name)
         group.add_subparsers(dest="action", required=True).add_parser(action)
+    telemetry = sub.add_parser("telemetry").add_subparsers(dest="action", required=True).add_parser("summary")
+    telemetry.add_argument("--from-date", dest="date_from")
+    telemetry.add_argument("--to-date", dest="date_to")
+    portfolio = sub.add_parser("portfolio").add_subparsers(dest="action", required=True)
+    verify = portfolio.add_parser("verify")
+    verify.add_argument("--only", action="append")
+    portfolio.add_parser("status")
     return parser
 
 
+def _context_reduction(key: tuple[str, ...], payload: dict, output: dict) -> tuple[str, float | None]:
+    tool = " ".join(key)
+    if key != ("context", "pack") or payload.get("mode") != "context":
+        return tool, None
+    files = payload.get("files", [])
+    if not files or not all(isinstance(item, dict) and isinstance(item.get("size_bytes"), int) for item in files):
+        return f"{tool}/context", None
+    total = sum(item["size_bytes"] for item in files)
+    selected = set(output.get("data", {}).get("relevant_files", []))
+    selected_bytes = sum(item["size_bytes"] for item in files if item.get("path") in selected)
+    return f"{tool}/context", round((total - selected_bytes) / total, 4) if total else None
+
+
+def _emit(output: dict, key: tuple[str, ...], payload: dict, raw: str, started: float) -> int:
+    stdout_text = canonical_json(output) + "\n"
+    if os.environ.get("LDW_TELEMETRY_DISABLED") != "1" and (
+        "PYTEST_CURRENT_TEST" not in os.environ or os.environ.get("LDW_TELEMETRY_FORCE") == "1"
+    ):
+        telemetry_tool, context_reduction = _context_reduction(key, payload, output)
+        event = telemetry_event(
+            {
+                "tool": telemetry_tool,
+                "input_bytes": len(raw.encode("utf-8")),
+                "output_bytes": len(stdout_text.encode("utf-8")),
+                "latency_ms": round((time.perf_counter() - started) * 1000),
+                "status": output["status"],
+                "fallback_used": bool(output.get("data", {}).get("fallback")),
+                "context_reduction": context_reduction,
+                "run_id": output["run_id"],
+            }
+        )
+        try:
+            append_event(event)
+        except (OSError, ValueError):
+            print("telemetry_write_failed", file=sys.stderr)
+    sys.stdout.write(stdout_text)
+    return 0 if output["status"] in {"success", "partial", "unsupported"} else 2
+
+
 def main(argv: list[str] | None = None) -> int:
+    started = time.perf_counter()
     args = _parser().parse_args(argv)
     key = (args.tool,) if args.tool == "doctor" else (args.tool, args.action)
     raw = sys.stdin.read()
@@ -47,7 +102,17 @@ def main(argv: list[str] | None = None) -> int:
         if not isinstance(payload, dict): raise ValueError("input must be a JSON object")
     except (json.JSONDecodeError, ValueError) as exc:
         output = result(" ".join(key), "stdin", raw, {}, status="invalid_input", errors=[{"code": "invalid_json", "detail": str(exc)}])
-        print(canonical_json(output)); return 2
+        return _emit(output, key, {}, raw, started)
+    cli_values = {
+        name: getattr(args, name, None)
+        for name in ("date_from", "date_to", "only")
+        if getattr(args, name, None) is not None
+    }
+    for name, value in cli_values.items():
+        if name in payload and payload[name] != value:
+            output = result(" ".join(key), "stdin", raw, {}, status="invalid_input", errors=[{"code": "conflicting_cli_option", "option": name}])
+            return _emit(output, key, payload, raw, started)
+        payload[name] = value
     internal_error_fallback = "codex"
     try:
         capability = CAPABILITIES.get(key)
@@ -74,8 +139,7 @@ def main(argv: list[str] | None = None) -> int:
         output = result(" ".join(key), "stdin", raw, {"fallback": "codex"}, status="policy_blocked", errors=[{"code": "invalid_policy"}])
     except Exception as exc:  # boundary: unexpected errors must still be observable JSON
         output = result(" ".join(key), "stdin", raw, {"fallback": internal_error_fallback}, status="internal_error", errors=[{"code": "internal_error", "detail": str(exc)}])
-    print(canonical_json(output))
-    return 0 if output["status"] in {"success", "partial", "unsupported"} else 2
+    return _emit(output, key, payload, raw, started)
 
 
 if __name__ == "__main__":

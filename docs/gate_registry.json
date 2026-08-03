@@ -1,0 +1,360 @@
+{
+  "schema_version": "1.0.0",
+  "items": [
+    {
+      "id": "SA-01",
+      "category": "gate",
+      "status": "not_started",
+      "evidence_test_ids": [
+        "tests/integration/test_stage_a_safety_matrix.py::test_gate_schema_valid_output_for_all_public_commands[doctor]",
+        "tests/integration/test_stage_a_safety_matrix.py::test_gate_schema_valid_output_for_all_public_commands[log-parse]",
+        "tests/integration/test_stage_a_safety_matrix.py::test_gate_schema_valid_output_for_all_public_commands[test-parse]",
+        "tests/integration/test_stage_a_safety_matrix.py::test_gate_schema_valid_output_for_all_public_commands[git-facts]",
+        "tests/integration/test_stage_a_safety_matrix.py::test_gate_schema_valid_output_for_all_public_commands[files-inventory]",
+        "tests/integration/test_stage_a_safety_matrix.py::test_gate_schema_valid_output_for_all_public_commands[evidence-build]",
+        "tests/integration/test_stage_a_safety_matrix.py::test_gate_schema_valid_output_for_all_public_commands[context-pack]",
+        "tests/integration/test_stage_a_safety_matrix.py::test_gate_schema_valid_output_for_all_public_commands[report-summarize]",
+        "tests/integration/test_stage_a_safety_matrix.py::test_gate_schema_valid_output_for_all_public_commands[benchmark-run]",
+        "tests/integration/test_stage_a_safety_matrix.py::test_gate_schema_valid_output_for_all_public_commands[telemetry-summary]",
+        "tests/integration/test_stage_a_safety_matrix.py::test_gate_schema_valid_output_for_all_public_commands[portfolio-verify]",
+        "tests/integration/test_stage_a_safety_matrix.py::test_gate_schema_valid_output_for_all_public_commands[portfolio-status]"
+      ],
+      "classification": "architectural",
+      "last_verified_commit": null,
+      "title": "Schema-valid output for every public CLI command",
+      "guarantee": "Every public CLI command emits a schema-valid ToolResult.",
+      "enforcement": "The CLI validates every handler result before canonical serialization and replaces invalid envelopes with an explicit internal-error result.",
+      "owner_action": "Keep the command matrix synchronized with every public CLI addition."
+    },
+    {
+      "id": "SA-02",
+      "category": "gate",
+      "status": "not_started",
+      "evidence_test_ids": ["tests/integration/test_stage_a_safety_matrix.py::test_gate_log_parse_accounts_for_every_input_line_without_silent_loss"],
+      "classification": "architectural",
+      "last_verified_commit": null,
+      "title": "No silent log-line loss",
+      "guarantee": "log parse accounts for every input line; unmatched lines become unknown_event and never disappear.",
+      "enforcement": "The parser emits one event inside the loop over each input line and reports totals for every parse state.",
+      "owner_action": "Repair the parser or narrow the public guarantee if line accounting fails."
+    },
+    {
+      "id": "SA-03",
+      "category": "gate",
+      "status": "not_started",
+      "evidence_test_ids": [
+        "tests/integration/test_stage_a_safety_matrix.py::test_gate_test_parse_marks_exit_137_with_truncated_output_incomplete",
+        "tests/integration/test_stage_a_safety_matrix.py::test_gate_test_parse_cannot_claim_passed_without_observed_completed_pass[zero-exit-no-result]",
+        "tests/integration/test_stage_a_safety_matrix.py::test_gate_test_parse_cannot_claim_passed_without_observed_completed_pass[missing-exit]",
+        "tests/integration/test_stage_a_safety_matrix.py::test_gate_test_parse_cannot_claim_passed_without_observed_completed_pass[command-unobserved]",
+        "tests/integration/test_stage_a_safety_matrix.py::test_gate_test_parse_cannot_claim_passed_without_observed_completed_pass[interrupted]"
+      ],
+      "classification": "architectural",
+      "last_verified_commit": null,
+      "title": "No false passed test claims",
+      "guarantee": "test parse maps killed or incomplete runs to non-passed states and never claims passed without observed completed evidence.",
+      "enforcement": "Interrupted-run checks precede pass classification; pass requires an observed command, exit code zero, and observed passing test records.",
+      "owner_action": "Repair test-state precedence before accepting any passing claim."
+    },
+    {
+      "id": "SA-04",
+      "category": "gate",
+      "status": "not_started",
+      "evidence_test_ids": [
+        "tests/integration/test_stage_a_safety_matrix.py::test_gate_report_without_observed_test_results_makes_no_test_claim",
+        "tests/integration/test_stage_a_safety_matrix.py::test_gate_report_summarize_emits_only_evidence_backed_lists"
+      ],
+      "classification": "architectural",
+      "last_verified_commit": null,
+      "title": "No report claims without evidence",
+      "guarantee": "report summarize makes no test claim when observed_test_results is absent.",
+      "enforcement": "The summarizer derives tests_observed only from the evidence package and defaults to an empty list.",
+      "owner_action": "Repair the facts-only mapping before publishing reports."
+    },
+    {
+      "id": "SA-05",
+      "category": "gate",
+      "status": "not_started",
+      "evidence_test_ids": [
+        "tests/security/test_inventory.py::test_inventory_blocks_env_file",
+        "tests/security/test_inventory_hardening.py::test_inventory_blocks_private_key_content_without_sensitive_name"
+      ],
+      "classification": "architectural",
+      "last_verified_commit": null,
+      "title": "Sensitive content is not exposed",
+      "guarantee": ".env and private-key content expose neither content nor hashes.",
+      "enforcement": "Sensitive path matching prevents reads and content scanning blocks detected key material before hashes are emitted.",
+      "owner_action": "Treat any exposure as a security defect and keep the item incomplete."
+    },
+    {
+      "id": "SA-06",
+      "category": "gate",
+      "status": "not_started",
+      "evidence_test_ids": ["tests/security/test_inventory_hardening.py::test_inventory_marks_symlink_escape"],
+      "classification": "architectural",
+      "last_verified_commit": null,
+      "title": "Symlink escapes are blocked",
+      "guarantee": "Symlinks resolving outside the repository root are blocked and unreadable.",
+      "enforcement": "Resolved-path containment is checked before stat or read operations.",
+      "owner_action": "Repair containment enforcement before inventory can be trusted."
+    },
+    {
+      "id": "SA-07",
+      "category": "gate",
+      "status": "not_started",
+      "evidence_test_ids": ["tests/integration/test_stage_a_safety_matrix.py::test_gate_cli_output_is_byte_identical_for_identical_input"],
+      "classification": "architectural",
+      "last_verified_commit": null,
+      "title": "Deterministic CLI evidence output",
+      "guarantee": "Identical CLI input produces byte-identical stdout and stderr.",
+      "enforcement": "Stable hashes, deterministic run IDs, and canonical sorted JSON remove output variation.",
+      "owner_action": "Remove output nondeterminism or document a narrower contract."
+    },
+    {
+      "id": "SA-08",
+      "category": "gate",
+      "status": "not_started",
+      "evidence_test_ids": ["tests/integration/test_timeout_and_allowlist.py::test_zero_timeout_returns_non_success_with_fallback"],
+      "classification": "architectural",
+      "last_verified_commit": null,
+      "title": "Timeout fallback is observable",
+      "guarantee": "on_timeout fallback is separately reachable and observable.",
+      "enforcement": "The CLI stops before dispatch on a non-positive timeout and emits the configured fallback.",
+      "owner_action": "Repair timeout routing if fallback evidence is absent."
+    },
+    {
+      "id": "SA-09",
+      "category": "gate",
+      "status": "not_started",
+      "evidence_test_ids": ["tests/integration/test_stage_a_safety_matrix.py::test_gate_invalid_schema_fallback_is_reachable_and_observable"],
+      "classification": "architectural",
+      "last_verified_commit": null,
+      "title": "Invalid-schema fallback is observable",
+      "guarantee": "on_invalid_schema fallback is separately reachable and observable.",
+      "enforcement": "Post-dispatch schema validation replaces invalid handler output with the configured fallback.",
+      "owner_action": "Repair the output boundary if invalid envelopes escape."
+    },
+    {
+      "id": "SA-10",
+      "category": "gate",
+      "status": "not_started",
+      "evidence_test_ids": ["tests/integration/test_policy.py::test_disabled_capability_returns_policy_blocked"],
+      "classification": "architectural",
+      "last_verified_commit": null,
+      "title": "Policy fallback is observable",
+      "guarantee": "on_policy_violation fallback is separately reachable and observable.",
+      "enforcement": "Capability checks precede dispatch and emit policy_blocked with the configured fallback.",
+      "owner_action": "Repair policy routing before enabling affected commands."
+    },
+    {
+      "id": "SA-11",
+      "category": "gate",
+      "status": "not_started",
+      "evidence_test_ids": ["tests/integration/test_stage_a_safety_matrix.py::test_gate_internal_error_fallback_is_reachable_and_observable"],
+      "classification": "architectural",
+      "last_verified_commit": null,
+      "title": "Internal-error fallback is observable",
+      "guarantee": "on_internal_error fallback is separately reachable and observable.",
+      "enforcement": "The CLI boundary catches unexpected handler exceptions and emits the configured fallback.",
+      "owner_action": "Repair the boundary if unexpected exceptions escape."
+    },
+    {
+      "id": "SA-12",
+      "category": "gate",
+      "status": "not_started",
+      "evidence_test_ids": ["tests/integration/test_timeout_and_allowlist.py::test_cli_blocks_repository_outside_default_allowlist"],
+      "classification": "architectural",
+      "last_verified_commit": null,
+      "title": "Repository-root allowlist",
+      "guarantee": "Repository roots outside allowed_repository_roots are denied.",
+      "enforcement": "Root allowlist validation runs before Git or inventory dispatch.",
+      "owner_action": "Repair root validation before repository reads are allowed."
+    },
+    {
+      "id": "SA-13",
+      "category": "gate",
+      "status": "not_started",
+      "evidence_test_ids": ["tests/security/test_stage_a_boundaries.py::test_gate_git_facts_can_only_reach_read_only_git_subcommands"],
+      "classification": "architectural",
+      "last_verified_commit": null,
+      "title": "Git facts are read-only",
+      "guarantee": "git facts can invoke only its closed read-only Git command set.",
+      "enforcement": "The collector has a fixed internal call sequence and exposes no caller-controlled Git arguments.",
+      "owner_action": "Remove mutating commands before accepting the collector."
+    },
+    {
+      "id": "SA-14",
+      "category": "gate",
+      "status": "not_started",
+      "evidence_test_ids": ["tests/security/test_stage_a_boundaries.py::test_gate_default_policy_denies_network_mutation_and_deployment"],
+      "classification": "architectural",
+      "last_verified_commit": null,
+      "title": "Default policy denies mutation and network authority",
+      "guarantee": "The default policy grants no network, edit, commit, merge, deploy, or semantic authority.",
+      "enforcement": "The shipped policy denies these capabilities and the CLI enforces declared capabilities before dispatch.",
+      "owner_action": "Treat any default-policy relaxation as a separate user decision."
+    },
+    {
+      "id": "SA-15",
+      "category": "gate",
+      "status": "not_started",
+      "evidence_test_ids": ["tests/integration/test_stage_a_safety_matrix.py::test_gate_report_summarize_emits_only_evidence_backed_lists"],
+      "classification": "architectural",
+      "last_verified_commit": null,
+      "title": "Reports remain facts-only",
+      "guarantee": "Reports do not diagnose root cause or choose architecture beyond observed evidence.",
+      "enforcement": "The renderer has a closed facts-only mapping sourced from the evidence package.",
+      "owner_action": "Remove unsupported inference before reports are accepted."
+    },
+    {
+      "id": "SA-16",
+      "category": "gate",
+      "status": "not_started",
+      "evidence_test_ids": ["tests/security/test_authority_boundary.py::test_authority_boundary_discloses_advisory_test_parse_enforcement"],
+      "classification": "advisory",
+      "last_verified_commit": null,
+      "title": "Test-parser invocation remains advisory",
+      "guarantee": "The absence of technical enforcement requiring Codex to call ldw test parse is publicly disclosed.",
+      "enforcement": "Prompt and operating agreement only; no hook, shell wrapper, or runner interception exists.",
+      "owner_action": "User must choose an option in AI-02 before enforcement can change."
+    },
+    {
+      "id": "AI-01",
+      "category": "action_item",
+      "status": "not_started",
+      "evidence_test_ids": [],
+      "classification": "action_item",
+      "last_verified_commit": null,
+      "title": "Personal telemetry on real sessions",
+      "source": "v3 W1",
+      "owner_action": "Run at least 10 real CLI calls and verify the privacy-safe summary.",
+      "artifacts": [
+        {"check_id": "AI-01-session-log", "kind": "path", "path": "src/local_developer_worker/session_log.py"},
+        {
+          "check_id": "AI-01-safe-fields",
+          "kind": "python_constant_equals",
+          "path": "src/local_developer_worker/telemetry.py",
+          "symbol": "SAFE_FIELDS",
+          "expected": ["context_reduction", "fallback_used", "input_bytes", "latency_ms", "output_bytes", "run_id", "status", "tool"]
+        },
+        {"check_id": "AI-01-command", "kind": "cli_command_registered", "args": ["telemetry", "summary"]},
+        {"check_id": "AI-01-append-test", "kind": "pytest_node_exists", "node_id": "tests/unit/test_session_log.py::test_session_log_appends_without_overwriting"},
+        {"check_id": "AI-01-safe-test", "kind": "pytest_node_exists", "node_id": "tests/unit/test_session_log.py::test_telemetry_event_uses_exact_safe_fields"},
+        {"check_id": "AI-01-summary-test", "kind": "pytest_node_exists", "node_id": "tests/integration/test_telemetry_summary.py::test_telemetry_summary_reports_real_aggregates_and_date_filter"},
+        {
+          "check_id": "AI-01-doc",
+          "kind": "document_contract",
+          "path": "docs/telemetry.md",
+          "required_sections": ["Safe fields", "Append-only journal", "Summary"],
+          "required_phrases": ["ldw telemetry summary", "SAFE_FIELDS"]
+        },
+        {
+          "check_id": "AI-01-real-events",
+          "kind": "jsonl_records",
+          "path": ".repo_index/ldw_sessions",
+          "minimum": 10,
+          "exact_fields": ["context_reduction", "fallback_used", "input_bytes", "latency_ms", "output_bytes", "run_id", "status", "tool"]
+        }
+      ]
+    },
+    {
+      "id": "AI-02",
+      "category": "action_item",
+      "status": "not_started",
+      "evidence_test_ids": [],
+      "classification": "action_item",
+      "last_verified_commit": null,
+      "title": "Choose SA-16 enforcement posture",
+      "source": "v3 W2",
+      "owner_action": "Keep SA-16 advisory and verify that no wrapper or interception mechanism is installed.",
+      "forced_status": "waiting_for_input",
+      "decision": {"chosen_option": "a"},
+      "artifacts": [
+        {
+          "check_id": "AI-02-agents-rule",
+          "kind": "document_contract",
+          "path": "AGENTS.md",
+          "required_phrases": [
+            "Test status must be established via ldw test parse. Reading pytest or other test-runner output directly to determine pass/fail is not permitted."
+          ]
+        },
+        {
+          "check_id": "AI-02-doctor-reminder",
+          "kind": "tool_data_equals",
+          "args": ["doctor"],
+          "key": "test_status_reminder",
+          "expected": "Test status must be established via ldw test parse. Reading pytest or other test-runner output directly to determine pass/fail is not permitted."
+        }
+      ],
+      "decision_options": [
+        {
+          "id": "a",
+          "option": "Keep advisory",
+          "benefit": "Preserves normal pytest behavior and requires no new mechanism.",
+          "tradeoff": "Relies on prompt and operating instructions; Codex can still bypass ldw test parse."
+        },
+        {
+          "id": "b",
+          "option": "Session shell wrapper",
+          "benefit": "Physically routes pytest invocations through ldw test parse in the configured session.",
+          "tradeoff": "Rejected: changes ordinary pytest behavior in the user's terminal and may affect workflows outside the Worker.",
+          "rejected": true
+        },
+        {
+          "id": "c",
+          "option": "Passive reminder",
+          "benefit": "Makes the expected workflow visible through doctor or a system message without intercepting commands.",
+          "tradeoff": "Improves discoverability but remains non-blocking and therefore advisory."
+        }
+      ]
+    },
+    {
+      "id": "AI-03",
+      "category": "action_item",
+      "status": "not_started",
+      "evidence_test_ids": [],
+      "classification": "action_item",
+      "last_verified_commit": null,
+      "title": "Define the Stage B entry gate",
+      "source": "v3 W3",
+      "owner_action": "Review and approve the planning document before any Stage B code or policy change.",
+      "artifacts": [
+        {
+          "check_id": "AI-03-document",
+          "kind": "document_contract",
+          "path": "docs/stage-b-entry-gate.md",
+          "required_sections": ["Bounded first task", "Evidence contract", "Regression gate before code", "Stage A invariants"],
+          "required_phrases": ["confidence", "source_span", "model-derived", "observed fact", "SA-01–SA-16"]
+        },
+        {
+          "check_id": "AI-03-policy-disabled",
+          "kind": "toml_value",
+          "path": "policy.toml",
+          "table": "semantic",
+          "key": "enabled",
+          "expected": false
+        }
+      ]
+    },
+    {
+      "id": "AI-04",
+      "category": "action_item",
+      "status": "not_started",
+      "evidence_test_ids": [],
+      "classification": "action_item",
+      "last_verified_commit": null,
+      "title": "Reconcile project terminology with personal economics",
+      "source": "v3 W4",
+      "owner_action": "Change PROJECT_DESCRIPTION.md only if market or team framing contradicts the operator-focused criterion.",
+      "artifacts": [
+        {
+          "check_id": "AI-04-terminology",
+          "kind": "terminology_audit",
+          "path": "PROJECT_DESCRIPTION.md",
+          "required_phrases": ["Ожидаемый результат для пользователя", "меньше ручной работы", "сокращению контекста", "времени выполнения", "fallback-сценариям"],
+          "forbidden_patterns": ["product[- ]market", "(доказать\\s+)?польз[аы]\\s+для\\s+(рынка|команды)"]
+        }
+      ]
+    }
+  ]
+}
