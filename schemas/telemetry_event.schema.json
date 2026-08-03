@@ -1,1 +1,17 @@
-{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"TelemetryEvent","type":"object","required":["tool","status","latency_ms"]}
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TelemetryEvent",
+  "type": "object",
+  "required": ["tool", "input_bytes", "output_bytes", "latency_ms", "status", "fallback_used", "context_reduction", "run_id"],
+  "properties": {
+    "tool": {"type": "string"},
+    "input_bytes": {"type": "integer", "minimum": 0},
+    "output_bytes": {"type": "integer", "minimum": 0},
+    "latency_ms": {"type": "integer", "minimum": 0},
+    "status": {"type": "string"},
+    "fallback_used": {"type": "boolean"},
+    "context_reduction": {"type": ["number", "null"]},
+    "run_id": {"type": "string"}
+  },
+  "additionalProperties": false
+}

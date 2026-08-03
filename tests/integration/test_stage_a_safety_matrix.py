@@ -25,7 +25,12 @@ def _run(args: list[str], payload: dict) -> subprocess.CompletedProcess[str]:
         text=True,
         capture_output=True,
         cwd=ROOT,
-        env={**os.environ, "PYTHONPATH": str(ROOT / "src")},
+        env={
+            **os.environ,
+            "PYTHONPATH": str(ROOT / "src"),
+            "LDW_TELEMETRY_DISABLED": "1",
+            "LDW_PORTFOLIO_STATE": str(ROOT / ".repo_index" / "pytest_matrix_portfolio_state.json"),
+        },
         check=False,
     )
 
@@ -48,14 +53,25 @@ def _run(args: list[str], payload: dict) -> subprocess.CompletedProcess[str]:
             {"evidence_package": {"repository_state": {}, "observed_test_results": [], "missing_evidence": [], "warnings": []}},
         ),
         (["benchmark", "run"], {"cases": []}),
+        (["telemetry", "summary"], {}),
+        (["portfolio", "verify", "--only", "AI-02"], {}),
+        (["portfolio", "status"], {}),
     ],
-    ids=["doctor", "log-parse", "test-parse", "git-facts", "files-inventory", "evidence-build", "context-pack", "report-summarize", "benchmark-run"],
+    ids=["doctor", "log-parse", "test-parse", "git-facts", "files-inventory", "evidence-build", "context-pack", "report-summarize", "benchmark-run", "telemetry-summary", "portfolio-verify", "portfolio-status"],
 )
-def test_gate_schema_valid_output_for_all_nine_commands(args, payload):
+def test_gate_schema_valid_output_for_all_public_commands(args, payload):
     completed = _run(args, payload)
     assert completed.returncode == 0
     assert completed.stderr == ""
     validate(instance=json.loads(completed.stdout), schema=TOOL_RESULT_SCHEMA)
+
+
+def test_doctor_reminds_callers_to_establish_test_status_via_ldw_test_parse():
+    output = json.loads(_run(["doctor"], {}).stdout)
+    assert output["data"]["test_status_reminder"] == (
+        "Test status must be established via ldw test parse. "
+        "Reading pytest or other test-runner output directly to determine pass/fail is not permitted."
+    )
 
 
 def test_gate_log_parse_accounts_for_every_input_line_without_silent_loss():
@@ -112,6 +128,21 @@ tests/test_worker.py"""
     assert output["data"]["exit_code"] == 137
     assert output["data"]["run_status"] == "incomplete"
     assert output["data"]["run_status"] != "passed"
+
+
+def test_gate_test_parse_does_not_treat_timeout_in_passed_test_id_as_run_timeout():
+    output = json.loads(
+        _run(
+            ["test", "parse"],
+            {
+                "text": "PASSED tests/integration/test_timeout.py::test_timeout_fallback",
+                "exit_code": 0,
+                "command_observed": True,
+            },
+        ).stdout
+    )
+
+    assert output["data"]["run_status"] == "passed"
 
 
 def test_gate_report_summarize_emits_only_evidence_backed_lists():

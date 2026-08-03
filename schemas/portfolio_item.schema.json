@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PortfolioItem",
+  "type": "object",
+  "required": [
+    "id",
+    "category",
+    "status",
+    "evidence_test_ids",
+    "classification",
+    "last_verified_commit",
+    "title",
+    "owner_action"
+  ],
+  "properties": {
+    "id": {"type": "string", "pattern": "^(SA-(0[1-9]|1[0-6])|AI-0[1-4])$"},
+    "category": {"enum": ["gate", "action_item"]},
+    "status": {"enum": ["not_started", "in_progress", "waiting_for_input", "judge_revise", "complete", "blocked"]},
+    "evidence_test_ids": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^tests/[^:]+::test_\\S+$"},
+      "uniqueItems": true
+    },
+    "classification": {"enum": ["architectural", "advisory", "action_item"]},
+    "last_verified_commit": {"type": ["string", "null"], "pattern": "^[0-9a-f]{7,40}$"},
+    "title": {"type": "string", "minLength": 1},
+    "guarantee": {"type": "string", "minLength": 1},
+    "enforcement": {"type": "string", "minLength": 1},
+    "source": {"type": "string", "minLength": 1},
+    "owner_action": {"type": "string", "minLength": 1},
+    "forced_status": {"const": "waiting_for_input"},
+    "decision": {
+      "type": "object",
+      "required": ["chosen_option"],
+      "properties": {
+        "chosen_option": {"enum": ["a", "c"]}
+      },
+      "additionalProperties": false
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["check_id", "kind"],
+        "properties": {
+          "check_id": {"type": "string", "minLength": 1},
+          "kind": {"enum": ["path", "python_constant_equals", "jsonl_records", "cli_command_registered", "pytest_node_exists", "document_contract", "toml_value", "terminology_audit", "tool_data_equals"]},
+          "path": {"type": "string", "minLength": 1},
+          "symbol": {"type": "string", "minLength": 1},
+          "expected": {},
+          "minimum": {"type": "integer", "minimum": 1},
+          "exact_fields": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+          "args": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+          "node_id": {"type": "string", "minLength": 1},
+          "required_sections": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+          "required_phrases": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+          "forbidden_patterns": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+          "table": {"type": "string", "minLength": 1},
+          "key": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": false
+      }
+    },
+    "decision_options": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "option", "benefit", "tradeoff"],
+        "properties": {
+          "id": {"type": "string"},
+          "option": {"type": "string"},
+          "benefit": {"type": "string"},
+          "tradeoff": {"type": "string"}
+          ,"rejected": {"type": "boolean"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {"properties": {"category": {"const": "gate"}}},
+      "then": {
+        "required": ["guarantee", "enforcement"],
+        "properties": {
+          "classification": {"enum": ["architectural", "advisory"]},
+          "evidence_test_ids": {"minItems": 1}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"category": {"const": "action_item"}}},
+      "then": {
+        "required": ["source", "artifacts"],
+        "properties": {"classification": {"const": "action_item"}}
+      }
+    }
+  ]
+}

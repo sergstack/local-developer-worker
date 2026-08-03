@@ -16,6 +16,8 @@ PYTEST_FAILURE = re.compile(r"^FAILED\s+(?P<test>\S+)")
 PYTEST_PASS = re.compile(r"^PASSED\s+(?P<test>\S+)")
 PYTEST_OTHER = re.compile(r"^(?P<state>SKIPPED|XFAIL|XPASS|ERROR)\s+(?P<test>\S+)")
 DOCKER_ERROR = re.compile(r"(?:ERROR|error|failed|Exited \(\d+\))", re.I)
+TIMEOUT_LINE = re.compile(r"^(?!PASSED\s|FAILED\s|SKIPPED\s|XFAIL\s|XPASS\s|ERROR\s).*\b(?:timeout|timed out)\b", re.I | re.M)
+TEST_STATUS_REMINDER = "Test status must be established via ldw test parse. Reading pytest or other test-runner output directly to determine pass/fail is not permitted."
 
 
 def _safe_root(value: str) -> Path:
@@ -90,7 +92,7 @@ def parse_tests(payload: dict[str, Any]) -> dict[str, Any]:
     lowered = text.lower()
     if not observed_command:
         run_status = "not_run"
-    elif exit_code == 124 or "timeout" in lowered:
+    elif exit_code == 124 or TIMEOUT_LINE.search(text):
         run_status = "timeout"
     elif exit_code in (137, -9) or "killed" in lowered or "sigkill" in lowered:
         run_status = "incomplete"
@@ -277,7 +279,7 @@ def doctor(payload: dict[str, Any]) -> dict[str, Any]:
     from .policy import load_policy
     raw = canonical_json(payload)
     policy = load_policy(payload.get("policy_path"))
-    data = {"python": os.sys.version.split()[0], "network_access": policy.get("network_access"), "profile": policy.get("profile"), "capabilities": policy.get("automatic", {}), "semantic_enabled": policy.get("semantic", {}).get("enabled", False)}
+    data = {"python": os.sys.version.split()[0], "network_access": policy.get("network_access"), "profile": policy.get("profile"), "capabilities": policy.get("automatic", {}), "semantic_enabled": policy.get("semantic", {}).get("enabled", False), "test_status_reminder": TEST_STATUS_REMINDER}
     return result("doctor", "local", raw, data)
 
 
