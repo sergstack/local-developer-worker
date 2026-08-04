@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "UsefulnessMark",
+  "type": "object",
+  "required": ["run_id", "mark"],
+  "properties": {
+    "run_id": {"type": "string", "pattern": "^RUN-[A-Za-z0-9][A-Za-z0-9_-]{0,127}$"},
+    "mark": {"enum": ["helped", "not_helped", "unclear"]}
+  },
+  "additionalProperties": false
+}

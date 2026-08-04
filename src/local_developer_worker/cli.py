@@ -14,7 +14,7 @@ from .portfolio import portfolio_status, portfolio_verify
 from .session_log import append_event
 from .stage_b_cluster import log_cluster
 from .log_process import log_process
-from .telemetry import telemetry_event, telemetry_summary
+from .telemetry import telemetry_error_code, telemetry_event, telemetry_mark, telemetry_summary
 from .tools import benchmark_run, context_pack, doctor, evidence_build, file_inventory, git_facts, parse_log, parse_tests, report_summarize
 
 COMMANDS: dict[tuple[str, ...], Callable[[dict], dict]] = {
@@ -30,6 +30,7 @@ COMMANDS: dict[tuple[str, ...], Callable[[dict], dict]] = {
     ("report", "summarize"): report_summarize,
     ("benchmark", "run"): benchmark_run,
     ("telemetry", "summary"): telemetry_summary,
+    ("telemetry", "mark"): telemetry_mark,
     ("portfolio", "verify"): portfolio_verify,
     ("portfolio", "status"): portfolio_status,
 }
@@ -52,9 +53,13 @@ def _parser() -> argparse.ArgumentParser:
     for name, action in [("test", "parse"), ("git", "facts"), ("files", "inventory"), ("evidence", "build"), ("context", "pack"), ("report", "summarize"), ("benchmark", "run")]:
         group = sub.add_parser(name)
         group.add_subparsers(dest="action", required=True).add_parser(action)
-    telemetry = sub.add_parser("telemetry").add_subparsers(dest="action", required=True).add_parser("summary")
-    telemetry.add_argument("--from-date", dest="date_from")
-    telemetry.add_argument("--to-date", dest="date_to")
+    telemetry = sub.add_parser("telemetry").add_subparsers(dest="action", required=True)
+    telemetry_summary_parser = telemetry.add_parser("summary")
+    telemetry_summary_parser.add_argument("--from-date", dest="date_from")
+    telemetry_summary_parser.add_argument("--to-date", dest="date_to")
+    telemetry_mark_parser = telemetry.add_parser("mark")
+    telemetry_mark_parser.add_argument("run_id")
+    telemetry_mark_parser.add_argument("mark", choices=("helped", "not_helped", "unclear"))
     portfolio = sub.add_parser("portfolio").add_subparsers(dest="action", required=True)
     verify = portfolio.add_parser("verify")
     verify.add_argument("--only", action="append")
@@ -94,6 +99,7 @@ def _emit(output: dict, key: tuple[str, ...], payload: dict, raw: str, started: 
                 "fallback_used": bool(output.get("data", {}).get("fallback_used", output.get("data", {}).get("fallback"))),
                 "context_reduction": context_reduction,
                 "run_id": output["run_id"],
+                "error_code": telemetry_error_code(output),
             }
         )
         try:
@@ -117,7 +123,7 @@ def main(argv: list[str] | None = None) -> int:
         return _emit(output, key, {}, raw, started)
     cli_values = {
         name: getattr(args, name, None)
-        for name in ("date_from", "date_to", "only")
+        for name in ("date_from", "date_to", "only", "run_id", "mark")
         if getattr(args, name, None) is not None
     }
     for name, value in cli_values.items():
