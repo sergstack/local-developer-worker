@@ -44,11 +44,13 @@ def test_policy_01_policy_file_changes_only_by_approved_comment_and_phase_2_conf
     expected = expected.replace(
         'code_artifact = "disabled"\n',
         'code_artifact = "disabled"\nmodel = "qwen3:4b"\n'
-        'endpoint = "http://127.0.0.1:11435/api/generate"\n',
+        'endpoint = "http://127.0.0.1:11435/api/generate"\n'
+        'automatic_routing = false\n',
     )
 
     assert current == expected
     assert tomllib.loads(current)["semantic"]["enabled"] is False
+    assert tomllib.loads(current)["semantic"]["automatic_routing"] is False
 
 
 @pytest.mark.parametrize(

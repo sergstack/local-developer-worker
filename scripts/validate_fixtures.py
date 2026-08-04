@@ -110,4 +110,52 @@ assert all(case["source_type"] in {"real_repository", "sanitized_fixture"} for c
 assert all(case["sensitive_content_present"] is False for case in wave2["cases"])
 assert all(set(case["critical_files"]).isdisjoint(case["forbidden_sensitive_files"]) for case in wave2["cases"])
 
+pb4_corpus = json.loads((stage_b_root / "pb4_v2_cases.json").read_text())
+assert pb4_corpus["corpus_id"] == "PB4-03-FROZEN-V1"
+assert len(pb4_corpus["cases"]) == 5
+assert len({case["case_id"] for case in pb4_corpus["cases"]}) == 5
+for case in pb4_corpus["cases"]:
+    assert case["fixture_hash"] == sha256(case["text"].encode()).hexdigest()
+    assert case["observed_event_count"] > 0
+    assert case["sensitive_content_present"] is False
+    expected_ids = [event_id for rows in case["expected_dispositions"].values() for event_id in rows]
+    assert len(expected_ids) == case["observed_event_count"]
+    assert len(expected_ids) == len(set(expected_ids))
+    assert all(left in expected_ids and right in expected_ids for pair in case["required_group_pairs"] + case["forbidden_merge_pairs"] for left, right in [pair])
+
+pb4_compile = json.loads((stage_b_root / "pb4_compile_error_evidence.json").read_text())
+compile_case = next(case for case in pb4_corpus["cases"] if case["case_id"] == "PB4-COMPILE-ERROR")
+assert pb4_compile["source_hash"] == "6bb4ada224b838e8737b36fc8a2367350b05e0233fa76fe263576ade5cf70791"
+assert pb4_compile["sanitized_fixture_hash"] == compile_case["fixture_hash"]
+assert pb4_compile["observed_events"] == {"total": 6, "parsed": 1, "unknown_event": 4, "part_of_event": 1}
+assert pb4_compile["v1_result"] == {"accepted": False, "failure_class": "source_span_recall_failed", "omitted_event_ids": ["EV-000006"]}
+assert pb4_compile["raw_provider_response_stored"] is False
+
+pb4_evidence = json.loads((stage_b_root / "pb4_03_evaluation_evidence.json").read_text())
+assert pb4_evidence["corpus_id"] == pb4_corpus["corpus_id"]
+assert pb4_evidence["corpus_file_sha256"] == sha256((stage_b_root / "pb4_v2_cases.json").read_bytes()).hexdigest()
+assert pb4_evidence["raw_provider_response_stored"] is False
+assert set(pb4_evidence["case_results"]) == {"v1", "v2", "fallback"}
+assert all(len(rows) == 5 for rows in pb4_evidence["case_results"].values())
+assert all(row["stage_a_events_match_frozen_input"] is True for rows in pb4_evidence["case_results"].values() for row in rows)
+
+pb4_mac = json.loads((stage_b_root / "pb4_03_mac_evaluation_evidence.json").read_text())
+assert pb4_mac["execution_status"] == "COMPLETE"
+assert pb4_mac["contract_version"] == 2
+assert pb4_mac["endpoint"] == "http://127.0.0.1:11435/api/generate"
+assert pb4_mac["models"] == ["qwen3:4b", "gemma3:4b", "ibm/granite4.1:8b", "qwen3:8b"]
+assert pb4_mac["expected_runs"] == pb4_mac["attempted_runs"] == pb4_mac["valid_runs"] == 20
+assert pb4_mac["invalid_runs"] == pb4_mac["infrastructure_retries"] == 0
+assert pb4_mac["listener"]["verified"] is True and pb4_mac["listener"]["physical_host"] == "Mac"
+assert pb4_mac["listener"]["process"] == "ollama" and pb4_mac["listener"]["is_tunnel_or_proxy"] is False
+assert pb4_mac["corpus_before"] == pb4_mac["corpus_after"] and pb4_mac["corpus_unchanged"] is True
+assert pb4_mac["corpus_before"]["manifest_hash"] == sha256((stage_b_root / "pb4_v2_cases.json").read_bytes()).hexdigest()
+assert all(run["preflight"] == {"tags_checked": True, "exact_tag_present": True} for run in pb4_mac["runs"])
+assert all(run["model_requested"] == run["model_reported"] for run in pb4_mac["runs"])
+assert all(run["endpoint"] == pb4_mac["endpoint"] and run["listener_verified"] is True for run in pb4_mac["runs"])
+assert all(run["accounting"]["fully_accounted"] is True and run["safety"]["raw_response_stored"] is False and run["safety"]["endpoint_fallback_used"] is False for run in pb4_mac["runs"])
+assert all(row["invented_accepted_id_count"] == row["duplicate_accepted_id_count"] == row["omitted_accepted_candidate_id_count"] == 0 and row["fallback_coverage_rate"] == 1.0 for row in pb4_mac["per_model"])
+assert pb4_mac["comparison"]["winner"] == "NOT ESTABLISHED"
+assert pb4_mac["safety"] == {"physical_execution_host": "Mac", "external_internet_inference_observed": False, "raw_provider_response_stored": False, "endpoint_fallback_used": False, "model_pull_performed": False}
+
 print(f"benchmark manifest, {len(events)} Stage B reference events, and {len(wave2['cases'])} frozen Wave 2 cases valid")

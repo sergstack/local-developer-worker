@@ -68,7 +68,7 @@ def parse_log(payload: dict[str, Any]) -> dict[str, Any]:
             state, level = "parsed", "info"
         if "pytest" in clean.lower() or "test session starts" in clean.lower():
             component = "pytest"
-        elif "docker" in clean.lower() or DOCKER_ERROR.search(clean):
+        elif "docker" in clean.lower():
             component = "docker_compose"
         location = PY_LOCATION.search(clean)
         event = {
