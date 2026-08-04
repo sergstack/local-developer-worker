@@ -45,6 +45,20 @@ def expected_phase_2_safety_matrix(baseline: str) -> str:
         '(["context", "pack"], {"files": [{"path": "src/a.py"}], "named_files": ["src/a.py"]}),',
         '(["context", "pack"], {"repository_root": str(ROOT), "files": [{"path": "src/a.py"}], "named_files": ["src/a.py"]}),',
     )
+    expected = expected.replace(
+        '            "LDW_TELEMETRY_DISABLED": "1",\n',
+        '            "LDW_TELEMETRY_DISABLED": "1",\n'
+        '            "LDW_SESSION_LOG_DIR": str(ROOT / ".repo_index" / "pytest_matrix_sessions"),\n',
+    )
+    expected = expected.replace(
+        '        (["telemetry", "summary"], {}),\n',
+        '        (["telemetry", "summary"], {}),\n'
+        '        (["telemetry", "mark", "RUN-matrix", "unclear"], {}),\n',
+    )
+    expected = expected.replace(
+        '"benchmark-run", "telemetry-summary", "portfolio-verify"',
+        '"benchmark-run", "telemetry-summary", "telemetry-mark", "portfolio-verify"',
+    )
     return expected
 
 

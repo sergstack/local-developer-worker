@@ -240,7 +240,7 @@
           "kind": "python_constant_equals",
           "path": "src/local_developer_worker/telemetry.py",
           "symbol": "SAFE_FIELDS",
-          "expected": ["context_reduction", "fallback_used", "input_bytes", "latency_ms", "output_bytes", "run_id", "status", "tool"]
+          "expected": ["context_reduction", "error_code", "fallback_used", "input_bytes", "latency_ms", "output_bytes", "run_id", "status", "tool"]
         },
         {"check_id": "AI-01-command", "kind": "cli_command_registered", "args": ["telemetry", "summary"]},
         {"check_id": "AI-01-append-test", "kind": "pytest_node_exists", "node_id": "tests/unit/test_session_log.py::test_session_log_appends_without_overwriting"},
@@ -258,7 +258,7 @@
           "kind": "jsonl_records",
           "path": ".repo_index/ldw_sessions",
           "minimum": 10,
-          "exact_fields": ["context_reduction", "fallback_used", "input_bytes", "latency_ms", "output_bytes", "run_id", "status", "tool"]
+          "exact_fields": ["context_reduction", "error_code", "fallback_used", "input_bytes", "latency_ms", "output_bytes", "run_id", "status", "tool"]
         }
       ]
     },

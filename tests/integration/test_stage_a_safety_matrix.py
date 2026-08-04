@@ -29,6 +29,7 @@ def _run(args: list[str], payload: dict) -> subprocess.CompletedProcess[str]:
             **os.environ,
             "PYTHONPATH": str(ROOT / "src"),
             "LDW_TELEMETRY_DISABLED": "1",
+            "LDW_SESSION_LOG_DIR": str(ROOT / ".repo_index" / "pytest_matrix_sessions"),
             "LDW_PORTFOLIO_STATE": str(ROOT / ".repo_index" / "pytest_matrix_portfolio_state.json"),
         },
         check=False,
@@ -56,10 +57,11 @@ def _run(args: list[str], payload: dict) -> subprocess.CompletedProcess[str]:
         ),
         (["benchmark", "run"], {"cases": []}),
         (["telemetry", "summary"], {}),
+        (["telemetry", "mark", "RUN-matrix", "unclear"], {}),
         (["portfolio", "verify", "--only", "AI-02"], {}),
         (["portfolio", "status"], {}),
     ],
-    ids=["doctor", "log-parse", "log-process", "log-cluster", "test-parse", "git-facts", "files-inventory", "evidence-build", "context-pack", "report-summarize", "benchmark-run", "telemetry-summary", "portfolio-verify", "portfolio-status"],
+    ids=["doctor", "log-parse", "log-process", "log-cluster", "test-parse", "git-facts", "files-inventory", "evidence-build", "context-pack", "report-summarize", "benchmark-run", "telemetry-summary", "telemetry-mark", "portfolio-verify", "portfolio-status"],
 )
 def test_gate_schema_valid_output_for_all_public_commands(args, payload):
     completed = _run(args, payload)

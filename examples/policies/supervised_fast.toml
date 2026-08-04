@@ -1,4 +1,5 @@
-profile = "balanced"
+profile = "supervised_fast"
+activation_status = "blocked_dependency"
 network_access = false
 automatic_edit = false
 automatic_commit = false
@@ -17,10 +18,14 @@ semantic_log_clustering = true
 [semantic]
 enabled = true
 code_artifact = "disabled"
-model = "qwen3:8b"
+model = "gemma3:4b"
 endpoint = "http://127.0.0.1:11435/api/generate"
-routing_event_threshold = 8
+contract_version = 2
+invocation = "explicit_manual_per_call"
 automatic_routing = false
+model_fallback = "disabled"
+temperature = 0
+think = false
 
 [limits]
 max_log_size_mb = 20
