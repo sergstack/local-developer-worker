@@ -84,3 +84,24 @@ Forbidden:
 - automatic edits
 - automatic commit
 - automatic merge
+
+## Stage B model posture
+
+Status: `selected_and_supervised_active`.
+
+| Posture | Value | Classification |
+|---|---|---|
+| recommended_quality_model | qwen3:8b | RECOMMENDATION |
+| configured_global_model | qwen3:8b | OBSERVED |
+| actually_invoked_model | qwen3:8b | OBSERVED |
+| activated_supervised_model | qwen3:8b | OBSERVED |
+| fast_challenger | gemma3:4b | HISTORICAL |
+| formal_winner | not_established | NOT ESTABLISHED |
+| economic_winner | not_measured | NOT MEASURED |
+
+Selected owner option: `A`.
+Recommendation: `A`.
+Supervised explicit activation active: `true`.
+Supervised explicit blockers: none.
+Automatic routing allowed: `false`.
+Automatic routing enabled: `false`.

@@ -185,6 +185,32 @@ def render_release_gates(registry: dict[str, Any]) -> str:
                 *[f"- {item}" for item in wave2["forbidden"]],
             ]
         )
+    posture = registry.get("stage_b_model_posture")
+    if posture:
+        lines.extend([
+            "",
+            "## Stage B model posture",
+            "",
+            f"Status: `{posture['status']}`.",
+            "",
+            "| Posture | Value | Classification |",
+            "|---|---|---|",
+        ])
+        for key in ("recommended_quality_model", "configured_global_model", "actually_invoked_model", "activated_supervised_model", "fast_challenger", "formal_winner", "economic_winner"):
+            item = posture[key]
+            lines.append(f"| {key} | {item['value']} | {item['classification']} |")
+        decision = posture["owner_decision"]
+        supervised = posture["supervised_explicit_activation"]
+        automatic = posture["automatic_routing"]
+        lines.extend([
+            "",
+            f"Selected owner option: `{decision['selected_option']}`.",
+            f"Recommendation: `{decision['recommendation']}`.",
+            f"Supervised explicit activation active: `{str(supervised['active']).lower()}`.",
+            "Supervised explicit blockers: " + (", ".join(f"`{item}`" for item in supervised["blockers"]) or "none") + ".",
+            f"Automatic routing allowed: `{str(automatic['allowed']).lower()}`.",
+            f"Automatic routing enabled: `{str(automatic['enabled']).lower()}`.",
+        ])
     return "\n".join(lines) + "\n"
 
 

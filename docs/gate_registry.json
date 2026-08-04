@@ -362,6 +362,47 @@
       ]
     }
   ],
+  "stage_b_model_posture": {
+    "schema_version": "1.0.0",
+    "status": "selected_and_supervised_active",
+    "recommended_quality_model": {"value": "qwen3:8b", "classification": "RECOMMENDATION", "status": "provisional"},
+    "configured_global_model": {"value": "qwen3:8b", "classification": "OBSERVED"},
+    "actually_invoked_model": {"value": "qwen3:8b", "classification": "OBSERVED", "outcome": "semantic_accepted"},
+    "activated_supervised_model": {"value": "qwen3:8b", "classification": "OBSERVED", "profile": "balanced"},
+    "fast_challenger": {"value": "gemma3:4b", "classification": "HISTORICAL", "installed": false},
+    "formal_winner": {"value": "not_established", "classification": "NOT ESTABLISHED"},
+    "economic_winner": {"value": "not_measured", "classification": "NOT MEASURED"},
+    "profiles": {
+      "supervised_quality": {"model": "qwen3:8b", "file_status": "archived_reference", "applied_verbatim": false},
+      "supervised_fast": {"model": "gemma3:4b", "file_status": "historical_reference", "installed": false, "applied_verbatim": false}
+    },
+    "supervised_explicit_activation": {
+      "allowed": true,
+      "active": true,
+      "model": "qwen3:8b",
+      "profile": "balanced",
+      "invocation": "explicit_manual_per_call",
+      "blockers": []
+    },
+    "automatic_routing": {"allowed": false, "enabled": false},
+    "owner_decision": {
+      "selected_option": "A",
+      "recommendation": "A",
+      "options": [
+        {"id": "A", "posture": "qwen3:8b supervised quality with explicit manual invocation"},
+        {"id": "B", "posture": "dual manual quality and fast profiles with explicit selection"},
+        {"id": "C", "posture": "no activation before expanded confirmation"}
+      ]
+    },
+    "evidence": {
+      "mac_evaluation_sha256": "62423f006f5f9ac7f2b871a9880490a1206157449ec9068471184aa11dc02368",
+      "corpus_sha256": "51a983b4ed07c70bcfff7a3caadfc711c397ee7b55b8767300f63d0532522f0b",
+      "valid_runs": 20,
+      "raw_response_stored": false,
+      "endpoint": "http://127.0.0.1:11435/api/generate"
+    },
+    "limitations": ["five_case_corpus", "human_review_not_measured", "time_to_actionable_not_measured"]
+  },
   "governed_features": [
     {
       "id": "PB2-LOG-CLUSTERING",
