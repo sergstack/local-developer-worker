@@ -1,0 +1,881 @@
+{
+  "before_after": {
+    "acceptance_rate_delta": {
+      "status": "DERIVED_FROM_OBSERVED",
+      "value": 0.2
+    },
+    "fallback_rate_delta": {
+      "status": "DERIVED_FROM_OBSERVED",
+      "value": -0.2
+    },
+    "false_merge_delta": {
+      "status": "DERIVED_FROM_OBSERVED",
+      "value": 0
+    },
+    "false_split_delta": {
+      "status": "DERIVED_FROM_OBSERVED",
+      "value": -1
+    },
+    "full_coverage_case_delta": {
+      "status": "DERIVED_FROM_OBSERVED",
+      "value": 0
+    },
+    "human_review_corrections_delta": {
+      "status": "NOT MEASURED",
+      "value": "NOT MEASURED"
+    },
+    "median_latency_delta_ms": {
+      "status": "DERIVED_FROM_OBSERVED",
+      "value": -442
+    },
+    "operationally_useful_case_delta": {
+      "status": "DERIVED_FROM_OBSERVED",
+      "value": 1
+    },
+    "review_burden_delta": {
+      "status": "DERIVED_FROM_OBSERVED",
+      "value": 0
+    }
+  },
+  "case_results": {
+    "fallback": [
+      {
+        "accepted": false,
+        "accounting": {
+          "deterministically_excluded_total": 0,
+          "fallback_observed_total": 3,
+          "fully_accounted": true,
+          "model_candidate_total": 3,
+          "observed_total": 5,
+          "policy_blocked_total": 0,
+          "semantic_ungrouped_total": 0,
+          "semantically_grouped_total": 0,
+          "structural_continuation_total": 2,
+          "unclassified_observed_total": 0
+        },
+        "case_id": "PB4-PYTEST-TRACEBACK",
+        "catch_all_group_count": 0,
+        "fallback_coverage": 1.0,
+        "fallback_reason_codes": [
+          "model_unavailable"
+        ],
+        "fallback_used": true,
+        "false_merge_count": 0,
+        "false_split_count": 1,
+        "fully_accounted": true,
+        "groups": [],
+        "latency_ms": 1,
+        "needs_review_count": 0,
+        "observed_event_count": 5,
+        "operationally_useful": false,
+        "raw_provider_response_stored": false,
+        "stage_a_events_match_frozen_input": true,
+        "status": "partial",
+        "unclassified_observed_count": 0
+      },
+      {
+        "accepted": false,
+        "accounting": {
+          "deterministically_excluded_total": 0,
+          "fallback_observed_total": 2,
+          "fully_accounted": true,
+          "model_candidate_total": 2,
+          "observed_total": 6,
+          "policy_blocked_total": 0,
+          "semantic_ungrouped_total": 0,
+          "semantically_grouped_total": 0,
+          "structural_continuation_total": 4,
+          "unclassified_observed_total": 0
+        },
+        "case_id": "PB4-COMPILE-ERROR",
+        "catch_all_group_count": 0,
+        "fallback_coverage": 1.0,
+        "fallback_reason_codes": [
+          "model_unavailable"
+        ],
+        "fallback_used": true,
+        "false_merge_count": 0,
+        "false_split_count": 1,
+        "fully_accounted": true,
+        "groups": [],
+        "latency_ms": 1,
+        "needs_review_count": 0,
+        "observed_event_count": 6,
+        "operationally_useful": false,
+        "raw_provider_response_stored": false,
+        "stage_a_events_match_frozen_input": true,
+        "status": "partial",
+        "unclassified_observed_count": 0
+      },
+      {
+        "accepted": false,
+        "accounting": {
+          "deterministically_excluded_total": 1,
+          "fallback_observed_total": 5,
+          "fully_accounted": true,
+          "model_candidate_total": 5,
+          "observed_total": 7,
+          "policy_blocked_total": 0,
+          "semantic_ungrouped_total": 0,
+          "semantically_grouped_total": 0,
+          "structural_continuation_total": 1,
+          "unclassified_observed_total": 0
+        },
+        "case_id": "PB4-MIXED-LOG",
+        "catch_all_group_count": 0,
+        "fallback_coverage": 1.0,
+        "fallback_reason_codes": [
+          "model_unavailable"
+        ],
+        "fallback_used": true,
+        "false_merge_count": 0,
+        "false_split_count": 1,
+        "fully_accounted": true,
+        "groups": [],
+        "latency_ms": 1,
+        "needs_review_count": 0,
+        "observed_event_count": 7,
+        "operationally_useful": false,
+        "raw_provider_response_stored": false,
+        "stage_a_events_match_frozen_input": true,
+        "status": "partial",
+        "unclassified_observed_count": 0
+      },
+      {
+        "accepted": false,
+        "accounting": {
+          "deterministically_excluded_total": 0,
+          "fallback_observed_total": 3,
+          "fully_accounted": true,
+          "model_candidate_total": 3,
+          "observed_total": 4,
+          "policy_blocked_total": 0,
+          "semantic_ungrouped_total": 0,
+          "semantically_grouped_total": 0,
+          "structural_continuation_total": 1,
+          "unclassified_observed_total": 0
+        },
+        "case_id": "PB4-CLI-BUILD",
+        "catch_all_group_count": 0,
+        "fallback_coverage": 1.0,
+        "fallback_reason_codes": [
+          "model_unavailable"
+        ],
+        "fallback_used": true,
+        "false_merge_count": 0,
+        "false_split_count": 1,
+        "fully_accounted": true,
+        "groups": [],
+        "latency_ms": 0,
+        "needs_review_count": 0,
+        "observed_event_count": 4,
+        "operationally_useful": false,
+        "raw_provider_response_stored": false,
+        "stage_a_events_match_frozen_input": true,
+        "status": "partial",
+        "unclassified_observed_count": 0
+      },
+      {
+        "accepted": false,
+        "accounting": {
+          "deterministically_excluded_total": 1,
+          "fallback_observed_total": 4,
+          "fully_accounted": true,
+          "model_candidate_total": 4,
+          "observed_total": 6,
+          "policy_blocked_total": 0,
+          "semantic_ungrouped_total": 0,
+          "semantically_grouped_total": 0,
+          "structural_continuation_total": 1,
+          "unclassified_observed_total": 0
+        },
+        "case_id": "PB4-APPLICATION-VALIDATION",
+        "catch_all_group_count": 0,
+        "fallback_coverage": 1.0,
+        "fallback_reason_codes": [
+          "model_unavailable"
+        ],
+        "fallback_used": true,
+        "false_merge_count": 0,
+        "false_split_count": 1,
+        "fully_accounted": true,
+        "groups": [],
+        "latency_ms": 1,
+        "needs_review_count": 0,
+        "observed_event_count": 6,
+        "operationally_useful": false,
+        "raw_provider_response_stored": false,
+        "stage_a_events_match_frozen_input": true,
+        "status": "partial",
+        "unclassified_observed_count": 0
+      }
+    ],
+    "v1": [
+      {
+        "accepted": false,
+        "accounting": null,
+        "case_id": "PB4-PYTEST-TRACEBACK",
+        "catch_all_group_count": 0,
+        "fallback_coverage": 1.0,
+        "fallback_reason_codes": [
+          "invented_source",
+          "source_span_recall_failed"
+        ],
+        "fallback_used": true,
+        "false_merge_count": 0,
+        "false_split_count": 1,
+        "fully_accounted": true,
+        "groups": [],
+        "latency_ms": 4211,
+        "needs_review_count": 0,
+        "observed_event_count": 5,
+        "operationally_useful": false,
+        "raw_provider_response_stored": false,
+        "stage_a_events_match_frozen_input": true,
+        "status": "partial",
+        "unclassified_observed_count": null
+      },
+      {
+        "accepted": false,
+        "accounting": null,
+        "case_id": "PB4-COMPILE-ERROR",
+        "catch_all_group_count": 0,
+        "fallback_coverage": 1.0,
+        "fallback_reason_codes": [
+          "source_span_recall_failed"
+        ],
+        "fallback_used": true,
+        "false_merge_count": 0,
+        "false_split_count": 1,
+        "fully_accounted": true,
+        "groups": [],
+        "latency_ms": 3001,
+        "needs_review_count": 0,
+        "observed_event_count": 6,
+        "operationally_useful": false,
+        "raw_provider_response_stored": false,
+        "stage_a_events_match_frozen_input": true,
+        "status": "partial",
+        "unclassified_observed_count": null
+      },
+      {
+        "accepted": true,
+        "accounting": null,
+        "case_id": "PB4-MIXED-LOG",
+        "catch_all_group_count": 0,
+        "fallback_coverage": null,
+        "fallback_reason_codes": [],
+        "fallback_used": false,
+        "false_merge_count": 0,
+        "false_split_count": 0,
+        "fully_accounted": true,
+        "groups": [
+          [
+            "EV-000002",
+            "EV-000006"
+          ],
+          [
+            "EV-000003"
+          ],
+          [
+            "EV-000004"
+          ],
+          [
+            "EV-000005"
+          ],
+          [
+            "EV-000007"
+          ],
+          [
+            "EV-000001"
+          ]
+        ],
+        "latency_ms": 7170,
+        "needs_review_count": 0,
+        "observed_event_count": 7,
+        "operationally_useful": true,
+        "raw_provider_response_stored": false,
+        "stage_a_events_match_frozen_input": true,
+        "status": "success",
+        "unclassified_observed_count": null
+      },
+      {
+        "accepted": true,
+        "accounting": null,
+        "case_id": "PB4-CLI-BUILD",
+        "catch_all_group_count": 0,
+        "fallback_coverage": null,
+        "fallback_reason_codes": [],
+        "fallback_used": false,
+        "false_merge_count": 0,
+        "false_split_count": 0,
+        "fully_accounted": true,
+        "groups": [
+          [
+            "EV-000001",
+            "EV-000004"
+          ],
+          [
+            "EV-000002"
+          ],
+          [
+            "EV-000003"
+          ]
+        ],
+        "latency_ms": 4211,
+        "needs_review_count": 0,
+        "observed_event_count": 4,
+        "operationally_useful": true,
+        "raw_provider_response_stored": false,
+        "stage_a_events_match_frozen_input": true,
+        "status": "success",
+        "unclassified_observed_count": null
+      },
+      {
+        "accepted": true,
+        "accounting": null,
+        "case_id": "PB4-APPLICATION-VALIDATION",
+        "catch_all_group_count": 0,
+        "fallback_coverage": null,
+        "fallback_reason_codes": [],
+        "fallback_used": false,
+        "false_merge_count": 0,
+        "false_split_count": 0,
+        "fully_accounted": true,
+        "groups": [
+          [
+            "EV-000001",
+            "EV-000006"
+          ],
+          [
+            "EV-000002"
+          ],
+          [
+            "EV-000003"
+          ],
+          [
+            "EV-000004"
+          ],
+          [
+            "EV-000005"
+          ]
+        ],
+        "latency_ms": 6460,
+        "needs_review_count": 0,
+        "observed_event_count": 6,
+        "operationally_useful": true,
+        "raw_provider_response_stored": false,
+        "stage_a_events_match_frozen_input": true,
+        "status": "success",
+        "unclassified_observed_count": null
+      }
+    ],
+    "v2": [
+      {
+        "accepted": true,
+        "accounting": {
+          "deterministically_excluded_total": 0,
+          "fallback_observed_total": 0,
+          "fully_accounted": true,
+          "model_candidate_total": 3,
+          "observed_total": 5,
+          "policy_blocked_total": 0,
+          "semantic_ungrouped_total": 0,
+          "semantically_grouped_total": 3,
+          "structural_continuation_total": 2,
+          "unclassified_observed_total": 0
+        },
+        "case_id": "PB4-PYTEST-TRACEBACK",
+        "catch_all_group_count": 0,
+        "fallback_coverage": null,
+        "fallback_reason_codes": [],
+        "fallback_used": false,
+        "false_merge_count": 0,
+        "false_split_count": 0,
+        "fully_accounted": true,
+        "groups": [
+          [
+            "EV-000001",
+            "EV-000005"
+          ],
+          [
+            "EV-000004"
+          ]
+        ],
+        "latency_ms": 3769,
+        "needs_review_count": 0,
+        "observed_event_count": 5,
+        "operationally_useful": true,
+        "raw_provider_response_stored": false,
+        "stage_a_events_match_frozen_input": true,
+        "status": "partial",
+        "unclassified_observed_count": 0
+      },
+      {
+        "accepted": false,
+        "accounting": {
+          "deterministically_excluded_total": 0,
+          "fallback_observed_total": 2,
+          "fully_accounted": true,
+          "model_candidate_total": 2,
+          "observed_total": 6,
+          "policy_blocked_total": 0,
+          "semantic_ungrouped_total": 0,
+          "semantically_grouped_total": 0,
+          "structural_continuation_total": 4,
+          "unclassified_observed_total": 0
+        },
+        "case_id": "PB4-COMPILE-ERROR",
+        "catch_all_group_count": 0,
+        "fallback_coverage": 1.0,
+        "fallback_reason_codes": [
+          "candidate_recall_failed"
+        ],
+        "fallback_used": true,
+        "false_merge_count": 0,
+        "false_split_count": 1,
+        "fully_accounted": true,
+        "groups": [],
+        "latency_ms": 2659,
+        "needs_review_count": 0,
+        "observed_event_count": 6,
+        "operationally_useful": false,
+        "raw_provider_response_stored": false,
+        "stage_a_events_match_frozen_input": true,
+        "status": "partial",
+        "unclassified_observed_count": 0
+      },
+      {
+        "accepted": true,
+        "accounting": {
+          "deterministically_excluded_total": 1,
+          "fallback_observed_total": 0,
+          "fully_accounted": true,
+          "model_candidate_total": 5,
+          "observed_total": 7,
+          "policy_blocked_total": 0,
+          "semantic_ungrouped_total": 0,
+          "semantically_grouped_total": 5,
+          "structural_continuation_total": 1,
+          "unclassified_observed_total": 0
+        },
+        "case_id": "PB4-MIXED-LOG",
+        "catch_all_group_count": 0,
+        "fallback_coverage": null,
+        "fallback_reason_codes": [],
+        "fallback_used": false,
+        "false_merge_count": 0,
+        "false_split_count": 0,
+        "fully_accounted": true,
+        "groups": [
+          [
+            "EV-000002",
+            "EV-000006"
+          ],
+          [
+            "EV-000004"
+          ],
+          [
+            "EV-000007"
+          ],
+          [
+            "EV-000005"
+          ]
+        ],
+        "latency_ms": 5635,
+        "needs_review_count": 0,
+        "observed_event_count": 7,
+        "operationally_useful": true,
+        "raw_provider_response_stored": false,
+        "stage_a_events_match_frozen_input": true,
+        "status": "partial",
+        "unclassified_observed_count": 0
+      },
+      {
+        "accepted": true,
+        "accounting": {
+          "deterministically_excluded_total": 0,
+          "fallback_observed_total": 0,
+          "fully_accounted": true,
+          "model_candidate_total": 3,
+          "observed_total": 4,
+          "policy_blocked_total": 0,
+          "semantic_ungrouped_total": 0,
+          "semantically_grouped_total": 3,
+          "structural_continuation_total": 1,
+          "unclassified_observed_total": 0
+        },
+        "case_id": "PB4-CLI-BUILD",
+        "catch_all_group_count": 0,
+        "fallback_coverage": null,
+        "fallback_reason_codes": [],
+        "fallback_used": false,
+        "false_merge_count": 0,
+        "false_split_count": 0,
+        "fully_accounted": true,
+        "groups": [
+          [
+            "EV-000001",
+            "EV-000004"
+          ],
+          [
+            "EV-000003"
+          ]
+        ],
+        "latency_ms": 3678,
+        "needs_review_count": 0,
+        "observed_event_count": 4,
+        "operationally_useful": true,
+        "raw_provider_response_stored": false,
+        "stage_a_events_match_frozen_input": true,
+        "status": "partial",
+        "unclassified_observed_count": 0
+      },
+      {
+        "accepted": true,
+        "accounting": {
+          "deterministically_excluded_total": 1,
+          "fallback_observed_total": 0,
+          "fully_accounted": true,
+          "model_candidate_total": 4,
+          "observed_total": 6,
+          "policy_blocked_total": 0,
+          "semantic_ungrouped_total": 0,
+          "semantically_grouped_total": 4,
+          "structural_continuation_total": 1,
+          "unclassified_observed_total": 0
+        },
+        "case_id": "PB4-APPLICATION-VALIDATION",
+        "catch_all_group_count": 0,
+        "fallback_coverage": null,
+        "fallback_reason_codes": [],
+        "fallback_used": false,
+        "false_merge_count": 0,
+        "false_split_count": 0,
+        "fully_accounted": true,
+        "groups": [
+          [
+            "EV-000001",
+            "EV-000006"
+          ],
+          [
+            "EV-000004"
+          ],
+          [
+            "EV-000005"
+          ]
+        ],
+        "latency_ms": 4632,
+        "needs_review_count": 0,
+        "observed_event_count": 6,
+        "operationally_useful": true,
+        "raw_provider_response_stored": false,
+        "stage_a_events_match_frozen_input": true,
+        "status": "partial",
+        "unclassified_observed_count": 0
+      }
+    ]
+  },
+  "corpus_file_sha256": "51a983b4ed07c70bcfff7a3caadfc711c397ee7b55b8767300f63d0532522f0b",
+  "corpus_id": "PB4-03-FROZEN-V1",
+  "endpoint_policy": "loopback_only",
+  "evidence_version": "1.0.0",
+  "metrics": {
+    "fallback": {
+      "accepted_candidate_count": {
+        "status": "OBSERVED",
+        "value": 0
+      },
+      "catch_all_group_count": {
+        "status": "DERIVED_FROM_OBSERVED",
+        "value": 0
+      },
+      "deterministically_excluded_count": {
+        "status": "OBSERVED",
+        "value": 2
+      },
+      "duplicate_accepted_id_count": {
+        "status": "DERIVED_FROM_OBSERVED",
+        "value": 0
+      },
+      "fallback_count": {
+        "status": "OBSERVED",
+        "value": 5
+      },
+      "fallback_coverage": {
+        "status": "DERIVED_FROM_OBSERVED",
+        "value": 1.0
+      },
+      "false_merge_count": {
+        "status": "DERIVED_FROM_OBSERVED",
+        "value": 0
+      },
+      "false_split_count": {
+        "status": "DERIVED_FROM_OBSERVED",
+        "value": 5
+      },
+      "fully_accounted_cases": {
+        "status": "OBSERVED",
+        "value": 5
+      },
+      "human_review_corrections": {
+        "status": "NOT MEASURED",
+        "value": "NOT MEASURED"
+      },
+      "invented_accepted_id_count": {
+        "status": "DERIVED_FROM_OBSERVED",
+        "value": 0
+      },
+      "max_latency_ms": {
+        "status": "OBSERVED",
+        "value": 1
+      },
+      "median_latency_ms": {
+        "status": "OBSERVED",
+        "value": 1
+      },
+      "model_unavailable_count": {
+        "status": "OBSERVED",
+        "value": 5
+      },
+      "needs_review_count": {
+        "status": "OBSERVED",
+        "value": 0
+      },
+      "observed_event_count": {
+        "status": "OBSERVED",
+        "value": 28
+      },
+      "omitted_accepted_candidate_id_count": {
+        "status": "DERIVED_FROM_OBSERVED",
+        "value": 0
+      },
+      "operationally_useful_cases": {
+        "status": "DERIVED_FROM_OBSERVED",
+        "value": 0
+      },
+      "policy_blocked_count": {
+        "status": "OBSERVED",
+        "value": 0
+      },
+      "rejected_candidate_count": {
+        "status": "OBSERVED",
+        "value": 5
+      },
+      "schema_failure_count": {
+        "status": "OBSERVED",
+        "value": 0
+      },
+      "structural_continuation_count": {
+        "status": "OBSERVED",
+        "value": 9
+      },
+      "timeout_count": {
+        "status": "OBSERVED",
+        "value": 0
+      },
+      "unclassified_observed_count": {
+        "status": "OBSERVED",
+        "value": 0
+      }
+    },
+    "v1": {
+      "accepted_candidate_count": {
+        "status": "OBSERVED",
+        "value": 3
+      },
+      "catch_all_group_count": {
+        "status": "DERIVED_FROM_OBSERVED",
+        "value": 0
+      },
+      "deterministically_excluded_count": {
+        "status": "NOT MEASURED",
+        "value": "NOT MEASURED"
+      },
+      "duplicate_accepted_id_count": {
+        "status": "DERIVED_FROM_OBSERVED",
+        "value": 0
+      },
+      "fallback_count": {
+        "status": "OBSERVED",
+        "value": 2
+      },
+      "fallback_coverage": {
+        "status": "DERIVED_FROM_OBSERVED",
+        "value": 1.0
+      },
+      "false_merge_count": {
+        "status": "DERIVED_FROM_OBSERVED",
+        "value": 0
+      },
+      "false_split_count": {
+        "status": "DERIVED_FROM_OBSERVED",
+        "value": 2
+      },
+      "fully_accounted_cases": {
+        "status": "OBSERVED",
+        "value": 5
+      },
+      "human_review_corrections": {
+        "status": "NOT MEASURED",
+        "value": "NOT MEASURED"
+      },
+      "invented_accepted_id_count": {
+        "status": "DERIVED_FROM_OBSERVED",
+        "value": 0
+      },
+      "max_latency_ms": {
+        "status": "OBSERVED",
+        "value": 7170
+      },
+      "median_latency_ms": {
+        "status": "OBSERVED",
+        "value": 4211
+      },
+      "model_unavailable_count": {
+        "status": "OBSERVED",
+        "value": 0
+      },
+      "needs_review_count": {
+        "status": "OBSERVED",
+        "value": 0
+      },
+      "observed_event_count": {
+        "status": "OBSERVED",
+        "value": 28
+      },
+      "omitted_accepted_candidate_id_count": {
+        "status": "DERIVED_FROM_OBSERVED",
+        "value": 0
+      },
+      "operationally_useful_cases": {
+        "status": "DERIVED_FROM_OBSERVED",
+        "value": 3
+      },
+      "policy_blocked_count": {
+        "status": "NOT MEASURED",
+        "value": "NOT MEASURED"
+      },
+      "rejected_candidate_count": {
+        "status": "OBSERVED",
+        "value": 2
+      },
+      "schema_failure_count": {
+        "status": "OBSERVED",
+        "value": 0
+      },
+      "structural_continuation_count": {
+        "status": "NOT MEASURED",
+        "value": "NOT MEASURED"
+      },
+      "timeout_count": {
+        "status": "OBSERVED",
+        "value": 0
+      },
+      "unclassified_observed_count": {
+        "status": "NOT MEASURED",
+        "value": "NOT MEASURED"
+      }
+    },
+    "v2": {
+      "accepted_candidate_count": {
+        "status": "OBSERVED",
+        "value": 4
+      },
+      "catch_all_group_count": {
+        "status": "DERIVED_FROM_OBSERVED",
+        "value": 0
+      },
+      "deterministically_excluded_count": {
+        "status": "OBSERVED",
+        "value": 2
+      },
+      "duplicate_accepted_id_count": {
+        "status": "DERIVED_FROM_OBSERVED",
+        "value": 0
+      },
+      "fallback_count": {
+        "status": "OBSERVED",
+        "value": 1
+      },
+      "fallback_coverage": {
+        "status": "DERIVED_FROM_OBSERVED",
+        "value": 1.0
+      },
+      "false_merge_count": {
+        "status": "DERIVED_FROM_OBSERVED",
+        "value": 0
+      },
+      "false_split_count": {
+        "status": "DERIVED_FROM_OBSERVED",
+        "value": 1
+      },
+      "fully_accounted_cases": {
+        "status": "OBSERVED",
+        "value": 5
+      },
+      "human_review_corrections": {
+        "status": "NOT MEASURED",
+        "value": "NOT MEASURED"
+      },
+      "invented_accepted_id_count": {
+        "status": "DERIVED_FROM_OBSERVED",
+        "value": 0
+      },
+      "max_latency_ms": {
+        "status": "OBSERVED",
+        "value": 5635
+      },
+      "median_latency_ms": {
+        "status": "OBSERVED",
+        "value": 3769
+      },
+      "model_unavailable_count": {
+        "status": "OBSERVED",
+        "value": 0
+      },
+      "needs_review_count": {
+        "status": "OBSERVED",
+        "value": 0
+      },
+      "observed_event_count": {
+        "status": "OBSERVED",
+        "value": 28
+      },
+      "omitted_accepted_candidate_id_count": {
+        "status": "DERIVED_FROM_OBSERVED",
+        "value": 0
+      },
+      "operationally_useful_cases": {
+        "status": "DERIVED_FROM_OBSERVED",
+        "value": 4
+      },
+      "policy_blocked_count": {
+        "status": "OBSERVED",
+        "value": 0
+      },
+      "rejected_candidate_count": {
+        "status": "OBSERVED",
+        "value": 1
+      },
+      "schema_failure_count": {
+        "status": "OBSERVED",
+        "value": 0
+      },
+      "structural_continuation_count": {
+        "status": "OBSERVED",
+        "value": 9
+      },
+      "timeout_count": {
+        "status": "OBSERVED",
+        "value": 0
+      },
+      "unclassified_observed_count": {
+        "status": "OBSERVED",
+        "value": 0
+      }
+    }
+  },
+  "model": "qwen3.5:9b",
+  "raw_provider_response_stored": false
+}

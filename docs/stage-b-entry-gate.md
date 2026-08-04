@@ -1,6 +1,17 @@
 # Stage B entry gate
 
-Stage B remains planning-only. `policy.toml` continues to keep semantic execution disabled, and no Stage B code may begin until Stage A is merged and explicitly accepted; local passing tests alone do not open this gate.
+Stage B Phase 1 and Phase 2 are implemented behind the default-off semantic policy. PB4-03 deterministic event accounting is in `qa_pending`; local passing tests alone do not establish owner acceptance.
+
+## PB4-03 acceptance state
+
+- decision: `deterministic_event_accounting`
+- decided by: user
+- prompt-tuning iteration 3: rejected
+- previous contract: v1
+- target contract: v2
+- routing: PB3-01(b) explicit manual per call; threshold/signature routing is disabled unless policy deliberately sets `[semantic].automatic_routing = true`
+- acceptance requires: frozen before/after evaluation, full accounting, and semantic usefulness not degraded
+- dependency: accepted PR #5/#6 prerequisite is present in `origin/main` at `048fc96c745c2aad25990f77b94cb3bd9daf8735`; PB4-03 preserves its timeout and policy guards while adding contract-v2 accounting
 
 ## Bounded first task
 

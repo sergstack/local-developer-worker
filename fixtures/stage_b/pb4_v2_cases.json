@@ -1,0 +1,62 @@
+{
+  "corpus_id": "PB4-03-FROZEN-V1",
+  "frozen_at": "2026-08-03",
+  "model": "qwen3.5:9b",
+  "cases": [
+    {
+      "case_id": "PB4-PYTEST-TRACEBACK",
+      "source_type": "pytest_traceback",
+      "text": "ERROR request handler failed\n  File \"tests/test_api.py\", line 12\n    assert response.status_code == 200\nAssertionError: expected 200\nERROR request handler failed",
+      "fixture_hash": "c310e6aaeb24a44e373b48016958d46409b8744fbdc00a87902379b1e5afc194",
+      "observed_event_count": 5,
+      "expected_dispositions": {"model_candidate": ["EV-000001", "EV-000004", "EV-000005"], "structural_continuation": ["EV-000002", "EV-000003"]},
+      "required_group_pairs": [["EV-000001", "EV-000005"]],
+      "forbidden_merge_pairs": [],
+      "sensitive_content_present": false
+    },
+    {
+      "case_id": "PB4-COMPILE-ERROR",
+      "source_type": "real_compileall_failure_sanitized",
+      "text": "*** Error compiling 'fixtures/stage_b/compile_error.py'...\n  File \"fixtures/stage_b/compile_error.py\", line 1\n    def deliberately_invalid(\n                            ^\nSyntaxError: '(' was never closed\n\n",
+      "fixture_hash": "e9402489bb93bfda597598acc3399a5c9d1f4af6705c311d97cca2312ed7e254",
+      "observed_event_count": 6,
+      "expected_dispositions": {"model_candidate": ["EV-000001", "EV-000005"], "structural_continuation": ["EV-000002", "EV-000003", "EV-000004", "EV-000006"]},
+      "required_group_pairs": [["EV-000001", "EV-000005"]],
+      "forbidden_merge_pairs": [],
+      "sensitive_content_present": false
+    },
+    {
+      "case_id": "PB4-MIXED-LOG",
+      "source_type": "mixed_application_log",
+      "text": "INFO service started\nERROR database unavailable\n  retrying connection\nWARNING cache stale\nopaque diagnostic record\nERROR database unavailable\nERROR invalid request",
+      "fixture_hash": "f566a9e8d171a938ce1543462962cf13f3afa7d496807a103fdb35288d3920fd",
+      "observed_event_count": 7,
+      "expected_dispositions": {"deterministically_excluded": ["EV-000001"], "model_candidate": ["EV-000002", "EV-000004", "EV-000005", "EV-000006", "EV-000007"], "structural_continuation": ["EV-000003"]},
+      "required_group_pairs": [["EV-000002", "EV-000006"]],
+      "forbidden_merge_pairs": [["EV-000002", "EV-000007"], ["EV-000006", "EV-000007"]],
+      "sensitive_content_present": false
+    },
+    {
+      "case_id": "PB4-CLI-BUILD",
+      "source_type": "cli_build_failure",
+      "text": "build command failed with exit code 2\n  src/widget.c:14: undefined reference to render\nWARNING optional plugin unavailable\nbuild command failed with exit code 2",
+      "fixture_hash": "d6b98068b84d06a3b037ea05aa0e009975c08db86b8913a2984bcda7b1e2047f",
+      "observed_event_count": 4,
+      "expected_dispositions": {"model_candidate": ["EV-000001", "EV-000003", "EV-000004"], "structural_continuation": ["EV-000002"]},
+      "required_group_pairs": [["EV-000001", "EV-000004"]],
+      "forbidden_merge_pairs": [["EV-000001", "EV-000003"]],
+      "sensitive_content_present": false
+    },
+    {
+      "case_id": "PB4-APPLICATION-VALIDATION",
+      "source_type": "application_validation_log",
+      "text": "ERROR validation rejected field customer_id\n  value must be a positive integer\nINFO request identifier recorded\nWARNING retry budget nearly exhausted\nERROR database connection refused\nERROR validation rejected field customer_id",
+      "fixture_hash": "6f8b0ccae8898779f2c407e06ab2537690430d5f69f3791311ba295d8462ee04",
+      "observed_event_count": 6,
+      "expected_dispositions": {"deterministically_excluded": ["EV-000003"], "model_candidate": ["EV-000001", "EV-000004", "EV-000005", "EV-000006"], "structural_continuation": ["EV-000002"]},
+      "required_group_pairs": [["EV-000001", "EV-000006"]],
+      "forbidden_merge_pairs": [["EV-000001", "EV-000005"], ["EV-000005", "EV-000006"]],
+      "sensitive_content_present": false
+    }
+  ]
+}

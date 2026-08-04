@@ -1,0 +1,12 @@
+{
+  "case_id": "PB4-COMPILE-ERROR",
+  "source_type": "real_compileall_failure",
+  "source_hash": "6bb4ada224b838e8737b36fc8a2367350b05e0233fa76fe263576ade5cf70791",
+  "sanitized_fixture_hash": "e9402489bb93bfda597598acc3399a5c9d1f4af6705c311d97cca2312ed7e254",
+  "observed_events": {"total": 6, "parsed": 1, "unknown_event": 4, "part_of_event": 1},
+  "v1_result": {"accepted": false, "failure_class": "source_span_recall_failed", "omitted_event_ids": ["EV-000006"]},
+  "raw_provider_response_stored": false,
+  "retained_source_artifact_contains_raw_response": true,
+  "essential_structure_preserved": ["six_stage_a_events", "one_parsed_error", "four_unknown_lines", "one_empty_structural_line", "syntax_error_context"],
+  "owner_delete_confirmation_required": true
+}

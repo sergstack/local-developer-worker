@@ -20,6 +20,7 @@ code_artifact = "disabled"
 model = "qwen3:4b"
 endpoint = "http://127.0.0.1:11435/api/generate"
 routing_event_threshold = 8
+automatic_routing = false
 
 [limits]
 max_log_size_mb = 20

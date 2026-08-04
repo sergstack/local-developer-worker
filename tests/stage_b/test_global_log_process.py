@@ -23,6 +23,7 @@ def _policy(*, timeout_seconds=60, code_artifact="disabled"):
             "model": "qwen3:4b",
             "endpoint": "http://127.0.0.1:11435/api/generate",
             "routing_event_threshold": 8,
+            "automatic_routing": False,
         },
         "limits": {"timeout_seconds": timeout_seconds},
         "security": {"allowed_repository_roots": []},
@@ -31,6 +32,22 @@ def _policy(*, timeout_seconds=60, code_artifact="disabled"):
 
 def _repeated_log() -> str:
     return "\n".join(["ERROR database connection failed"] * 2)
+
+
+def _v2_candidate(source_span, *, group_id="SG-ONE", pattern="failure", classification="failure"):
+    return {
+        "contract_version": 2,
+        "groups": [{
+            "group_id": group_id,
+            "pattern": pattern,
+            "classification": classification,
+            "source_span": list(source_span),
+            "confidence": 0.9,
+            "origin": "model-derived",
+            "needs_review": False,
+        }],
+        "ungrouped_candidate_ids": [],
+    }
 
 
 def test_short_log_bypasses_semantic_processing():
@@ -44,32 +61,40 @@ def test_short_log_bypasses_semantic_processing():
 
     explicit = log_process(
         {"text": "ERROR one failure", "semantic": True}, _policy(),
-        transport=lambda *_: {"groups": [{"group_id": "SG-ONE", "pattern": "one failure", "classification": "single_failure", "source_span": ["EV-000001"], "confidence": 0.9, "origin": "model-derived", "needs_review": False}], "excluded": []},
+        transport=lambda *_: _v2_candidate(["EV-000001"], pattern="one failure", classification="single_failure"),
     )
     assert explicit["data"]["semantic_attempted"] is True
     assert explicit["data"]["semantic_accepted"] is True
 
 
-def test_repeated_failures_attempt_and_accept_candidate_groups():
+def test_explicit_request_attempts_and_accepts_candidate_groups():
     def transport(_endpoint, _request):
-        return {"groups": [{"group_id": "SG-DB", "pattern": "database connection failed", "classification": "database", "source_span": ["EV-000001", "EV-000002"], "confidence": 0.9, "origin": "model-derived", "needs_review": False}], "excluded": [], "raw_provider_response": "MUST-NOT-ESCAPE"}
+        return {
+            **_v2_candidate(
+                ["EV-000001", "EV-000002"],
+                group_id="SG-DB",
+                pattern="database connection failed",
+                classification="database",
+            ),
+            "raw_provider_response": "MUST-NOT-ESCAPE",
+        }
 
-    output = log_process({"text": _repeated_log()}, _policy(), transport=transport)
+    output = log_process({"text": _repeated_log(), "semantic": True}, _policy(), transport=transport)
 
     assert output["status"] == "success"
     assert output["data"]["semantic_attempted"] is True
     assert output["data"]["semantic_accepted"] is True
     assert output["data"]["semantic_groups"][0]["origin"] == "model-derived"
-    accounting = output["data"]["source_accounting"]
+    accounting = output["data"]["final_dispositions"]
     assert [row["event_id"] for row in accounting] == ["EV-000001", "EV-000002"]
     assert len({row["event_id"] for row in accounting}) == len(accounting)
     assert "MUST-NOT-ESCAPE" not in str(output)
 
 
 def test_invalid_candidate_model_unavailable_and_timeout_fall_back_without_evidence_loss():
-    invalid = log_process({"text": _repeated_log()}, _policy(), transport=lambda *_: {"groups": [], "excluded": []})
-    unavailable = log_process({"text": _repeated_log()}, _policy(), transport=lambda *_: (_ for _ in ()).throw(TimeoutError("raw provider response")))
-    timeout = log_process({"text": _repeated_log()}, _policy(timeout_seconds=0))
+    invalid = log_process({"text": _repeated_log(), "semantic": True}, _policy(), transport=lambda *_: {"groups": [], "excluded": []})
+    unavailable = log_process({"text": _repeated_log(), "semantic": True}, _policy(), transport=lambda *_: (_ for _ in ()).throw(TimeoutError("raw provider response")))
+    timeout = log_process({"text": _repeated_log(), "semantic": True}, _policy(timeout_seconds=0))
 
     for output in (invalid, unavailable, timeout):
         assert output["status"] == "partial"
@@ -79,23 +104,24 @@ def test_invalid_candidate_model_unavailable_and_timeout_fall_back_without_evide
         assert "raw provider response" not in str(output)
 
 
-def test_invalid_stage_a_events_never_reach_model_and_explicit_false_bypasses():
+def test_unknown_stage_a_events_are_bounded_candidates_and_explicit_false_bypasses():
     calls = []
     invalid = log_process({"text": "unstructured output", "semantic": True}, _policy(), transport=lambda *args: calls.append(args))
     bypassed = log_process({"text": "\n".join(["ERROR failure"] * 8), "semantic": False}, _policy(), transport=lambda *args: calls.append(args))
 
-    assert invalid["data"]["semantic_attempted"] is False
+    assert invalid["data"]["semantic_attempted"] is True
     assert invalid["data"]["fallback_used"] is True
+    assert invalid["data"]["model_candidate_events"][0]["parse_status"] == "unknown_event"
     assert bypassed["data"]["semantic_attempted"] is False
-    assert calls == []
+    assert len(calls) == 1
 
 
 def test_non_loopback_and_code_artifact_are_blocked_without_transport():
     calls = []
     policy = _policy()
     policy["semantic"]["endpoint"] = "http://203.0.113.20:11435/api/generate"
-    external = log_process({"text": _repeated_log()}, policy, transport=lambda *args: calls.append(args))
-    artifact = log_process({"text": _repeated_log()}, _policy(code_artifact="enabled"), transport=lambda *args: calls.append(args))
+    external = log_process({"text": _repeated_log(), "semantic": True}, policy, transport=lambda *args: calls.append(args))
+    artifact = log_process({"text": _repeated_log(), "semantic": True}, _policy(code_artifact="enabled"), transport=lambda *args: calls.append(args))
 
     assert external["status"] == "policy_blocked"
     assert artifact["status"] == "policy_blocked"
@@ -109,6 +135,7 @@ def test_balanced_global_policy_requires_explicit_repository_root(tmp_path):
     assert policy["automatic"]["semantic_log_clustering"] is True
     assert policy["semantic"]["enabled"] is True
     assert policy["semantic"]["code_artifact"] == "disabled"
+    assert policy["semantic"]["automatic_routing"] is False
     assert root_allowed(policy, str(tmp_path), ROOT) is False
 
     completed = subprocess.run(

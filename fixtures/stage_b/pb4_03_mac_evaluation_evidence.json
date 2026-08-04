@@ -1,0 +1,1526 @@
+{
+  "attempted_runs": 20,
+  "comparison": {
+    "confidence": "insufficient_five_case_corpus",
+    "fastest": [
+      "qwen3:4b"
+    ],
+    "highest_acceptance": [
+      "qwen3:8b"
+    ],
+    "highest_operational_usefulness": [
+      "qwen3:8b"
+    ],
+    "lowest_fallback": [
+      "qwen3:8b"
+    ],
+    "lowest_false_merge": [
+      "qwen3:4b",
+      "gemma3:4b",
+      "ibm/granite4.1:8b",
+      "qwen3:8b"
+    ],
+    "lowest_review_burden": [
+      "qwen3:4b",
+      "gemma3:4b",
+      "ibm/granite4.1:8b",
+      "qwen3:8b"
+    ],
+    "safety_qualified_models": [
+      "qwen3:4b",
+      "gemma3:4b",
+      "ibm/granite4.1:8b",
+      "qwen3:8b"
+    ],
+    "winner": "NOT ESTABLISHED"
+  },
+  "configuration_fingerprints": {
+    "options_hash": "4183b81680137ce13e1bba47648e1be483ca77ce5cef9915599553732292fbc8",
+    "prompt_hashes_by_case": {
+      "PB4-APPLICATION-VALIDATION": "20efec51641de464979dcbd7e9f5afd532277f0c8d8cc5611a60b9b268848b26",
+      "PB4-CLI-BUILD": "b6c17c6cdd091073949fdd7e631c463f2d3f4e502e9a7c91e3907b31a5e68ed5",
+      "PB4-COMPILE-ERROR": "47b5060b49c270a893dcdd9ec1d4dae190dbafcb3da828ec0f30bc192542f6d9",
+      "PB4-MIXED-LOG": "37d65b92d7ded6cfa57def34f3683d9c9f3cf3c6623ffbae0ba395f013ff45ec",
+      "PB4-PYTEST-TRACEBACK": "19700f00f4ee2c3026736a44587b1ab730618995548d95c29ba7550d2f6fa480"
+    },
+    "schema_hash": "af24d223030385b25e4e4f3a7e042b3bca7c66e50566a70f24b6d3d2473c8faf",
+    "validator_hash": "419063f91a050cc58d31c8ffa61cdf1ffd2ba79455328aaff01285eb7a4b066d"
+  },
+  "contract_version": 2,
+  "corpus_after": {
+    "case_count": 5,
+    "cases": [
+      {
+        "case_id": "PB4-PYTEST-TRACEBACK",
+        "fixture_hash": "c310e6aaeb24a44e373b48016958d46409b8744fbdc00a87902379b1e5afc194",
+        "observed_event_count": 5
+      },
+      {
+        "case_id": "PB4-COMPILE-ERROR",
+        "fixture_hash": "e9402489bb93bfda597598acc3399a5c9d1f4af6705c311d97cca2312ed7e254",
+        "observed_event_count": 6
+      },
+      {
+        "case_id": "PB4-MIXED-LOG",
+        "fixture_hash": "f566a9e8d171a938ce1543462962cf13f3afa7d496807a103fdb35288d3920fd",
+        "observed_event_count": 7
+      },
+      {
+        "case_id": "PB4-CLI-BUILD",
+        "fixture_hash": "d6b98068b84d06a3b037ea05aa0e009975c08db86b8913a2984bcda7b1e2047f",
+        "observed_event_count": 4
+      },
+      {
+        "case_id": "PB4-APPLICATION-VALIDATION",
+        "fixture_hash": "6f8b0ccae8898779f2c407e06ab2537690430d5f69f3791311ba295d8462ee04",
+        "observed_event_count": 6
+      }
+    ],
+    "expected_accounting_metadata_hash": "00c44f860d2828d79c1de162d66f2d0bdd877c9d09709be24f7e59299482a6df",
+    "manifest_hash": "51a983b4ed07c70bcfff7a3caadfc711c397ee7b55b8767300f63d0532522f0b"
+  },
+  "corpus_before": {
+    "case_count": 5,
+    "cases": [
+      {
+        "case_id": "PB4-PYTEST-TRACEBACK",
+        "fixture_hash": "c310e6aaeb24a44e373b48016958d46409b8744fbdc00a87902379b1e5afc194",
+        "observed_event_count": 5
+      },
+      {
+        "case_id": "PB4-COMPILE-ERROR",
+        "fixture_hash": "e9402489bb93bfda597598acc3399a5c9d1f4af6705c311d97cca2312ed7e254",
+        "observed_event_count": 6
+      },
+      {
+        "case_id": "PB4-MIXED-LOG",
+        "fixture_hash": "f566a9e8d171a938ce1543462962cf13f3afa7d496807a103fdb35288d3920fd",
+        "observed_event_count": 7
+      },
+      {
+        "case_id": "PB4-CLI-BUILD",
+        "fixture_hash": "d6b98068b84d06a3b037ea05aa0e009975c08db86b8913a2984bcda7b1e2047f",
+        "observed_event_count": 4
+      },
+      {
+        "case_id": "PB4-APPLICATION-VALIDATION",
+        "fixture_hash": "6f8b0ccae8898779f2c407e06ab2537690430d5f69f3791311ba295d8462ee04",
+        "observed_event_count": 6
+      }
+    ],
+    "expected_accounting_metadata_hash": "00c44f860d2828d79c1de162d66f2d0bdd877c9d09709be24f7e59299482a6df",
+    "manifest_hash": "51a983b4ed07c70bcfff7a3caadfc711c397ee7b55b8767300f63d0532522f0b"
+  },
+  "corpus_unchanged": true,
+  "endpoint": "http://127.0.0.1:11435/api/generate",
+  "evidence_version": "2.0.0",
+  "execution_status": "COMPLETE",
+  "expected_runs": 20,
+  "infrastructure_retries": 0,
+  "invalid_runs": 0,
+  "listener": {
+    "address": "127.0.0.1",
+    "executable": "/Users/sst/.local/libexec/ollama-runtime/ollama",
+    "is_tunnel_or_proxy": false,
+    "physical_host": "Mac",
+    "pid": 21661,
+    "port": 11435,
+    "process": "ollama",
+    "process_class": "local_ollama_service",
+    "verified": true
+  },
+  "models": [
+    "qwen3:4b",
+    "gemma3:4b",
+    "ibm/granite4.1:8b",
+    "qwen3:8b"
+  ],
+  "per_model": [
+    {
+      "accepted_candidate_count": 1,
+      "candidate_returned_count": 5,
+      "cases_fully_accounted": 5,
+      "catch_all_group_count": 0,
+      "duplicate_accepted_id_count": 0,
+      "duplicate_id_count": 4,
+      "evidence_valid_count": 1,
+      "fallback_count": 4,
+      "fallback_coverage_rate": 1.0,
+      "false_merge_count": 0,
+      "false_split_count": 4,
+      "invented_accepted_id_count": 0,
+      "invented_id_count": 8,
+      "max_latency_ms": 5445,
+      "median_latency_ms": 4403,
+      "model": "qwen3:4b",
+      "needs_review_count": 0,
+      "omitted_accepted_candidate_id_count": 0,
+      "omitted_candidate_id_count": 3,
+      "operationally_useful_cases": 1,
+      "rejected_candidate_count": 4,
+      "schema_valid_count": 5,
+      "timeout_count": 0,
+      "transport_failure_count": 0,
+      "unclassified_observed_count": 0
+    },
+    {
+      "accepted_candidate_count": 3,
+      "candidate_returned_count": 5,
+      "cases_fully_accounted": 5,
+      "catch_all_group_count": 0,
+      "duplicate_accepted_id_count": 0,
+      "duplicate_id_count": 5,
+      "evidence_valid_count": 3,
+      "fallback_count": 2,
+      "fallback_coverage_rate": 1.0,
+      "false_merge_count": 0,
+      "false_split_count": 2,
+      "invented_accepted_id_count": 0,
+      "invented_id_count": 0,
+      "max_latency_ms": 8176,
+      "median_latency_ms": 5674,
+      "model": "gemma3:4b",
+      "needs_review_count": 0,
+      "omitted_accepted_candidate_id_count": 0,
+      "omitted_candidate_id_count": 0,
+      "operationally_useful_cases": 3,
+      "rejected_candidate_count": 2,
+      "schema_valid_count": 5,
+      "timeout_count": 0,
+      "transport_failure_count": 0,
+      "unclassified_observed_count": 0
+    },
+    {
+      "accepted_candidate_count": 0,
+      "candidate_returned_count": 5,
+      "cases_fully_accounted": 5,
+      "catch_all_group_count": 0,
+      "duplicate_accepted_id_count": 0,
+      "duplicate_id_count": 6,
+      "evidence_valid_count": 0,
+      "fallback_count": 5,
+      "fallback_coverage_rate": 1.0,
+      "false_merge_count": 0,
+      "false_split_count": 5,
+      "invented_accepted_id_count": 0,
+      "invented_id_count": 12,
+      "max_latency_ms": 28619,
+      "median_latency_ms": 8926,
+      "model": "ibm/granite4.1:8b",
+      "needs_review_count": 0,
+      "omitted_accepted_candidate_id_count": 0,
+      "omitted_candidate_id_count": 14,
+      "operationally_useful_cases": 0,
+      "rejected_candidate_count": 5,
+      "schema_valid_count": 4,
+      "timeout_count": 0,
+      "transport_failure_count": 0,
+      "unclassified_observed_count": 0
+    },
+    {
+      "accepted_candidate_count": 5,
+      "candidate_returned_count": 5,
+      "cases_fully_accounted": 5,
+      "catch_all_group_count": 0,
+      "duplicate_accepted_id_count": 0,
+      "duplicate_id_count": 0,
+      "evidence_valid_count": 5,
+      "fallback_count": 0,
+      "fallback_coverage_rate": 1.0,
+      "false_merge_count": 0,
+      "false_split_count": 1,
+      "invented_accepted_id_count": 0,
+      "invented_id_count": 0,
+      "max_latency_ms": 11417,
+      "median_latency_ms": 9215,
+      "model": "qwen3:8b",
+      "needs_review_count": 0,
+      "omitted_accepted_candidate_id_count": 0,
+      "omitted_candidate_id_count": 0,
+      "operationally_useful_cases": 4,
+      "rejected_candidate_count": 0,
+      "schema_valid_count": 5,
+      "timeout_count": 0,
+      "transport_failure_count": 0,
+      "unclassified_observed_count": 0
+    }
+  ],
+  "runs": [
+    {
+      "accounting": {
+        "duplicate_ids": 0,
+        "fallback_coverage": 1.0,
+        "fully_accounted": true,
+        "invented_ids": 1,
+        "omitted_candidate_ids": 1
+      },
+      "candidate": {
+        "accepted": false,
+        "evidence_valid": false,
+        "rejection_reason": [
+          "candidate_recall_failed",
+          "invented_candidate_id"
+        ],
+        "returned": true,
+        "schema_valid": true
+      },
+      "case_id": "PB4-PYTEST-TRACEBACK",
+      "endpoint": "http://127.0.0.1:11435/api/generate",
+      "failure_reason": null,
+      "fallback": {
+        "reason": [
+          "candidate_recall_failed",
+          "invented_candidate_id"
+        ],
+        "used": true
+      },
+      "fixture_hash": "c310e6aaeb24a44e373b48016958d46409b8744fbdc00a87902379b1e5afc194",
+      "listener_verified": true,
+      "model_candidate_count": 3,
+      "model_reported": "qwen3:4b",
+      "model_requested": "qwen3:4b",
+      "observed_event_count": 5,
+      "physical_execution_host": "Mac",
+      "preflight": {
+        "exact_tag_present": true,
+        "tags_checked": true
+      },
+      "request_fingerprints": {
+        "options_hash": "4183b81680137ce13e1bba47648e1be483ca77ce5cef9915599553732292fbc8",
+        "prompt_hash": "19700f00f4ee2c3026736a44587b1ab730618995548d95c29ba7550d2f6fa480",
+        "schema_hash": "af24d223030385b25e4e4f3a7e042b3bca7c66e50566a70f24b6d3d2473c8faf"
+      },
+      "run_id": "RUN-7fb23c9874f8dc0b",
+      "run_status": "valid",
+      "safety": {
+        "endpoint_fallback_used": false,
+        "external_internet_inference_observed": false,
+        "raw_response_stored": false
+      },
+      "semantic": {
+        "catch_all_groups": 0,
+        "false_merges": 0,
+        "false_splits": 1,
+        "needs_review_groups": 0,
+        "operationally_useful": false,
+        "unclassified_observed": 0
+      },
+      "transport": {
+        "attempted": true,
+        "latency_ms": 4737,
+        "succeeded": true,
+        "timeout": false
+      }
+    },
+    {
+      "accounting": {
+        "duplicate_ids": 2,
+        "fallback_coverage": 1.0,
+        "fully_accounted": true,
+        "invented_ids": 2,
+        "omitted_candidate_ids": 0
+      },
+      "candidate": {
+        "accepted": false,
+        "evidence_valid": false,
+        "rejection_reason": [
+          "candidate_recall_failed",
+          "duplicate_candidate_accounting",
+          "invented_candidate_id"
+        ],
+        "returned": true,
+        "schema_valid": true
+      },
+      "case_id": "PB4-COMPILE-ERROR",
+      "endpoint": "http://127.0.0.1:11435/api/generate",
+      "failure_reason": null,
+      "fallback": {
+        "reason": [
+          "candidate_recall_failed",
+          "duplicate_candidate_accounting",
+          "invented_candidate_id"
+        ],
+        "used": true
+      },
+      "fixture_hash": "e9402489bb93bfda597598acc3399a5c9d1f4af6705c311d97cca2312ed7e254",
+      "listener_verified": true,
+      "model_candidate_count": 2,
+      "model_reported": "qwen3:4b",
+      "model_requested": "qwen3:4b",
+      "observed_event_count": 6,
+      "physical_execution_host": "Mac",
+      "preflight": {
+        "exact_tag_present": true,
+        "tags_checked": true
+      },
+      "request_fingerprints": {
+        "options_hash": "4183b81680137ce13e1bba47648e1be483ca77ce5cef9915599553732292fbc8",
+        "prompt_hash": "47b5060b49c270a893dcdd9ec1d4dae190dbafcb3da828ec0f30bc192542f6d9",
+        "schema_hash": "af24d223030385b25e4e4f3a7e042b3bca7c66e50566a70f24b6d3d2473c8faf"
+      },
+      "run_id": "RUN-09608bce413377c6",
+      "run_status": "valid",
+      "safety": {
+        "endpoint_fallback_used": false,
+        "external_internet_inference_observed": false,
+        "raw_response_stored": false
+      },
+      "semantic": {
+        "catch_all_groups": 0,
+        "false_merges": 0,
+        "false_splits": 1,
+        "needs_review_groups": 0,
+        "operationally_useful": false,
+        "unclassified_observed": 0
+      },
+      "transport": {
+        "attempted": true,
+        "latency_ms": 3489,
+        "succeeded": true,
+        "timeout": false
+      }
+    },
+    {
+      "accounting": {
+        "duplicate_ids": 0,
+        "fallback_coverage": null,
+        "fully_accounted": true,
+        "invented_ids": 0,
+        "omitted_candidate_ids": 0
+      },
+      "candidate": {
+        "accepted": true,
+        "evidence_valid": true,
+        "rejection_reason": [],
+        "returned": true,
+        "schema_valid": true
+      },
+      "case_id": "PB4-MIXED-LOG",
+      "endpoint": "http://127.0.0.1:11435/api/generate",
+      "failure_reason": null,
+      "fallback": {
+        "reason": [],
+        "used": false
+      },
+      "fixture_hash": "f566a9e8d171a938ce1543462962cf13f3afa7d496807a103fdb35288d3920fd",
+      "listener_verified": true,
+      "model_candidate_count": 5,
+      "model_reported": "qwen3:4b",
+      "model_requested": "qwen3:4b",
+      "observed_event_count": 7,
+      "physical_execution_host": "Mac",
+      "preflight": {
+        "exact_tag_present": true,
+        "tags_checked": true
+      },
+      "request_fingerprints": {
+        "options_hash": "4183b81680137ce13e1bba47648e1be483ca77ce5cef9915599553732292fbc8",
+        "prompt_hash": "37d65b92d7ded6cfa57def34f3683d9c9f3cf3c6623ffbae0ba395f013ff45ec",
+        "schema_hash": "af24d223030385b25e4e4f3a7e042b3bca7c66e50566a70f24b6d3d2473c8faf"
+      },
+      "run_id": "RUN-c2c6ec6f4a5cab32",
+      "run_status": "valid",
+      "safety": {
+        "endpoint_fallback_used": false,
+        "external_internet_inference_observed": false,
+        "raw_response_stored": false
+      },
+      "semantic": {
+        "catch_all_groups": 0,
+        "false_merges": 0,
+        "false_splits": 0,
+        "needs_review_groups": 0,
+        "operationally_useful": true,
+        "unclassified_observed": 0
+      },
+      "transport": {
+        "attempted": true,
+        "latency_ms": 5445,
+        "succeeded": true,
+        "timeout": false
+      }
+    },
+    {
+      "accounting": {
+        "duplicate_ids": 2,
+        "fallback_coverage": 1.0,
+        "fully_accounted": true,
+        "invented_ids": 2,
+        "omitted_candidate_ids": 0
+      },
+      "candidate": {
+        "accepted": false,
+        "evidence_valid": false,
+        "rejection_reason": [
+          "candidate_recall_failed",
+          "duplicate_candidate_accounting",
+          "invented_candidate_id"
+        ],
+        "returned": true,
+        "schema_valid": true
+      },
+      "case_id": "PB4-CLI-BUILD",
+      "endpoint": "http://127.0.0.1:11435/api/generate",
+      "failure_reason": null,
+      "fallback": {
+        "reason": [
+          "candidate_recall_failed",
+          "duplicate_candidate_accounting",
+          "invented_candidate_id"
+        ],
+        "used": true
+      },
+      "fixture_hash": "d6b98068b84d06a3b037ea05aa0e009975c08db86b8913a2984bcda7b1e2047f",
+      "listener_verified": true,
+      "model_candidate_count": 3,
+      "model_reported": "qwen3:4b",
+      "model_requested": "qwen3:4b",
+      "observed_event_count": 4,
+      "physical_execution_host": "Mac",
+      "preflight": {
+        "exact_tag_present": true,
+        "tags_checked": true
+      },
+      "request_fingerprints": {
+        "options_hash": "4183b81680137ce13e1bba47648e1be483ca77ce5cef9915599553732292fbc8",
+        "prompt_hash": "b6c17c6cdd091073949fdd7e631c463f2d3f4e502e9a7c91e3907b31a5e68ed5",
+        "schema_hash": "af24d223030385b25e4e4f3a7e042b3bca7c66e50566a70f24b6d3d2473c8faf"
+      },
+      "run_id": "RUN-1e49b43f4526587e",
+      "run_status": "valid",
+      "safety": {
+        "endpoint_fallback_used": false,
+        "external_internet_inference_observed": false,
+        "raw_response_stored": false
+      },
+      "semantic": {
+        "catch_all_groups": 0,
+        "false_merges": 0,
+        "false_splits": 1,
+        "needs_review_groups": 0,
+        "operationally_useful": false,
+        "unclassified_observed": 0
+      },
+      "transport": {
+        "attempted": true,
+        "latency_ms": 4403,
+        "succeeded": true,
+        "timeout": false
+      }
+    },
+    {
+      "accounting": {
+        "duplicate_ids": 0,
+        "fallback_coverage": 1.0,
+        "fully_accounted": true,
+        "invented_ids": 3,
+        "omitted_candidate_ids": 2
+      },
+      "candidate": {
+        "accepted": false,
+        "evidence_valid": false,
+        "rejection_reason": [
+          "candidate_recall_failed",
+          "invented_candidate_id"
+        ],
+        "returned": true,
+        "schema_valid": true
+      },
+      "case_id": "PB4-APPLICATION-VALIDATION",
+      "endpoint": "http://127.0.0.1:11435/api/generate",
+      "failure_reason": null,
+      "fallback": {
+        "reason": [
+          "candidate_recall_failed",
+          "invented_candidate_id"
+        ],
+        "used": true
+      },
+      "fixture_hash": "6f8b0ccae8898779f2c407e06ab2537690430d5f69f3791311ba295d8462ee04",
+      "listener_verified": true,
+      "model_candidate_count": 4,
+      "model_reported": "qwen3:4b",
+      "model_requested": "qwen3:4b",
+      "observed_event_count": 6,
+      "physical_execution_host": "Mac",
+      "preflight": {
+        "exact_tag_present": true,
+        "tags_checked": true
+      },
+      "request_fingerprints": {
+        "options_hash": "4183b81680137ce13e1bba47648e1be483ca77ce5cef9915599553732292fbc8",
+        "prompt_hash": "20efec51641de464979dcbd7e9f5afd532277f0c8d8cc5611a60b9b268848b26",
+        "schema_hash": "af24d223030385b25e4e4f3a7e042b3bca7c66e50566a70f24b6d3d2473c8faf"
+      },
+      "run_id": "RUN-5c5c6b143c16fe0a",
+      "run_status": "valid",
+      "safety": {
+        "endpoint_fallback_used": false,
+        "external_internet_inference_observed": false,
+        "raw_response_stored": false
+      },
+      "semantic": {
+        "catch_all_groups": 0,
+        "false_merges": 0,
+        "false_splits": 1,
+        "needs_review_groups": 0,
+        "operationally_useful": false,
+        "unclassified_observed": 0
+      },
+      "transport": {
+        "attempted": true,
+        "latency_ms": 4058,
+        "succeeded": true,
+        "timeout": false
+      }
+    },
+    {
+      "accounting": {
+        "duplicate_ids": 0,
+        "fallback_coverage": null,
+        "fully_accounted": true,
+        "invented_ids": 0,
+        "omitted_candidate_ids": 0
+      },
+      "candidate": {
+        "accepted": true,
+        "evidence_valid": true,
+        "rejection_reason": [],
+        "returned": true,
+        "schema_valid": true
+      },
+      "case_id": "PB4-PYTEST-TRACEBACK",
+      "endpoint": "http://127.0.0.1:11435/api/generate",
+      "failure_reason": null,
+      "fallback": {
+        "reason": [],
+        "used": false
+      },
+      "fixture_hash": "c310e6aaeb24a44e373b48016958d46409b8744fbdc00a87902379b1e5afc194",
+      "listener_verified": true,
+      "model_candidate_count": 3,
+      "model_reported": "gemma3:4b",
+      "model_requested": "gemma3:4b",
+      "observed_event_count": 5,
+      "physical_execution_host": "Mac",
+      "preflight": {
+        "exact_tag_present": true,
+        "tags_checked": true
+      },
+      "request_fingerprints": {
+        "options_hash": "4183b81680137ce13e1bba47648e1be483ca77ce5cef9915599553732292fbc8",
+        "prompt_hash": "19700f00f4ee2c3026736a44587b1ab730618995548d95c29ba7550d2f6fa480",
+        "schema_hash": "af24d223030385b25e4e4f3a7e042b3bca7c66e50566a70f24b6d3d2473c8faf"
+      },
+      "run_id": "RUN-7fb23c9874f8dc0b",
+      "run_status": "valid",
+      "safety": {
+        "endpoint_fallback_used": false,
+        "external_internet_inference_observed": false,
+        "raw_response_stored": false
+      },
+      "semantic": {
+        "catch_all_groups": 0,
+        "false_merges": 0,
+        "false_splits": 0,
+        "needs_review_groups": 0,
+        "operationally_useful": true,
+        "unclassified_observed": 0
+      },
+      "transport": {
+        "attempted": true,
+        "latency_ms": 8176,
+        "succeeded": true,
+        "timeout": false
+      }
+    },
+    {
+      "accounting": {
+        "duplicate_ids": 2,
+        "fallback_coverage": 1.0,
+        "fully_accounted": true,
+        "invented_ids": 0,
+        "omitted_candidate_ids": 0
+      },
+      "candidate": {
+        "accepted": false,
+        "evidence_valid": false,
+        "rejection_reason": [
+          "duplicate_candidate_accounting"
+        ],
+        "returned": true,
+        "schema_valid": true
+      },
+      "case_id": "PB4-COMPILE-ERROR",
+      "endpoint": "http://127.0.0.1:11435/api/generate",
+      "failure_reason": null,
+      "fallback": {
+        "reason": [
+          "duplicate_candidate_accounting"
+        ],
+        "used": true
+      },
+      "fixture_hash": "e9402489bb93bfda597598acc3399a5c9d1f4af6705c311d97cca2312ed7e254",
+      "listener_verified": true,
+      "model_candidate_count": 2,
+      "model_reported": "gemma3:4b",
+      "model_requested": "gemma3:4b",
+      "observed_event_count": 6,
+      "physical_execution_host": "Mac",
+      "preflight": {
+        "exact_tag_present": true,
+        "tags_checked": true
+      },
+      "request_fingerprints": {
+        "options_hash": "4183b81680137ce13e1bba47648e1be483ca77ce5cef9915599553732292fbc8",
+        "prompt_hash": "47b5060b49c270a893dcdd9ec1d4dae190dbafcb3da828ec0f30bc192542f6d9",
+        "schema_hash": "af24d223030385b25e4e4f3a7e042b3bca7c66e50566a70f24b6d3d2473c8faf"
+      },
+      "run_id": "RUN-09608bce413377c6",
+      "run_status": "valid",
+      "safety": {
+        "endpoint_fallback_used": false,
+        "external_internet_inference_observed": false,
+        "raw_response_stored": false
+      },
+      "semantic": {
+        "catch_all_groups": 0,
+        "false_merges": 0,
+        "false_splits": 1,
+        "needs_review_groups": 0,
+        "operationally_useful": false,
+        "unclassified_observed": 0
+      },
+      "transport": {
+        "attempted": true,
+        "latency_ms": 4655,
+        "succeeded": true,
+        "timeout": false
+      }
+    },
+    {
+      "accounting": {
+        "duplicate_ids": 0,
+        "fallback_coverage": null,
+        "fully_accounted": true,
+        "invented_ids": 0,
+        "omitted_candidate_ids": 0
+      },
+      "candidate": {
+        "accepted": true,
+        "evidence_valid": true,
+        "rejection_reason": [],
+        "returned": true,
+        "schema_valid": true
+      },
+      "case_id": "PB4-MIXED-LOG",
+      "endpoint": "http://127.0.0.1:11435/api/generate",
+      "failure_reason": null,
+      "fallback": {
+        "reason": [],
+        "used": false
+      },
+      "fixture_hash": "f566a9e8d171a938ce1543462962cf13f3afa7d496807a103fdb35288d3920fd",
+      "listener_verified": true,
+      "model_candidate_count": 5,
+      "model_reported": "gemma3:4b",
+      "model_requested": "gemma3:4b",
+      "observed_event_count": 7,
+      "physical_execution_host": "Mac",
+      "preflight": {
+        "exact_tag_present": true,
+        "tags_checked": true
+      },
+      "request_fingerprints": {
+        "options_hash": "4183b81680137ce13e1bba47648e1be483ca77ce5cef9915599553732292fbc8",
+        "prompt_hash": "37d65b92d7ded6cfa57def34f3683d9c9f3cf3c6623ffbae0ba395f013ff45ec",
+        "schema_hash": "af24d223030385b25e4e4f3a7e042b3bca7c66e50566a70f24b6d3d2473c8faf"
+      },
+      "run_id": "RUN-c2c6ec6f4a5cab32",
+      "run_status": "valid",
+      "safety": {
+        "endpoint_fallback_used": false,
+        "external_internet_inference_observed": false,
+        "raw_response_stored": false
+      },
+      "semantic": {
+        "catch_all_groups": 0,
+        "false_merges": 0,
+        "false_splits": 0,
+        "needs_review_groups": 0,
+        "operationally_useful": true,
+        "unclassified_observed": 0
+      },
+      "transport": {
+        "attempted": true,
+        "latency_ms": 5728,
+        "succeeded": true,
+        "timeout": false
+      }
+    },
+    {
+      "accounting": {
+        "duplicate_ids": 3,
+        "fallback_coverage": 1.0,
+        "fully_accounted": true,
+        "invented_ids": 0,
+        "omitted_candidate_ids": 0
+      },
+      "candidate": {
+        "accepted": false,
+        "evidence_valid": false,
+        "rejection_reason": [
+          "duplicate_candidate_accounting"
+        ],
+        "returned": true,
+        "schema_valid": true
+      },
+      "case_id": "PB4-CLI-BUILD",
+      "endpoint": "http://127.0.0.1:11435/api/generate",
+      "failure_reason": null,
+      "fallback": {
+        "reason": [
+          "duplicate_candidate_accounting"
+        ],
+        "used": true
+      },
+      "fixture_hash": "d6b98068b84d06a3b037ea05aa0e009975c08db86b8913a2984bcda7b1e2047f",
+      "listener_verified": true,
+      "model_candidate_count": 3,
+      "model_reported": "gemma3:4b",
+      "model_requested": "gemma3:4b",
+      "observed_event_count": 4,
+      "physical_execution_host": "Mac",
+      "preflight": {
+        "exact_tag_present": true,
+        "tags_checked": true
+      },
+      "request_fingerprints": {
+        "options_hash": "4183b81680137ce13e1bba47648e1be483ca77ce5cef9915599553732292fbc8",
+        "prompt_hash": "b6c17c6cdd091073949fdd7e631c463f2d3f4e502e9a7c91e3907b31a5e68ed5",
+        "schema_hash": "af24d223030385b25e4e4f3a7e042b3bca7c66e50566a70f24b6d3d2473c8faf"
+      },
+      "run_id": "RUN-1e49b43f4526587e",
+      "run_status": "valid",
+      "safety": {
+        "endpoint_fallback_used": false,
+        "external_internet_inference_observed": false,
+        "raw_response_stored": false
+      },
+      "semantic": {
+        "catch_all_groups": 0,
+        "false_merges": 0,
+        "false_splits": 1,
+        "needs_review_groups": 0,
+        "operationally_useful": false,
+        "unclassified_observed": 0
+      },
+      "transport": {
+        "attempted": true,
+        "latency_ms": 4622,
+        "succeeded": true,
+        "timeout": false
+      }
+    },
+    {
+      "accounting": {
+        "duplicate_ids": 0,
+        "fallback_coverage": null,
+        "fully_accounted": true,
+        "invented_ids": 0,
+        "omitted_candidate_ids": 0
+      },
+      "candidate": {
+        "accepted": true,
+        "evidence_valid": true,
+        "rejection_reason": [],
+        "returned": true,
+        "schema_valid": true
+      },
+      "case_id": "PB4-APPLICATION-VALIDATION",
+      "endpoint": "http://127.0.0.1:11435/api/generate",
+      "failure_reason": null,
+      "fallback": {
+        "reason": [],
+        "used": false
+      },
+      "fixture_hash": "6f8b0ccae8898779f2c407e06ab2537690430d5f69f3791311ba295d8462ee04",
+      "listener_verified": true,
+      "model_candidate_count": 4,
+      "model_reported": "gemma3:4b",
+      "model_requested": "gemma3:4b",
+      "observed_event_count": 6,
+      "physical_execution_host": "Mac",
+      "preflight": {
+        "exact_tag_present": true,
+        "tags_checked": true
+      },
+      "request_fingerprints": {
+        "options_hash": "4183b81680137ce13e1bba47648e1be483ca77ce5cef9915599553732292fbc8",
+        "prompt_hash": "20efec51641de464979dcbd7e9f5afd532277f0c8d8cc5611a60b9b268848b26",
+        "schema_hash": "af24d223030385b25e4e4f3a7e042b3bca7c66e50566a70f24b6d3d2473c8faf"
+      },
+      "run_id": "RUN-5c5c6b143c16fe0a",
+      "run_status": "valid",
+      "safety": {
+        "endpoint_fallback_used": false,
+        "external_internet_inference_observed": false,
+        "raw_response_stored": false
+      },
+      "semantic": {
+        "catch_all_groups": 0,
+        "false_merges": 0,
+        "false_splits": 0,
+        "needs_review_groups": 0,
+        "operationally_useful": true,
+        "unclassified_observed": 0
+      },
+      "transport": {
+        "attempted": true,
+        "latency_ms": 5674,
+        "succeeded": true,
+        "timeout": false
+      }
+    },
+    {
+      "accounting": {
+        "duplicate_ids": 0,
+        "fallback_coverage": 1.0,
+        "fully_accounted": true,
+        "invented_ids": 1,
+        "omitted_candidate_ids": 2
+      },
+      "candidate": {
+        "accepted": false,
+        "evidence_valid": false,
+        "rejection_reason": [
+          "candidate_recall_failed",
+          "invented_candidate_id"
+        ],
+        "returned": true,
+        "schema_valid": true
+      },
+      "case_id": "PB4-PYTEST-TRACEBACK",
+      "endpoint": "http://127.0.0.1:11435/api/generate",
+      "failure_reason": null,
+      "fallback": {
+        "reason": [
+          "candidate_recall_failed",
+          "invented_candidate_id"
+        ],
+        "used": true
+      },
+      "fixture_hash": "c310e6aaeb24a44e373b48016958d46409b8744fbdc00a87902379b1e5afc194",
+      "listener_verified": true,
+      "model_candidate_count": 3,
+      "model_reported": "ibm/granite4.1:8b",
+      "model_requested": "ibm/granite4.1:8b",
+      "observed_event_count": 5,
+      "physical_execution_host": "Mac",
+      "preflight": {
+        "exact_tag_present": true,
+        "tags_checked": true
+      },
+      "request_fingerprints": {
+        "options_hash": "4183b81680137ce13e1bba47648e1be483ca77ce5cef9915599553732292fbc8",
+        "prompt_hash": "19700f00f4ee2c3026736a44587b1ab730618995548d95c29ba7550d2f6fa480",
+        "schema_hash": "af24d223030385b25e4e4f3a7e042b3bca7c66e50566a70f24b6d3d2473c8faf"
+      },
+      "run_id": "RUN-7fb23c9874f8dc0b",
+      "run_status": "valid",
+      "safety": {
+        "endpoint_fallback_used": false,
+        "external_internet_inference_observed": false,
+        "raw_response_stored": false
+      },
+      "semantic": {
+        "catch_all_groups": 0,
+        "false_merges": 0,
+        "false_splits": 1,
+        "needs_review_groups": 0,
+        "operationally_useful": false,
+        "unclassified_observed": 0
+      },
+      "transport": {
+        "attempted": true,
+        "latency_ms": 8926,
+        "succeeded": true,
+        "timeout": false
+      }
+    },
+    {
+      "accounting": {
+        "duplicate_ids": 6,
+        "fallback_coverage": 1.0,
+        "fully_accounted": true,
+        "invented_ids": 4,
+        "omitted_candidate_ids": 0
+      },
+      "candidate": {
+        "accepted": false,
+        "evidence_valid": false,
+        "rejection_reason": [
+          "candidate_recall_failed",
+          "duplicate_candidate_accounting",
+          "invented_candidate_id"
+        ],
+        "returned": true,
+        "schema_valid": false
+      },
+      "case_id": "PB4-COMPILE-ERROR",
+      "endpoint": "http://127.0.0.1:11435/api/generate",
+      "failure_reason": null,
+      "fallback": {
+        "reason": [
+          "candidate_recall_failed",
+          "duplicate_candidate_accounting",
+          "invented_candidate_id"
+        ],
+        "used": true
+      },
+      "fixture_hash": "e9402489bb93bfda597598acc3399a5c9d1f4af6705c311d97cca2312ed7e254",
+      "listener_verified": true,
+      "model_candidate_count": 2,
+      "model_reported": "ibm/granite4.1:8b",
+      "model_requested": "ibm/granite4.1:8b",
+      "observed_event_count": 6,
+      "physical_execution_host": "Mac",
+      "preflight": {
+        "exact_tag_present": true,
+        "tags_checked": true
+      },
+      "request_fingerprints": {
+        "options_hash": "4183b81680137ce13e1bba47648e1be483ca77ce5cef9915599553732292fbc8",
+        "prompt_hash": "47b5060b49c270a893dcdd9ec1d4dae190dbafcb3da828ec0f30bc192542f6d9",
+        "schema_hash": "af24d223030385b25e4e4f3a7e042b3bca7c66e50566a70f24b6d3d2473c8faf"
+      },
+      "run_id": "RUN-09608bce413377c6",
+      "run_status": "valid",
+      "safety": {
+        "endpoint_fallback_used": false,
+        "external_internet_inference_observed": false,
+        "raw_response_stored": false
+      },
+      "semantic": {
+        "catch_all_groups": 0,
+        "false_merges": 0,
+        "false_splits": 1,
+        "needs_review_groups": 0,
+        "operationally_useful": false,
+        "unclassified_observed": 0
+      },
+      "transport": {
+        "attempted": true,
+        "latency_ms": 28619,
+        "succeeded": true,
+        "timeout": false
+      }
+    },
+    {
+      "accounting": {
+        "duplicate_ids": 0,
+        "fallback_coverage": 1.0,
+        "fully_accounted": true,
+        "invented_ids": 5,
+        "omitted_candidate_ids": 5
+      },
+      "candidate": {
+        "accepted": false,
+        "evidence_valid": false,
+        "rejection_reason": [
+          "candidate_recall_failed",
+          "invented_candidate_id"
+        ],
+        "returned": true,
+        "schema_valid": true
+      },
+      "case_id": "PB4-MIXED-LOG",
+      "endpoint": "http://127.0.0.1:11435/api/generate",
+      "failure_reason": null,
+      "fallback": {
+        "reason": [
+          "candidate_recall_failed",
+          "invented_candidate_id"
+        ],
+        "used": true
+      },
+      "fixture_hash": "f566a9e8d171a938ce1543462962cf13f3afa7d496807a103fdb35288d3920fd",
+      "listener_verified": true,
+      "model_candidate_count": 5,
+      "model_reported": "ibm/granite4.1:8b",
+      "model_requested": "ibm/granite4.1:8b",
+      "observed_event_count": 7,
+      "physical_execution_host": "Mac",
+      "preflight": {
+        "exact_tag_present": true,
+        "tags_checked": true
+      },
+      "request_fingerprints": {
+        "options_hash": "4183b81680137ce13e1bba47648e1be483ca77ce5cef9915599553732292fbc8",
+        "prompt_hash": "37d65b92d7ded6cfa57def34f3683d9c9f3cf3c6623ffbae0ba395f013ff45ec",
+        "schema_hash": "af24d223030385b25e4e4f3a7e042b3bca7c66e50566a70f24b6d3d2473c8faf"
+      },
+      "run_id": "RUN-c2c6ec6f4a5cab32",
+      "run_status": "valid",
+      "safety": {
+        "endpoint_fallback_used": false,
+        "external_internet_inference_observed": false,
+        "raw_response_stored": false
+      },
+      "semantic": {
+        "catch_all_groups": 0,
+        "false_merges": 0,
+        "false_splits": 1,
+        "needs_review_groups": 0,
+        "operationally_useful": false,
+        "unclassified_observed": 0
+      },
+      "transport": {
+        "attempted": true,
+        "latency_ms": 15171,
+        "succeeded": true,
+        "timeout": false
+      }
+    },
+    {
+      "accounting": {
+        "duplicate_ids": 0,
+        "fallback_coverage": 1.0,
+        "fully_accounted": true,
+        "invented_ids": 1,
+        "omitted_candidate_ids": 3
+      },
+      "candidate": {
+        "accepted": false,
+        "evidence_valid": false,
+        "rejection_reason": [
+          "candidate_recall_failed",
+          "invented_candidate_id"
+        ],
+        "returned": true,
+        "schema_valid": true
+      },
+      "case_id": "PB4-CLI-BUILD",
+      "endpoint": "http://127.0.0.1:11435/api/generate",
+      "failure_reason": null,
+      "fallback": {
+        "reason": [
+          "candidate_recall_failed",
+          "invented_candidate_id"
+        ],
+        "used": true
+      },
+      "fixture_hash": "d6b98068b84d06a3b037ea05aa0e009975c08db86b8913a2984bcda7b1e2047f",
+      "listener_verified": true,
+      "model_candidate_count": 3,
+      "model_reported": "ibm/granite4.1:8b",
+      "model_requested": "ibm/granite4.1:8b",
+      "observed_event_count": 4,
+      "physical_execution_host": "Mac",
+      "preflight": {
+        "exact_tag_present": true,
+        "tags_checked": true
+      },
+      "request_fingerprints": {
+        "options_hash": "4183b81680137ce13e1bba47648e1be483ca77ce5cef9915599553732292fbc8",
+        "prompt_hash": "b6c17c6cdd091073949fdd7e631c463f2d3f4e502e9a7c91e3907b31a5e68ed5",
+        "schema_hash": "af24d223030385b25e4e4f3a7e042b3bca7c66e50566a70f24b6d3d2473c8faf"
+      },
+      "run_id": "RUN-1e49b43f4526587e",
+      "run_status": "valid",
+      "safety": {
+        "endpoint_fallback_used": false,
+        "external_internet_inference_observed": false,
+        "raw_response_stored": false
+      },
+      "semantic": {
+        "catch_all_groups": 0,
+        "false_merges": 0,
+        "false_splits": 1,
+        "needs_review_groups": 0,
+        "operationally_useful": false,
+        "unclassified_observed": 0
+      },
+      "transport": {
+        "attempted": true,
+        "latency_ms": 4196,
+        "succeeded": true,
+        "timeout": false
+      }
+    },
+    {
+      "accounting": {
+        "duplicate_ids": 0,
+        "fallback_coverage": 1.0,
+        "fully_accounted": true,
+        "invented_ids": 1,
+        "omitted_candidate_ids": 4
+      },
+      "candidate": {
+        "accepted": false,
+        "evidence_valid": false,
+        "rejection_reason": [
+          "candidate_recall_failed",
+          "invented_candidate_id"
+        ],
+        "returned": true,
+        "schema_valid": true
+      },
+      "case_id": "PB4-APPLICATION-VALIDATION",
+      "endpoint": "http://127.0.0.1:11435/api/generate",
+      "failure_reason": null,
+      "fallback": {
+        "reason": [
+          "candidate_recall_failed",
+          "invented_candidate_id"
+        ],
+        "used": true
+      },
+      "fixture_hash": "6f8b0ccae8898779f2c407e06ab2537690430d5f69f3791311ba295d8462ee04",
+      "listener_verified": true,
+      "model_candidate_count": 4,
+      "model_reported": "ibm/granite4.1:8b",
+      "model_requested": "ibm/granite4.1:8b",
+      "observed_event_count": 6,
+      "physical_execution_host": "Mac",
+      "preflight": {
+        "exact_tag_present": true,
+        "tags_checked": true
+      },
+      "request_fingerprints": {
+        "options_hash": "4183b81680137ce13e1bba47648e1be483ca77ce5cef9915599553732292fbc8",
+        "prompt_hash": "20efec51641de464979dcbd7e9f5afd532277f0c8d8cc5611a60b9b268848b26",
+        "schema_hash": "af24d223030385b25e4e4f3a7e042b3bca7c66e50566a70f24b6d3d2473c8faf"
+      },
+      "run_id": "RUN-5c5c6b143c16fe0a",
+      "run_status": "valid",
+      "safety": {
+        "endpoint_fallback_used": false,
+        "external_internet_inference_observed": false,
+        "raw_response_stored": false
+      },
+      "semantic": {
+        "catch_all_groups": 0,
+        "false_merges": 0,
+        "false_splits": 1,
+        "needs_review_groups": 0,
+        "operationally_useful": false,
+        "unclassified_observed": 0
+      },
+      "transport": {
+        "attempted": true,
+        "latency_ms": 4343,
+        "succeeded": true,
+        "timeout": false
+      }
+    },
+    {
+      "accounting": {
+        "duplicate_ids": 0,
+        "fallback_coverage": null,
+        "fully_accounted": true,
+        "invented_ids": 0,
+        "omitted_candidate_ids": 0
+      },
+      "candidate": {
+        "accepted": true,
+        "evidence_valid": true,
+        "rejection_reason": [],
+        "returned": true,
+        "schema_valid": true
+      },
+      "case_id": "PB4-PYTEST-TRACEBACK",
+      "endpoint": "http://127.0.0.1:11435/api/generate",
+      "failure_reason": null,
+      "fallback": {
+        "reason": [],
+        "used": false
+      },
+      "fixture_hash": "c310e6aaeb24a44e373b48016958d46409b8744fbdc00a87902379b1e5afc194",
+      "listener_verified": true,
+      "model_candidate_count": 3,
+      "model_reported": "qwen3:8b",
+      "model_requested": "qwen3:8b",
+      "observed_event_count": 5,
+      "physical_execution_host": "Mac",
+      "preflight": {
+        "exact_tag_present": true,
+        "tags_checked": true
+      },
+      "request_fingerprints": {
+        "options_hash": "4183b81680137ce13e1bba47648e1be483ca77ce5cef9915599553732292fbc8",
+        "prompt_hash": "19700f00f4ee2c3026736a44587b1ab730618995548d95c29ba7550d2f6fa480",
+        "schema_hash": "af24d223030385b25e4e4f3a7e042b3bca7c66e50566a70f24b6d3d2473c8faf"
+      },
+      "run_id": "RUN-7fb23c9874f8dc0b",
+      "run_status": "valid",
+      "safety": {
+        "endpoint_fallback_used": false,
+        "external_internet_inference_observed": false,
+        "raw_response_stored": false
+      },
+      "semantic": {
+        "catch_all_groups": 0,
+        "false_merges": 0,
+        "false_splits": 0,
+        "needs_review_groups": 0,
+        "operationally_useful": true,
+        "unclassified_observed": 0
+      },
+      "transport": {
+        "attempted": true,
+        "latency_ms": 9678,
+        "succeeded": true,
+        "timeout": false
+      }
+    },
+    {
+      "accounting": {
+        "duplicate_ids": 0,
+        "fallback_coverage": null,
+        "fully_accounted": true,
+        "invented_ids": 0,
+        "omitted_candidate_ids": 0
+      },
+      "candidate": {
+        "accepted": true,
+        "evidence_valid": true,
+        "rejection_reason": [],
+        "returned": true,
+        "schema_valid": true
+      },
+      "case_id": "PB4-COMPILE-ERROR",
+      "endpoint": "http://127.0.0.1:11435/api/generate",
+      "failure_reason": null,
+      "fallback": {
+        "reason": [],
+        "used": false
+      },
+      "fixture_hash": "e9402489bb93bfda597598acc3399a5c9d1f4af6705c311d97cca2312ed7e254",
+      "listener_verified": true,
+      "model_candidate_count": 2,
+      "model_reported": "qwen3:8b",
+      "model_requested": "qwen3:8b",
+      "observed_event_count": 6,
+      "physical_execution_host": "Mac",
+      "preflight": {
+        "exact_tag_present": true,
+        "tags_checked": true
+      },
+      "request_fingerprints": {
+        "options_hash": "4183b81680137ce13e1bba47648e1be483ca77ce5cef9915599553732292fbc8",
+        "prompt_hash": "47b5060b49c270a893dcdd9ec1d4dae190dbafcb3da828ec0f30bc192542f6d9",
+        "schema_hash": "af24d223030385b25e4e4f3a7e042b3bca7c66e50566a70f24b6d3d2473c8faf"
+      },
+      "run_id": "RUN-09608bce413377c6",
+      "run_status": "valid",
+      "safety": {
+        "endpoint_fallback_used": false,
+        "external_internet_inference_observed": false,
+        "raw_response_stored": false
+      },
+      "semantic": {
+        "catch_all_groups": 0,
+        "false_merges": 0,
+        "false_splits": 1,
+        "needs_review_groups": 0,
+        "operationally_useful": false,
+        "unclassified_observed": 0
+      },
+      "transport": {
+        "attempted": true,
+        "latency_ms": 1568,
+        "succeeded": true,
+        "timeout": false
+      }
+    },
+    {
+      "accounting": {
+        "duplicate_ids": 0,
+        "fallback_coverage": null,
+        "fully_accounted": true,
+        "invented_ids": 0,
+        "omitted_candidate_ids": 0
+      },
+      "candidate": {
+        "accepted": true,
+        "evidence_valid": true,
+        "rejection_reason": [],
+        "returned": true,
+        "schema_valid": true
+      },
+      "case_id": "PB4-MIXED-LOG",
+      "endpoint": "http://127.0.0.1:11435/api/generate",
+      "failure_reason": null,
+      "fallback": {
+        "reason": [],
+        "used": false
+      },
+      "fixture_hash": "f566a9e8d171a938ce1543462962cf13f3afa7d496807a103fdb35288d3920fd",
+      "listener_verified": true,
+      "model_candidate_count": 5,
+      "model_reported": "qwen3:8b",
+      "model_requested": "qwen3:8b",
+      "observed_event_count": 7,
+      "physical_execution_host": "Mac",
+      "preflight": {
+        "exact_tag_present": true,
+        "tags_checked": true
+      },
+      "request_fingerprints": {
+        "options_hash": "4183b81680137ce13e1bba47648e1be483ca77ce5cef9915599553732292fbc8",
+        "prompt_hash": "37d65b92d7ded6cfa57def34f3683d9c9f3cf3c6623ffbae0ba395f013ff45ec",
+        "schema_hash": "af24d223030385b25e4e4f3a7e042b3bca7c66e50566a70f24b6d3d2473c8faf"
+      },
+      "run_id": "RUN-c2c6ec6f4a5cab32",
+      "run_status": "valid",
+      "safety": {
+        "endpoint_fallback_used": false,
+        "external_internet_inference_observed": false,
+        "raw_response_stored": false
+      },
+      "semantic": {
+        "catch_all_groups": 0,
+        "false_merges": 0,
+        "false_splits": 0,
+        "needs_review_groups": 0,
+        "operationally_useful": true,
+        "unclassified_observed": 0
+      },
+      "transport": {
+        "attempted": true,
+        "latency_ms": 11417,
+        "succeeded": true,
+        "timeout": false
+      }
+    },
+    {
+      "accounting": {
+        "duplicate_ids": 0,
+        "fallback_coverage": null,
+        "fully_accounted": true,
+        "invented_ids": 0,
+        "omitted_candidate_ids": 0
+      },
+      "candidate": {
+        "accepted": true,
+        "evidence_valid": true,
+        "rejection_reason": [],
+        "returned": true,
+        "schema_valid": true
+      },
+      "case_id": "PB4-CLI-BUILD",
+      "endpoint": "http://127.0.0.1:11435/api/generate",
+      "failure_reason": null,
+      "fallback": {
+        "reason": [],
+        "used": false
+      },
+      "fixture_hash": "d6b98068b84d06a3b037ea05aa0e009975c08db86b8913a2984bcda7b1e2047f",
+      "listener_verified": true,
+      "model_candidate_count": 3,
+      "model_reported": "qwen3:8b",
+      "model_requested": "qwen3:8b",
+      "observed_event_count": 4,
+      "physical_execution_host": "Mac",
+      "preflight": {
+        "exact_tag_present": true,
+        "tags_checked": true
+      },
+      "request_fingerprints": {
+        "options_hash": "4183b81680137ce13e1bba47648e1be483ca77ce5cef9915599553732292fbc8",
+        "prompt_hash": "b6c17c6cdd091073949fdd7e631c463f2d3f4e502e9a7c91e3907b31a5e68ed5",
+        "schema_hash": "af24d223030385b25e4e4f3a7e042b3bca7c66e50566a70f24b6d3d2473c8faf"
+      },
+      "run_id": "RUN-1e49b43f4526587e",
+      "run_status": "valid",
+      "safety": {
+        "endpoint_fallback_used": false,
+        "external_internet_inference_observed": false,
+        "raw_response_stored": false
+      },
+      "semantic": {
+        "catch_all_groups": 0,
+        "false_merges": 0,
+        "false_splits": 0,
+        "needs_review_groups": 0,
+        "operationally_useful": true,
+        "unclassified_observed": 0
+      },
+      "transport": {
+        "attempted": true,
+        "latency_ms": 6593,
+        "succeeded": true,
+        "timeout": false
+      }
+    },
+    {
+      "accounting": {
+        "duplicate_ids": 0,
+        "fallback_coverage": null,
+        "fully_accounted": true,
+        "invented_ids": 0,
+        "omitted_candidate_ids": 0
+      },
+      "candidate": {
+        "accepted": true,
+        "evidence_valid": true,
+        "rejection_reason": [],
+        "returned": true,
+        "schema_valid": true
+      },
+      "case_id": "PB4-APPLICATION-VALIDATION",
+      "endpoint": "http://127.0.0.1:11435/api/generate",
+      "failure_reason": null,
+      "fallback": {
+        "reason": [],
+        "used": false
+      },
+      "fixture_hash": "6f8b0ccae8898779f2c407e06ab2537690430d5f69f3791311ba295d8462ee04",
+      "listener_verified": true,
+      "model_candidate_count": 4,
+      "model_reported": "qwen3:8b",
+      "model_requested": "qwen3:8b",
+      "observed_event_count": 6,
+      "physical_execution_host": "Mac",
+      "preflight": {
+        "exact_tag_present": true,
+        "tags_checked": true
+      },
+      "request_fingerprints": {
+        "options_hash": "4183b81680137ce13e1bba47648e1be483ca77ce5cef9915599553732292fbc8",
+        "prompt_hash": "20efec51641de464979dcbd7e9f5afd532277f0c8d8cc5611a60b9b268848b26",
+        "schema_hash": "af24d223030385b25e4e4f3a7e042b3bca7c66e50566a70f24b6d3d2473c8faf"
+      },
+      "run_id": "RUN-5c5c6b143c16fe0a",
+      "run_status": "valid",
+      "safety": {
+        "endpoint_fallback_used": false,
+        "external_internet_inference_observed": false,
+        "raw_response_stored": false
+      },
+      "semantic": {
+        "catch_all_groups": 0,
+        "false_merges": 0,
+        "false_splits": 0,
+        "needs_review_groups": 0,
+        "operationally_useful": true,
+        "unclassified_observed": 0
+      },
+      "transport": {
+        "attempted": true,
+        "latency_ms": 9215,
+        "succeeded": true,
+        "timeout": false
+      }
+    }
+  ],
+  "safety": {
+    "endpoint_fallback_used": false,
+    "external_internet_inference_observed": false,
+    "model_pull_performed": false,
+    "physical_execution_host": "Mac",
+    "raw_provider_response_stored": false
+  },
+  "valid_runs": 20
+}

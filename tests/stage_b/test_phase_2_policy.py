@@ -17,6 +17,7 @@ def test_pb2_02_semantic_runtime_configuration_comes_from_policy():
         "code_artifact": "disabled",
         "model": "qwen3:4b",
         "endpoint": "http://127.0.0.1:11435/api/generate",
+        "automatic_routing": False,
     }
 
 
