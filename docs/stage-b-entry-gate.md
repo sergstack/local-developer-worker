@@ -1,6 +1,6 @@
 # Stage B entry gate
 
-Stage B Phase 1 and Phase 2 are implemented behind the default-off semantic policy. PB4-03 deterministic event accounting is in `qa_pending`; local passing tests alone do not establish owner acceptance.
+Stage B Phase 1 and Phase 2 are implemented behind the default-off repository policy. PB4-03 deterministic event accounting is complete: PR #7 is merged, its acceptance package records MRG-05 pass and MRG-06(b) reaccepted, and supervised execution remains explicit per call.
 
 ## PB4-03 acceptance state
 

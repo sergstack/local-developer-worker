@@ -1,6 +1,6 @@
 # PB4-03 owner acceptance package
 
-Summary: Contract v2 achieves deterministic full accounting on the frozen five-case corpus. The prior qwen3.5:9b comparison ran through a Windows tunnel and is excluded from Mac-local model evidence; a separate 20-run evaluation verifies four exact models on the physical Mac listener at port 11435. The accepted PR #5/#6 prerequisite is now present in `origin/main`; PB4-03 is reconstructed from that base and preserves its timeout and policy guards.
+Summary: Contract v2 achieves deterministic full accounting on the frozen five-case corpus. The prior qwen3.5:9b comparison ran through a Windows tunnel and is excluded from Mac-local model evidence. PB4-03 was merged in PR #7 at `82d2073f78ff2ebb26d8c94a8b0e95831e36e421`; its lifecycle status is complete and supervised routing remains explicit per call.
 
 Execution status: reconstructed from accepted prerequisite; MRG-05 re-acceptance complete after MRG-06 explicit-only enforcement
 Repository: `/Users/sst/prod/Codex Tools`
@@ -115,11 +115,11 @@ This section records the earlier v1/v2 functional comparison, but it is not Mac-
 
 ## Governance
 
-- registry: PB4-03 decision and `qa_pending` state recorded in `docs/gate_registry.json`
+- registry: PB4-03 decision and completed lifecycle state recorded in `docs/gate_registry.json`
 - entry gate: updated from stale planning-only language and records owner-acceptance requirements
 - release gates: generated document check passes
 - accepted prerequisite manifest and Wave 2 records remain unchanged
-- locality gap: PB4-04 recorded as `not_started`; no production enforcement was implemented
+- locality gap at PB4-03 acceptance time: PB4-04 was recorded as `not_started`; the later governance-closure task owns production enforcement and retains this historical distinction
 
 ## Rollback smoke
 
@@ -150,9 +150,9 @@ This section records the earlier v1/v2 functional comparison, but it is not Mac-
 - migration, compatibility, governance, and rollback smoke validated
 - focused and full tests established through `ldw test parse`; all required non-test checks passed
 
-## Missing gates
+## Publication closure
 
-- commit, push, PR, merge, and final owner review have not been performed
+- PB4-03 implementation was committed, published, reviewed, and merged through PR #7.
 
 Assumptions: corpus-defined required pairs and forbidden merges are the acceptance judge for operational usefulness. Listener verification identifies the current Mac process and executable but is not cryptographic service attestation.
 
@@ -160,10 +160,10 @@ Missing evidence: human review corrections are `NOT MEASURED`; five cases are in
 
 Risks: PB4 v2 intentionally broadens eligibility to sanitized `unknown_event` candidates; consumers requiring parsed-only behavior must use the legacy v1 command or disable semantics. A deliberate future `automatic_routing = true` policy change would restore threshold/signature calls and requires separate owner control. The earlier qwen3.5:9b comparison must not be cited as Mac-local evidence; the five-case Mac matrix does not establish a model winner.
 
-Blockers: no PB4-03 publication or merge should proceed until the owner separately authorizes each Git action.
+Blockers: none for the merged PB4-03 lifecycle. PB4-04 is governed separately.
 
-Commit: not run
-Push: not run
-PR: not run
-Owner acceptance readiness: yes for reconstructed behavior and evidence
+Commit: `a1c14a4` (`Implement PB4 deterministic accounting and explicit routing`)
+Push: completed on `codex/pb4-03-deterministic-accounting`
+PR: #7, merged
+Owner acceptance: complete for reconstructed behavior and evidence
 PB4-03 verdict: MRG-05 pass; MRG-06(b) implemented and reaccepted

@@ -433,7 +433,7 @@
       "decision": "deterministic_event_accounting",
       "decided_by": "user",
       "prompt_tuning_iteration_3": "rejected",
-      "implementation_status": "qa_pending",
+      "implementation_status": "complete",
       "previous_contract": "v1",
       "target_contract": "v2",
       "routing_mode": "explicit_manual_per_call",
@@ -445,12 +445,13 @@
         "tests/stage_b/test_pb4_deterministic_accounting.py::test_invented_duplicate_or_omitted_ids_fall_back_with_full_coverage",
         "tests/stage_b/test_pb4_deterministic_accounting.py::test_timeout_before_execution_uses_full_observed_fallback",
         "tests/stage_b/test_pb4_deterministic_accounting.py::test_automatic_routing_requires_explicit_policy_opt_in"
-      ]
+      ],
+      "acceptance_evidence": "PR #7 merged at 82d2073f78ff2ebb26d8c94a8b0e95831e36e421; owner acceptance package records MRG-05 pass and MRG-06(b) reaccepted"
     },
     {
       "id": "PB4-04-INFERENCE-LOCALITY",
       "title": "Distinguish physical local inference from loopback tunnels",
-      "status": "not_started",
+      "status": "complete",
       "source": "PB4-03 acceptance audit",
       "finding": [
         "Loopback IP validation proves transport address, not physical execution locality.",
@@ -464,14 +465,29 @@
         "tunnel/proxy detection where feasible"
       ],
       "limitation": "A port allowlist alone is not sufficient because a tunnel can bind to an allowed port.",
-      "current_task_action": ["record finding", "do not change production policy", "do not implement enforcement"]
+      "implemented_control": [
+        "verify the endpoint resolves only to loopback",
+        "verify exactly one matching local listener is observable",
+        "verify the listener process and executable identify Ollama",
+        "reject absent, ambiguous, tunnel, proxy, or unverified listeners before transport"
+      ],
+      "assurance": {
+        "transport_endpoint_local_verified": true,
+        "local_process_verified": true,
+        "local_runtime_verified": true,
+        "physical_inference_locality": "not_provable"
+      },
+      "evidence_test_ids": [
+        "tests/security/test_loopback_inference_policy.py::test_pb4_04_verified_ollama_listener_reports_bounded_assurance",
+        "tests/security/test_loopback_inference_policy.py::test_pb4_04_tunnel_proxy_or_unverified_listener_is_blocked_before_transport"
+      ]
     }
   ],
   "wave_2_acceptance": {
     "title": "Context and Evidence Layer",
     "status": "complete",
-    "overall_state": "accepted_not_activated",
-    "global_activation": "waiting_for_owner",
+    "overall_state": "accepted_and_activated",
+    "global_activation": "active",
     "services": {
       "context_packer": {"implemented": true, "accepted": true},
       "evidence_package": {"implemented": true, "accepted": true}
