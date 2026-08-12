@@ -12,6 +12,9 @@ from urllib.parse import urlsplit, urlunsplit
 from .contracts import canonical_json, result
 
 
+_PROCESS_RUNNER = subprocess.run
+
+
 def load_policy(path: str | None = None) -> dict:
     default = Path(__file__).parents[2] / "policy.toml"
     configured = path or os.environ.get("LDW_POLICY_PATH")
@@ -101,7 +104,7 @@ def local_inference_runtime_policy(
     *,
     runner: Callable[..., Any] | None = None,
 ) -> dict[str, Any]:
-    runner = runner or subprocess.run
+    runner = runner or _PROCESS_RUNNER
     raw = canonical_json({"endpoint": endpoint, "resolved_addresses": list(addresses)})
     data = {
         "assurance_level": "transport_endpoint_local_verified",

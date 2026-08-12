@@ -179,15 +179,7 @@ def log_cluster(
     timeout = int(active_policy.get("limits", {}).get("timeout_seconds", 60))
     call = transport or (lambda guarded_endpoint, body: ollama_transport(guarded_endpoint, body, timeout=timeout))
     try:
-        if transport is None:
-            policy_result, candidate = guarded_inference_call(endpoint, request_payload, call)
-        else:
-            policy_result, candidate = guarded_inference_call(
-                endpoint,
-                request_payload,
-                call,
-                runtime_verifier=None,
-            )
+        policy_result, candidate = guarded_inference_call(endpoint, request_payload, call)
     except (KeyError, TypeError, ValueError, OSError, TimeoutError, urllib.error.HTTPError, urllib.error.URLError, json.JSONDecodeError):
         candidate = None
         policy_result = None

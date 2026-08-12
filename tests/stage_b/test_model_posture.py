@@ -92,3 +92,8 @@ def test_registry_closes_pb4_lifecycle_without_claiming_physical_locality():
         "local_runtime_verified": True,
         "physical_inference_locality": "not_provable",
     }
+    defect = locality["corrective_defects"][0]
+    assert defect["id"] == "PB4-04-CUSTOM-TRANSPORT-VERIFIER-BYPASS"
+    assert defect["root_cause_status"] == "CONFIRMED"
+    assert defect["production_exposure"] == "NOT_OBSERVED"
+    assert defect["status"] == "complete"
