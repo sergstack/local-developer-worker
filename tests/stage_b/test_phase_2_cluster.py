@@ -122,6 +122,7 @@ def test_pb2_03_pipeline_uses_policy_config_and_existing_gate_functions():
     assert output["status"] == "success"
     assert output["data"]["fallback_used"] is False
     assert output["data"]["model"] == "qwen3:4b"
+    assert len(calls) == 1
     assert calls[0][0] == "http://127.0.0.1:11435/api/generate"
     assert calls[0][1]["model"] == "qwen3:4b"
     assert "MUST-NOT-LEAVE" not in calls[0][1]["prompt"]
@@ -161,13 +162,34 @@ def test_pb4_04_production_path_rejects_loopback_ssh_listener_before_transport(m
             )
         raise AssertionError("process inspection must stop after identifying the tunnel")
 
-    monkeypatch.setattr("local_developer_worker.policy.subprocess.run", process_probe)
+    monkeypatch.setattr("local_developer_worker.policy._PROCESS_RUNNER", process_probe)
     monkeypatch.setattr(
         "local_developer_worker.stage_b_cluster.ollama_transport",
         lambda *args, **kwargs: calls.append((args, kwargs)),
     )
 
     output = log_cluster({"events": events}, _enabled_policy())
+
+    assert output["status"] == "policy_blocked"
+    assert output["errors"] == [{"code": "local_inference_runtime_unverified"}]
+    assert calls == []
+
+
+def test_pb4_04_custom_transport_cannot_skip_unverified_runtime(monkeypatch):
+    events, candidate = _events_and_candidate()
+    calls = []
+
+    def unavailable_listener(command, **_kwargs):
+        assert command[0] == "lsof"
+        return subprocess.CompletedProcess(command, 1, stdout="", stderr="")
+
+    def transport(endpoint, request_payload):
+        calls.append((endpoint, request_payload))
+        return candidate
+
+    monkeypatch.setattr("local_developer_worker.policy._PROCESS_RUNNER", unavailable_listener)
+
+    output = log_cluster({"events": events}, _enabled_policy(), transport=transport)
 
     assert output["status"] == "policy_blocked"
     assert output["errors"] == [{"code": "local_inference_runtime_unverified"}]

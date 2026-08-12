@@ -479,7 +479,24 @@
       },
       "evidence_test_ids": [
         "tests/security/test_loopback_inference_policy.py::test_pb4_04_verified_ollama_listener_reports_bounded_assurance",
-        "tests/security/test_loopback_inference_policy.py::test_pb4_04_tunnel_proxy_or_unverified_listener_is_blocked_before_transport"
+        "tests/security/test_loopback_inference_policy.py::test_pb4_04_tunnel_proxy_or_unverified_listener_is_blocked_before_transport",
+        "tests/stage_b/test_phase_2_cluster.py::test_pb4_04_custom_transport_cannot_skip_unverified_runtime"
+      ],
+      "corrective_defects": [
+        {
+          "id": "PB4-04-CUSTOM-TRANSPORT-VERIFIER-BYPASS",
+          "classification": "security-control / DETERMINISTIC_FIX",
+          "root_cause_status": "CONFIRMED",
+          "root_cause": "transport dependency injection implicitly disabled runtime-locality verification",
+          "production_exposure": "NOT_OBSERVED",
+          "call_site_audit": {
+            "production": "CLI log cluster and log process call without transport injection",
+            "internal": "PB4 evaluator injects a transport; model probe calls guarded_inference_call with canonical verification",
+            "tests": "Stage B tests inject deterministic transports",
+            "unknown": []
+          },
+          "status": "complete"
+        }
       ]
     }
   ],

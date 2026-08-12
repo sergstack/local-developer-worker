@@ -6,46 +6,43 @@
 
 ## Scope assumptions
 
-- Baseline is `origin/main` at `57dd2e30c441392997a5a3066de91fab3c522204`.
-- The owner authorization in the current task supersedes older task-local prohibitions on branch, commit, push, PR, and merge actions.
-- The existing global Codex instruction is the accepted Wave 2 activation mechanism.
+- Current baseline is `8ec8d004a039472ae41d627b78f545b73083d142`.
+- CLI production exposure is not observed; the confirmed defect is an enforcement-contract gap on the injected-transport Python/internal surface.
 
 ## Affected files / areas
 
 - `SPEC.md`, `plan.md`, and `tasks.md`.
-- Inference policy/runtime boundary and focused semantic tests/schemas.
-- Wave 2, PB4, tool-contract, registry, and generated release-gate documentation.
+- `src/local_developer_worker/stage_b_cluster.py`.
+- Deterministic Stage B test process evidence and focused regression tests.
+- PB4-04 defect evidence in the canonical registry and directly affected tool-contract text.
 
 ## Steps
 
-1. Reconcile canonical specification, execution plan, task scope, and lifecycle evidence.
-2. Add failing security tests for unverified and tunnel/proxy loopback listeners and explicit assurance metadata.
-3. Implement the smallest fail-closed local Ollama listener/process verifier at the existing inference boundary.
-4. Reconcile Wave 2 activation and PB4-03/PB4-04 registry states and update directly affected documentation/contracts.
-5. Regenerate canonical release gates and run focused security, contract, fixture, schema, and documentation checks.
-6. Run the relevant full regression through `ldw test parse`, build the evidence package, and review the complete diff.
-7. Commit, push, open a PR, wait for required checks, merge under repository policy, and reverify merged `main`.
+1. Add a regression proving an injected transport is reachable when runtime verification is unavailable on the pre-fix implementation.
+2. Add repository-native synthetic local Ollama listener/process evidence for deterministic Stage B tests.
+3. Remove the custom-transport verifier bypass from `log_cluster` without exposing a replacement bypass.
+4. Record the corrective defect and update the directly affected contract wording.
+5. Run focused PB4-04, Stage B, PB4, and full regression checks through `ldw test parse`, plus deterministic validators.
+6. Build requirements traceability and complete security, diff, and acceptance judges.
+7. Commit, push, create/reuse a PR, merge when gates permit, and verify merged `main`.
 
 ## Dependencies
 
-- Step 2 depends on Step 1.
-- Step 3 depends on the observed failing tests from Step 2.
-- Step 4 depends on Steps 1 and 3.
-- Step 5 depends on Steps 3 and 4.
-- Step 6 depends on Step 5.
+- Step 2 depends on the failing evidence from Step 1.
+- Step 3 depends on Steps 1–2.
+- Step 4 depends on Step 3.
+- Steps 5–6 depend on Steps 3–4.
 - Step 7 depends on acceptance of Step 6.
 
 ## Risks
 
-- Local process inspection may be platform-specific; the production control must fail closed rather than downgrade silently.
-- Generated governance documents may drift if registry changes are not regenerated with the repository script.
+- A broad test fixture could mask the security boundary unless regression tests explicitly replace the observed listener with an unverified one.
 
 ## Validation strategy
 
-- Establish test outcomes only by piping captured runner output to `ldw test parse`.
-- Run focused PB4/locality tests first, then schemas, fixtures, release-gate drift, compilation, secret scan where supported, full tests, and `git diff --check`.
-- Re-run a bounded smoke after merge from synchronized `main`.
+- Use `pytest -q -rA` captured through `ldw test parse` for every claimed test result.
+- Run focused locality and production-path tests, affected PB4 regression, full suite, schemas, fixtures, release-gate drift, secret scan, compilation, and `git diff --check`.
 
 ## Parallel work
 
-- None; runtime, registry, generated documentation, and acceptance evidence are dependency-ordered.
+- None; the reproduction, correction, and security judge are dependency-ordered.
