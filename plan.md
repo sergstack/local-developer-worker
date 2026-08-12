@@ -2,56 +2,50 @@
 
 ## Missing inputs
 
-- None. Global activation is explicitly owner-gated and may remain pending.
+- None.
 
 ## Scope assumptions
 
-- Canonical base is `origin/main` at `1e738256dfbd72fcac4386d8a3c9a0d776f3e6d9`.
-- Existing context and evidence fields remain readable; new acceptance fields use an explicit Wave 2 contract version.
-- Cross-repository checks are read-only and use explicit temporary policy inputs rather than global configuration changes.
+- Baseline is `origin/main` at `57dd2e30c441392997a5a3066de91fab3c522204`.
+- The owner authorization in the current task supersedes older task-local prohibitions on branch, commit, push, PR, and merge actions.
+- The existing global Codex instruction is the accepted Wave 2 activation mechanism.
 
 ## Affected files / areas
 
-- `src/local_developer_worker/` context, evidence, policy-boundary, and telemetry integration.
-- Public context/evidence schemas and migration documentation.
-- `fixtures/wave2/`, a deterministic evaluator, and focused unit/contract/integration/security tests.
-- README, tool contracts, governance registry, generated release gates, and an unapplied owner-gated AGENTS patch.
+- `SPEC.md`, `plan.md`, and `tasks.md`.
+- Inference policy/runtime boundary and focused semantic tests/schemas.
+- Wave 2, PB4, tool-contract, registry, and generated release-gate documentation.
 
 ## Steps
 
-1. Record the W2-00 baseline and lock allowed files, actions, public behavior, and validation.
-2. Freeze a 15-case sanitized reference corpus with immutable expected critical files and safety expectations.
-3. Extend context selection with explicit root validation, traceable inclusion/exclusion records, visible low-benefit/unsupported states, and deterministic metrics.
-4. Add bounded expansion linked to a supplied previous package while preserving legacy context outputs.
-5. Extend evidence packages with validated per-item lineage and resumable handoff state while preserving legacy inputs.
-6. Add focused unit, contract, integration, security, deterministic, and resume tests.
-7. Add the frozen evaluator and privacy-safe Wave 2 acceptance output.
-8. Synchronize schemas, migration notes, README, tool contracts, governance registry, release gates, and the unapplied AGENTS patch.
-9. Run focused checks, full validation, three-repository read-only smoke, and global CLI source-provenance checks.
-10. Perform final acceptance review and prepare the owner package without staging or publishing changes.
+1. Reconcile canonical specification, execution plan, task scope, and lifecycle evidence.
+2. Add failing security tests for unverified and tunnel/proxy loopback listeners and explicit assurance metadata.
+3. Implement the smallest fail-closed local Ollama listener/process verifier at the existing inference boundary.
+4. Reconcile Wave 2 activation and PB4-03/PB4-04 registry states and update directly affected documentation/contracts.
+5. Regenerate canonical release gates and run focused security, contract, fixture, schema, and documentation checks.
+6. Run the relevant full regression through `ldw test parse`, build the evidence package, and review the complete diff.
+7. Commit, push, open a PR, wait for required checks, merge under repository policy, and reverify merged `main`.
 
 ## Dependencies
 
 - Step 2 depends on Step 1.
-- Steps 3–5 depend on Steps 1–2.
-- Steps 6–7 depend on Steps 3–5.
-- Step 8 depends on the public behavior established in Steps 3–7.
-- Step 9 depends on Steps 6–8.
-- Step 10 depends on all previous steps.
+- Step 3 depends on the observed failing tests from Step 2.
+- Step 4 depends on Steps 1 and 3.
+- Step 5 depends on Steps 3 and 4.
+- Step 6 depends on Step 5.
+- Step 7 depends on acceptance of Step 6.
 
 ## Risks
 
-- Existing tests rely on legacy keys and may reveal compatibility gaps.
-- Real repositories may not expose enough safe deterministic signals for an eligible reduction measurement.
-- Global editable installation provenance may prevent `globally active and accepted` status.
+- Local process inspection may be platform-specific; the production control must fail closed rather than downgrade silently.
+- Generated governance documents may drift if registry changes are not regenerated with the repository script.
 
 ## Validation strategy
 
-- Establish every pytest outcome through `ldw test parse`.
-- Run focused tests after each bounded implementation group.
-- Run schemas, fixtures, generated-document drift, secret scan, compilation, full pytest, frozen evaluator, deterministic reruns, and Git diff checks.
-- Snapshot each real repository before and after smoke checks and verify no tracked or untracked state changes.
+- Establish test outcomes only by piping captured runner output to `ldw test parse`.
+- Run focused PB4/locality tests first, then schemas, fixtures, release-gate drift, compilation, secret scan where supported, full tests, and `git diff --check`.
+- Re-run a bounded smoke after merge from synchronized `main`.
 
 ## Parallel work
 
-- After the core contracts stabilize, reference evaluation, evidence-lineage checks, root/sensitive checks, documentation, and read-only repository discovery are independent.
+- None; runtime, registry, generated documentation, and acceptance evidence are dependency-ordered.

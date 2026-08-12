@@ -147,6 +147,33 @@ def test_pb2_03_non_loopback_endpoint_is_blocked_before_transport():
     assert calls == []
 
 
+def test_pb4_04_production_path_rejects_loopback_ssh_listener_before_transport(monkeypatch):
+    events, _ = _events_and_candidate()
+    calls = []
+
+    def process_probe(command, **_kwargs):
+        if command[0] == "lsof":
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                stdout="ssh 44001 user 10u IPv4 0t0 TCP 127.0.0.1:11435 (LISTEN)\n",
+                stderr="",
+            )
+        raise AssertionError("process inspection must stop after identifying the tunnel")
+
+    monkeypatch.setattr("local_developer_worker.policy.subprocess.run", process_probe)
+    monkeypatch.setattr(
+        "local_developer_worker.stage_b_cluster.ollama_transport",
+        lambda *args, **kwargs: calls.append((args, kwargs)),
+    )
+
+    output = log_cluster({"events": events}, _enabled_policy())
+
+    assert output["status"] == "policy_blocked"
+    assert output["errors"] == [{"code": "local_inference_runtime_unverified"}]
+    assert calls == []
+
+
 def test_pb2_03_transport_failure_returns_honest_observed_fallback():
     events, _ = _events_and_candidate()
 

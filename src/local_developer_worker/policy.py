@@ -3,6 +3,7 @@ from __future__ import annotations
 import ipaddress
 import os
 import socket
+import subprocess
 import tomllib
 from pathlib import Path
 from typing import Any, Callable
@@ -94,6 +95,75 @@ def inference_endpoint_policy(
     )
 
 
+def local_inference_runtime_policy(
+    endpoint: str,
+    addresses: tuple[str, ...],
+    *,
+    runner: Callable[..., Any] | None = None,
+) -> dict[str, Any]:
+    runner = runner or subprocess.run
+    raw = canonical_json({"endpoint": endpoint, "resolved_addresses": list(addresses)})
+    data = {
+        "assurance_level": "transport_endpoint_local_verified",
+        "transport_endpoint_local_verified": True,
+        "local_process_verified": False,
+        "local_runtime_verified": False,
+        "physical_inference_locality": "not_provable",
+    }
+    try:
+        parsed = urlsplit(endpoint)
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+        listener = runner(
+            ["lsof", "-nP", f"-iTCP:{port}", "-sTCP:LISTEN"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        address_tokens = {f"{address}:{port}" for address in addresses} | {
+            f"[{address}]:{port}" for address in addresses
+        }
+        lines = [
+            line for line in listener.stdout.splitlines()
+            if "LISTEN" in line and any(token in line for token in address_tokens)
+        ]
+        if listener.returncode or len(lines) != 1:
+            raise ValueError("local listener is absent or ambiguous")
+        fields = lines[0].split()
+        process, pid = fields[0].lower(), fields[1]
+        if process != "ollama" or not pid.isdigit():
+            raise ValueError("listener is not Ollama")
+        process_row = runner(
+            ["ps", "-p", pid, "-o", "comm="],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        executable = process_row.stdout.strip()
+        if process_row.returncode or Path(executable).name.lower() != "ollama":
+            raise ValueError("listener executable is not Ollama")
+    except (AttributeError, IndexError, OSError, TypeError, ValueError):
+        return result(
+            "inference_locality_policy",
+            "endpoint",
+            raw,
+            data,
+            status="policy_blocked",
+            errors=[{"code": "local_inference_runtime_unverified"}],
+        )
+    return result(
+        "inference_locality_policy",
+        "endpoint",
+        raw,
+        {
+            **data,
+            "assurance_level": "local_runtime_verified",
+            "local_process_verified": True,
+            "local_runtime_verified": True,
+            "runtime_identity": "ollama",
+        },
+    )
+
+
 def _pinned_endpoint(endpoint: str, address: str) -> str:
     parsed = urlsplit(endpoint)
     host = f"[{address}]" if ":" in address else address
@@ -107,9 +177,16 @@ def guarded_inference_call(
     transport: Callable[[str, dict[str, Any]], Any],
     *,
     resolver: Callable[..., list[tuple[Any, ...]]] = socket.getaddrinfo,
+    runtime_verifier: Callable[[str, tuple[str, ...]], dict[str, Any]] | None = local_inference_runtime_policy,
 ) -> tuple[dict[str, Any], Any | None]:
-    policy_result = inference_endpoint_policy(endpoint, resolver=resolver)
-    if policy_result["status"] != "success":
-        return policy_result, None
-    pinned = _pinned_endpoint(endpoint, policy_result["data"]["resolved_addresses"][0])
+    endpoint_result = inference_endpoint_policy(endpoint, resolver=resolver)
+    if endpoint_result["status"] != "success":
+        return endpoint_result, None
+    addresses = tuple(endpoint_result["data"]["resolved_addresses"])
+    policy_result = endpoint_result
+    if runtime_verifier is not None:
+        policy_result = runtime_verifier(endpoint, addresses)
+        if policy_result["status"] != "success":
+            return policy_result, None
+    pinned = _pinned_endpoint(endpoint, addresses[0])
     return policy_result, transport(pinned, payload)

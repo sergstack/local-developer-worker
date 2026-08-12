@@ -45,6 +45,7 @@ KNOWN_ERROR_CODES = frozenset(
         "invalid_usefulness_mark",
         "legacy_implicit_repository_root",
         "non_loopback_inference_endpoint",
+        "local_inference_runtime_unverified",
         "observed_log_events_must_be_list",
         "parsed_log_events_required",
         "portfolio_state_not_saved",

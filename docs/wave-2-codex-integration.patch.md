@@ -1,6 +1,6 @@
-# Proposed global Codex integration
+# Global Codex integration
 
-Status: `waiting_for_owner`. This text is prepared but has not been applied to `~/.codex/AGENTS.md`.
+Status: `active_via_equivalent_global_rule`. The global Codex instructions contain the accepted context-pack/evidence-build workflow with the same bounded intent.
 
 ```text
 For multi-file or repository-discovery tasks, use `ldw context pack`

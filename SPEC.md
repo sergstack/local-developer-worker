@@ -2,54 +2,47 @@
 
 ## Goal
 
-Accept Wave 2 as a portable, deterministic Context Packer and Evidence Package layer for bounded use across local repositories.
+Reconcile the accepted Local Developer Worker state with current governance and close the confirmed PB4 inference-locality control gap without expanding routing or architecture.
 
 ## Current state
 
-- `ldw context pack` and `ldw evidence build` exist in canonical commit `1e738256dfbd72fcac4386d8a3c9a0d776f3e6d9`.
-- Context selection accepts caller-supplied file metadata and deterministic signals, but does not require a repository root, expose full selection lineage, or implement expansion.
-- Evidence packages preserve legacy observed inputs and a content hash, but do not provide complete per-item lineage or a resumable state contract.
-- Context and evidence schemas validate only minimal required keys.
-- Cross-repository portability and the required reduction thresholds are not yet established.
+- Wave 2 context and evidence contracts are implemented and accepted; the global Codex instructions already invoke them, but canonical Wave 2 records still say `accepted_not_activated` / `waiting_for_owner`.
+- PB4-03 contract v2 is merged, tested, owner-selected, and supervised-active, while its registry field remains `qa_pending`.
+- The production inference guard proves only a loopback transport endpoint. Repository evidence confirms that an SSH tunnel previously satisfied this check while inference ran on another host.
+- Existing context pack, evidence build, facts-only reporting, and resumable-state primitives satisfy the current handoff/documentation contract.
+- No accepted current architecture contract establishes repo-index candidate discovery as required current-scope functionality.
 
 ## Requirements
 
-- Require an explicit, allowed repository root and block lexical, resolved-path, and symlink escapes.
-- Preserve sensitive, binary, ignored, generated, budget, unsupported, and unselected exclusions visibly.
-- Give every included file a selection reason, evidence source, and relevance status without promoting candidates to observed facts.
-- Support deterministic bounded expansion linked to a previous context package and reapply all safety checks.
-- Build evidence only from supplied observed, deterministic-derived, model-derived-candidate, user-provided, or unknown items with applicable lineage.
-- Preserve visible missing evidence, open questions, constraints, next bounded action, and resumable task state.
-- Freeze at least 15 sanitized reference cases and evaluate critical omissions, traceability, exclusions, safety, expansion, determinism, and context reduction.
-- Run read-only smoke checks in at least three real repositories without changing them.
-- Record global CLI source provenance and prepare, but do not apply, the owner-gated global Codex integration text.
-- Synchronize public schemas, migration notes, documentation, and the canonical governance registry.
+- Describe accepted Wave 2 root isolation, selection lineage, expansion, traceability, portability, context, evidence, and resumable-state behavior accurately.
+- Record Wave 2 as globally active through the existing bounded Codex instruction while preserving all bypass and safety rules.
+- Reconcile PB4-03 to the existing completed lifecycle status supported by merged implementation, acceptance evidence, and supervised activation.
+- Before production Ollama transport, verify that the loopback listener is an observable local Ollama process; reject unverified, tunnel, proxy, and ambiguous listeners.
+- Report assurance precisely: local endpoint/process/runtime verification is observable, while physical inference locality remains unprovable from available signals.
+- Preserve explicit-manual semantic routing, deterministic fallback, disabled code artifacts, and existing v1/v2 contracts.
+- Update focused tests, security evidence, registry output, and directly affected documentation.
 
 ## Constraints
 
-- Do not use network access, semantic indexing, embeddings, model inference for facts, automatic routing, source edits, or mutating Git operations.
-- Do not read or emit sensitive contents, provider responses, neighboring repositories, or an entire repository as an implicit fallback.
-- Do not change global configuration, global `AGENTS.md`, or the global `ldw` installation.
-- Keep legacy input and output fields readable where downstream consumers already use them; add an explicit Wave 2 contract version for new fields.
-- Test status must be established through `ldw test parse`.
-- Do not stage, commit, push, create or update a PR, merge, or deploy without separate approval.
+- No external provider calls, model pulls, production deployment, secret access, migration, new dependency, public schema break, automatic semantic routing, or unrelated refactor.
+- Do not claim cryptographic or physical-host attestation.
+- Do not implement repo-index orchestration or standalone handoff/documentation services without an accepted current-scope contract.
+- Test outcomes must be established through `ldw test parse`.
+- Changes must remain reversible with a normal Git revert; activation rollback is removal of the bounded global instruction and restoration of the prior Wave 2 registry state.
 
 ## Acceptance criteria
 
-- Frozen corpus has at least 15 cases and cannot rewrite expected critical files from evaluator output.
-- Critical omissions, sensitive inclusions, outside-root reads, symlink escapes, and silent exclusions are all zero.
-- Included traceability and excluded visibility are both 100%.
-- Eligible multi-file cases have median context reduction of at least 40%, and at least 80% reduce context by at least 25%.
-- Allowed expansion, sensitive blocking, outside-root blocking, and previous-package linkage are each 100% on the acceptance set.
-- Evidence lineage is complete for accepted packages; missing tests remain `NOT RUN`, `incomplete`, or `unknown`; no root cause is asserted.
-- Resume and handoff checks recover objective, observed state, considered files, tests, failures, constraints, missing evidence, and next bounded action.
-- Three real repositories pass read-only portability smoke.
-- Global CLI works outside the Worker repository, with accepted-source activation reported honestly as active or pending.
-- Schemas, fixtures, release-gate generation, secret scan, compilation, full tests, evaluator, and deterministic reruns pass.
+- Canonical Wave 2 and PB4-03 statuses match observed accepted/active behavior.
+- Current Wave 2 behavior is documented without stale pre-implementation claims.
+- A synthetic SSH/tunnel or proxy listener is rejected before transport.
+- A verified local Ollama listener is accepted and returns explicit bounded assurance metadata.
+- Unavailable or ambiguous process verification is policy-blocking and does not call transport.
+- Existing non-loopback, fallback, deterministic accounting, schema, fixture, generated-document, and relevant regression checks pass.
+- Repo-index and handoff/documentation classifications are recorded without speculative implementation.
+- Diff review, commit, push, PR checks, merge, and post-merge verification complete when repository governance permits.
 
 ## Risks
 
-- Adding lineage and expansion can break downstream consumers unless legacy fields remain available.
-- Caller-supplied inventories can contain misleading or unsafe paths; every path needs deterministic validation.
-- Reduction metrics can be misleading on already-minimal inputs; such cases must be visibly bypassed.
-- The globally installed editable CLI may point to a different or unaudited worktree, so global activation may remain pending after repository acceptance.
+- Process-name/executable verification is stronger than loopback-only validation but is not cryptographic service attestation and cannot prove where every inference computation occurs.
+- Listener inspection depends on local operating-system process tools; absence or ambiguity must fail closed for semantic inference.
+- Status reconciliation may expose older historical documents that remain intentionally historical rather than canonical.

@@ -1,8 +1,8 @@
 # Wave 2 acceptance report
 
 Status: `complete`
-Overall state: `accepted_not_activated`
-Global activation: `waiting_for_owner`
+Overall state: `accepted_and_activated`
+Global activation: `active`
 
 ## Accepted services
 
@@ -39,7 +39,7 @@ The frozen corpus SHA-256 is `c37bc8fc306c9b31b69544a607b451217a8a3e602676fd128d
 
 Read-only smoke checks passed on three real repositories: this Python package, `audi_contrpatrty`, and the Hermes parsing repository. Each run found its bounded critical file, blocked the synthetic sensitive and outside-root requests, completed source lineage, and left the repository status byte-identical before and after. Exact smoke stdout SHA-256: `c3540ac43de3cefa14d9cc720084c55b225f96c7e55324b9c96455ee5989ff6e`.
 
-The installed global command is callable at `/Users/sst/.local/bin/ldw`, but its editable source remains `/Users/sst/prod/Codex Tools` at commit `ca13c13b3dbaf4ef826706c9d411a30e06989686` on branch `codex/stage-b-global-log-process`. It does not contain the Wave 2 payload contracts. Therefore local acceptance does not imply global activation.
+The installed global command is callable at `/Users/sst/.local/bin/ldw` and exposes the accepted context-packer capability. The global Codex instructions require `ldw context pack` for non-trivial multi-file or unfamiliar-repository work and `ldw evidence build` before resumable/final reporting. This existing bounded instruction is the active Wave 2 integration; it does not authorize automatic repository-wide reading, sensitive-file inclusion, edits, commits, or merges.
 
 ## Verification
 
@@ -52,8 +52,8 @@ The installed global command is callable at `/Users/sst/.local/bin/ldw`, but its
 
 The current policy root check reliably isolates a single allowed root, as used independently for every portability case. A policy containing multiple roots effectively evaluates only its first entry when that entry does not contain the requested path. This does not bypass root isolation, but multi-root policy portability remains a separate security-sensitive change and was not modified in this scope.
 
-## Owner-gated integration and rollback
+## Active integration and rollback
 
-The proposed global Codex instruction is stored in `docs/wave-2-codex-integration.patch.md` and was not applied. Global installation, configuration, AGENTS files, external repositories, staging, commits, pushes, PRs, merges, and deploys were not changed.
+The accepted instruction is represented in `docs/wave-2-codex-integration.patch.md` and is active through the equivalent global Codex rule. This reconciliation did not mutate global installation, configuration, AGENTS files, external repositories, or deployment state.
 
 To roll back usage, stop sending `mode=expand` and consume the retained legacy fields. A code rollback may restore the previous context/evidence implementation without changing Stage B, global configuration, or external repositories.

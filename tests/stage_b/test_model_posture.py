@@ -67,6 +67,8 @@ def test_release_gate_render_preserves_wave2_and_adds_selected_model_posture():
     rendered = render_release_gates(json.loads((ROOT / "docs" / "gate_registry.json").read_text()))
 
     assert "## Wave 2 — Context and Evidence Layer" in rendered
+    assert "Overall state: `accepted_and_activated`." in rendered
+    assert "Global activation: `active`." in rendered
     assert "## Stage B model posture" in rendered
     assert "Status: `selected_and_supervised_active`." in rendered
     assert "| configured_global_model | qwen3:8b | OBSERVED |" in rendered
@@ -75,3 +77,18 @@ def test_release_gate_render_preserves_wave2_and_adds_selected_model_posture():
     assert "Supervised explicit blockers: none." in rendered
     assert "Automatic routing allowed: `false`." in rendered
     assert "Automatic routing enabled: `false`." in rendered
+
+
+def test_registry_closes_pb4_lifecycle_without_claiming_physical_locality():
+    registry = json.loads((ROOT / "docs" / "gate_registry.json").read_text())
+    features = {item["id"]: item for item in registry["governed_features"]}
+
+    assert features["PB4-03-DETERMINISTIC-ACCOUNTING"]["implementation_status"] == "complete"
+    locality = features["PB4-04-INFERENCE-LOCALITY"]
+    assert locality["status"] == "complete"
+    assert locality["assurance"] == {
+        "transport_endpoint_local_verified": True,
+        "local_process_verified": True,
+        "local_runtime_verified": True,
+        "physical_inference_locality": "not_provable",
+    }

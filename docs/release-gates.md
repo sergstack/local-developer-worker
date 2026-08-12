@@ -49,8 +49,8 @@ Selected option: `a`.
 ## Wave 2 — Context and Evidence Layer
 
 Status: `complete`.
-Overall state: `accepted_not_activated`.
-Global activation: `waiting_for_owner`.
+Overall state: `accepted_and_activated`.
+Global activation: `active`.
 
 | Service | Implemented | Accepted |
 |---|---|---|
