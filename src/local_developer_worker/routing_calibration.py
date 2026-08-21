@@ -37,7 +37,9 @@ def _events(payload: dict[str, Any], *, max_age_days: int | None = None) -> tupl
         if max_age_days is not None and not 0 <= (today - observed_on).days <= max_age_days:
             stale += 1
             continue
-        events.append(record)
+        normalized = dict(record)
+        normalized["task_class"] = record.get("base_task_class", record.get("task_class"))
+        events.append(normalized)
     return events, {"invalid_records": invalid, "duplicate_attempt_records": duplicate_runs, "conflicting_run_records": conflicting_runs, "stale_records": stale}
 
 
@@ -187,4 +189,4 @@ def routing_explain(payload: dict[str, Any], policy: dict[str, Any]) -> dict[str
         route = route_task(payload.get("task", ""), payload, config)
     except (ValueError, KeyError) as exc:
         return result("routing_explain", "stdin", raw, {}, status="invalid_input", errors=[{"code": "invalid_routing_explain", "detail": str(exc)}])
-    return result("routing_explain", "stdin", raw, {"task_class": payload.get("task_class") or ("ambiguous" if route.uncertain else "inferred"), "matched_signals": [route.signal], "risk_floor": route.deterministic_risk_floor, "selected_profile": route.profile, "model_alias": route.model_alias, "effort": route.effort, "escalation_path": [route.profile, *[target for source, target in config["escalation"].items() if source == route.profile]], "policy_revision": route.policy_revision})
+    return result("routing_explain", "stdin", raw, {"task_class": route.base_task_class, "matched_signals": [route.signal], "routing_disposition": route.routing_disposition, "override_requested_profile": route.override_requested_profile, "override_state": route.override_state, "adaptive_routing": route.adaptive_routing, "uncertainty": route.uncertain, "risk_floor": route.deterministic_risk_floor, "selected_profile": route.profile, "model_alias": route.model_alias, "effort": route.effort, "escalation_path": [route.profile, *[target for source, target in config["escalation"].items() if source == route.profile]], "policy_revision": route.policy_revision})

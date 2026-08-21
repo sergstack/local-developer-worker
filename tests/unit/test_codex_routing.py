@@ -70,11 +70,57 @@ def test_every_routing_class(payload, task, profile, mutation, uncertain):
     assert (route.profile, route.mutation_capable, route.uncertain) == (profile, mutation, uncertain)
 
 
+@pytest.mark.parametrize(
+    ("task", "task_class", "profile", "alias", "effort", "uncertain"),
+    [
+        ("Проверь README на очевидные опечатки, ничего не изменяй.", "routine_read_or_docs", "efficient", "small", "low", False),
+        ("Проанализируй один локальный модуль и один связанный тест, найди возможную причину failing test, ничего не изменяй.", "bounded_change_or_debug", "balanced", "standard", "medium", False),
+        ("Проанализируй этот модуль и определи, какие улучшения могут потребоваться. Ничего не изменяй.", "ambiguous", "balanced", "standard", "medium", True),
+        ("Оцени влияние потенциального cross-module refactor с изменением нескольких зависимостей. Ничего не изменяй.", "cross_cutting_or_high_risk", "frontier", "large", "high", False),
+    ],
+)
+def test_controlled_adaptive_routing_matrix(task, task_class, profile, alias, effort, uncertain):
+    route = route_task(task, {}, validate_codex_policy(codex_policy()))
+    assert (route.base_task_class, route.profile, route.model_alias, route.effort, route.uncertain) == (task_class, profile, alias, effort, uncertain)
+
+
+@pytest.mark.parametrize("phrase", ["ничего не изменяй", "не изменяй", "не менять", "без изменений", "do not change", "don't change", "no changes", "read only", "read-only"])
+def test_safety_negations_do_not_create_mutation_signal(phrase):
+    route = route_task(f"Review README, {phrase}.", {}, validate_codex_policy(codex_policy()))
+    assert route.base_task_class == "routine_read_or_docs"
+    assert route.signal != "text:bounded_change"
+
+
+@pytest.mark.parametrize("task", ["Измени README.", "Обнови локальный модуль.", "Change this module.", "Implement the requested update."])
+def test_real_mutation_phrases_remain_bounded(task):
+    route = route_task(task, {}, validate_codex_policy(codex_policy()))
+    assert (route.base_task_class, route.profile, route.signal) == ("bounded_change_or_debug", "balanced", "text:bounded_change")
+
+
+@pytest.mark.parametrize("task", ["Что можно улучшить?", "Посмотри и предложи улучшения.", "Что здесь стоит изменить?", "What can be improved?", "Look at this and suggest improvements.", "What improvements may be needed?", "What is worth changing here?"])
+def test_deterministic_ambiguity_signals(task):
+    route = route_task(task, {}, validate_codex_policy(codex_policy()))
+    assert (route.base_task_class, route.profile, route.uncertain, route.signal) == ("ambiguous", "balanced", True, "text:improvement_options")
+
+
+def test_stronger_signals_take_priority_over_ambiguity():
+    config = validate_codex_policy(codex_policy())
+    assert route_task("Fix the bug and suggest improvements", {}, config).base_task_class == "bounded_change_or_debug"
+    assert route_task("Review production security and suggest improvements", {}, config).base_task_class == "cross_cutting_or_high_risk"
+
+
 def test_risk_wins_and_override_cannot_downgrade():
     config = validate_codex_policy(codex_policy())
     route = route_task("Fix production authentication", {"profile": "efficient"}, config)
     assert route.profile == "frontier"
-    assert route.signal.endswith("override_rejected")
+    assert route.base_task_class == "cross_cutting_or_high_risk"
+    assert route.signal == "text:security"
+    assert (route.routing_disposition, route.override_requested_profile, route.override_state) == ("override_rejected", "efficient", "rejected")
+
+
+def test_strong_override_preserves_base_task_class():
+    route = route_task("Review README", {"profile": "frontier"}, validate_codex_policy(codex_policy()))
+    assert (route.base_task_class, route.profile, route.routing_disposition, route.override_state) == ("routine_read_or_docs", "frontier", "explicit_override", "accepted")
 
 
 def test_fixed_profile_rollback_and_alias_replacement_are_policy_only():
@@ -84,7 +130,17 @@ def test_fixed_profile_rollback_and_alias_replacement_are_policy_only():
     config = validate_codex_policy(policy)
     route = route_task("production security migration", {}, config)
     assert route.profile == "balanced"
+    assert route.base_task_class == "cross_cutting_or_high_risk"
+    assert (route.routing_disposition, route.override_state, route.adaptive_routing) == ("fixed_profile", "none", False)
     assert config["aliases"][route.model_alias]["model"] == "replacement-model"
+
+
+def test_semantic_routing_policy_does_not_affect_codex_routing():
+    policy = codex_policy()
+    baseline = route_task("Review README", {}, validate_codex_policy(policy))
+    policy["semantic"] = {"automatic_routing": True, "enabled": True}
+    isolated = route_task("Review README", {}, validate_codex_policy(policy))
+    assert isolated == baseline
 
 
 @pytest.mark.parametrize(

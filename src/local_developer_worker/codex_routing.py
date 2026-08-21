@@ -27,6 +27,31 @@ BOUNDED_SIGNALS = (
     ("debug", re.compile(r"\b(debug|fix|bug|failure|failing|regression|traceback|отлад\w*|исправ\w*|ошиб\w*|сбой\w*|регресс\w*)\b", re.I)),
     ("bounded_change", re.compile(r"\b(implement|add|change|modify|update|patch|test|реализ\w*|добав\w*|измен\w*|обнов\w*|патч\w*|тест\w*)\b", re.I)),
 )
+SAFETY_NEGATIONS = (
+    re.compile(r"\bничего\s+не\s+измен\w*\b", re.I),
+    re.compile(r"\bне\s+измен\w*\b", re.I),
+    re.compile(r"\bне\s+меня\w*\b", re.I),
+    re.compile(r"\bбез\s+изменен\w*\b", re.I),
+    re.compile(r"\bdo\s+not\s+change\b", re.I),
+    re.compile(r"\bdon['’]t\s+change\b", re.I),
+    re.compile(r"\bno\s+changes?\b", re.I),
+    re.compile(r"\bread[- ]only\b", re.I),
+)
+AMBIGUITY_SIGNALS = (
+    (
+        "improvement_options",
+        re.compile(
+            r"\b(какие\s+улучшения\s+могут\s+потребоваться|что\s+можно\s+улучшить|"
+            r"посмотри\s+и\s+предложи\s+улучшения|что\s+здесь\s+стоит\s+изменить|"
+            r"what\s+(?:can|could|should)\s+(?:be\s+)?improv\w*|"
+            r"look\s+(?:at\s+this\s+)?and\s+suggest\s+improvements?|"
+            r"what\s+(?:here\s+)?(?:is\s+worth|should)\s+chang\w*|"
+            r"what\s+is\s+worth\s+chang\w*(?:\s+here)?|"
+            r"(?:what|which)\s+improvements?\s+(?:may|might|could)\s+be\s+needed)\b",
+            re.I,
+        ),
+    ),
+)
 ROUTINE_SIGNALS = (
     ("read", re.compile(r"\b(read|inspect|explain|summari[sz]e|review|analy[sz]e|прочит\w*|проверь\w*|объясн\w*|резюм\w*|ревью\w*|анализ\w*)\b", re.I)),
     ("docs", re.compile(r"\b(doc(?:s|umentation)?|readme|comment|typo|документ\w*|ридми\w*|комментар\w*|опечат\w*)\b", re.I)),
@@ -38,6 +63,8 @@ TAXONOMY_REVISION = hashlib.sha256(
             "task_classes": TASK_CLASSES,
             "high_risk": [(code, pattern.pattern) for code, pattern in HIGH_RISK_SIGNALS],
             "bounded": [(code, pattern.pattern) for code, pattern in BOUNDED_SIGNALS],
+            "safety_negations": [pattern.pattern for pattern in SAFETY_NEGATIONS],
+            "ambiguity": [(code, pattern.pattern) for code, pattern in AMBIGUITY_SIGNALS],
             "routine": [(code, pattern.pattern) for code, pattern in ROUTINE_SIGNALS],
         },
         ensure_ascii=False, sort_keys=True, separators=(",", ":"),
@@ -61,6 +88,20 @@ class Route:
     mutation_capable: bool
     deterministic_risk_floor: str
     policy_revision: str
+    base_task_class: str = "ambiguous"
+    routing_disposition: str = "adaptive"
+    override_requested_profile: str | None = None
+    override_state: str = "none"
+    adaptive_routing: bool = True
+
+
+@dataclass(frozen=True)
+class Classification:
+    task_class: str
+    profile: str
+    signal: str
+    uncertain: bool
+    mutation_capable: bool
 
 
 def _string(value: Any, field: str) -> str:
@@ -286,45 +327,64 @@ def _apply_floor_and_ceiling(profile: str, floor: str, maximum: str) -> str:
     return PROFILES[rank]
 
 
+def _without_patterns(text: str, patterns: tuple[re.Pattern[str], ...]) -> str:
+    for pattern in patterns:
+        text = pattern.sub(" ", text)
+    return text
+
+
+def classify_task(task: str, task_class: str | None = None) -> Classification:
+    if task_class is not None:
+        if task_class not in TASK_CLASSES:
+            raise CodexConfigError("invalid_codex_input", "unknown task_class")
+        return Classification(
+            task_class,
+            TASK_CLASSES[task_class],
+            f"structured:{task_class}",
+            task_class == "ambiguous",
+            task_class != "routine_read_or_docs",
+        )
+
+    for code, pattern in HIGH_RISK_SIGNALS:
+        if pattern.search(task):
+            return Classification("cross_cutting_or_high_risk", "frontier", f"text:{code}", False, True)
+
+    debug_code, debug_pattern = BOUNDED_SIGNALS[0]
+    if debug_pattern.search(task):
+        return Classification("bounded_change_or_debug", "balanced", f"text:{debug_code}", False, True)
+
+    ambiguity_patterns = tuple(pattern for _, pattern in AMBIGUITY_SIGNALS)
+    mutation_text = _without_patterns(_without_patterns(task, SAFETY_NEGATIONS), ambiguity_patterns)
+    mutation_code, mutation_pattern = BOUNDED_SIGNALS[1]
+    if mutation_pattern.search(mutation_text):
+        return Classification("bounded_change_or_debug", "balanced", f"text:{mutation_code}", False, True)
+
+    for code, pattern in AMBIGUITY_SIGNALS:
+        if pattern.search(task):
+            return Classification("ambiguous", "balanced", f"text:{code}", True, True)
+
+    for code, pattern in ROUTINE_SIGNALS:
+        if pattern.search(task):
+            return Classification("routine_read_or_docs", "efficient", f"text:{code}", False, False)
+    return Classification("ambiguous", "balanced", "default:ambiguous", True, True)
+
+
 def route_task(task: str, payload: dict[str, Any], config: dict[str, Any]) -> Route:
     if not isinstance(task, str) or not task.strip():
         raise CodexConfigError("invalid_codex_input", "task must be non-empty")
-    profile, signal, uncertain, mutation = config["default_profile"], "fixed_profile", False, True
+    classification = classify_task(task, payload.get("task_class"))
+    profile = classification.profile if config["adaptive_routing"] else config["default_profile"]
+    disposition = "adaptive" if config["adaptive_routing"] else "fixed_profile"
+    override_state = "none"
     override = payload.get("profile")
-    if config["adaptive_routing"]:
-        task_class = payload.get("task_class")
-        if task_class is not None:
-            if task_class not in TASK_CLASSES:
-                raise CodexConfigError("invalid_codex_input", "unknown task_class")
-            profile = TASK_CLASSES[task_class]
-            signal = f"structured:{task_class}"
-            uncertain = task_class == "ambiguous"
-            mutation = task_class != "routine_read_or_docs"
-        else:
-            for code, pattern in HIGH_RISK_SIGNALS:
-                if pattern.search(task):
-                    profile, signal, mutation = "frontier", f"text:{code}", True
-                    break
-            else:
-                for code, pattern in BOUNDED_SIGNALS:
-                    if pattern.search(task):
-                        profile, signal, mutation = "balanced", f"text:{code}", True
-                        break
-                else:
-                    for code, pattern in ROUTINE_SIGNALS:
-                        if pattern.search(task):
-                            profile, signal, mutation = "efficient", f"text:{code}", False
-                            break
-                    else:
-                        profile, signal, uncertain, mutation = "balanced", "default:ambiguous", True, True
     deterministic_floor = PROFILES[max(PROFILE_RANK[profile], PROFILE_RANK[config["risk_floor"]])]
     profile = deterministic_floor
     if override is not None:
         override = _profile(override, "profile override")
         if PROFILE_RANK[override] < PROFILE_RANK[deterministic_floor] and not config["allow_profile_downgrade"]:
-            signal = f"{signal}+override_rejected"
+            disposition, override_state = "override_rejected", "rejected"
         else:
-            profile, signal = override, "explicit_override"
+            profile, disposition, override_state = override, "explicit_override", "accepted"
     profile = _apply_floor_and_ceiling(
         profile,
         "efficient" if config["allow_profile_downgrade"] and override is not None else deterministic_floor,
@@ -335,15 +395,20 @@ def route_task(task: str, payload: dict[str, Any], config: dict[str, Any]) -> Ro
         profile,
         profile_row["alias"],
         profile_row["effort"],
-        signal,
-        uncertain,
-        mutation,
+        classification.signal,
+        classification.uncertain,
+        classification.mutation_capable,
         deterministic_floor,
         config["policy_revision"],
+        classification.task_class,
+        disposition,
+        override,
+        override_state,
+        config["adaptive_routing"],
     )
 
 
 def route_for_profile(profile: str, config: dict[str, Any], signal: str = "escalation") -> Route:
     profile = _apply_floor_and_ceiling(_profile(profile, "profile"), config["risk_floor"], config["maximum_profile"])
     row = config["profiles"][profile]
-    return Route(profile, row["alias"], row["effort"], signal, False, True, profile, config["policy_revision"])
+    return Route(profile, row["alias"], row["effort"], signal, False, True, profile, config["policy_revision"], "ambiguous", "escalation", None, "none", config["adaptive_routing"])
