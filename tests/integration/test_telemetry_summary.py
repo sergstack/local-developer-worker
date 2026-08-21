@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from local_developer_worker.session_log import append_event, iter_events, iter_records
-from local_developer_worker.telemetry import telemetry_event, telemetry_summary, usefulness_mark
+from local_developer_worker.telemetry import codex_run_event, telemetry_event, telemetry_summary, usefulness_mark
 
 
 def _event(tool, input_bytes, output_bytes, *, fallback=False, reduction=None, error_code=None):
@@ -152,3 +152,35 @@ def test_cli_appends_manual_usefulness_mark(tmp_path):
     assert output["data"] == {"recorded": True, "run_id": "RUN-observed", "mark": "helped"}
     assert invalid == 0
     assert records == [{"run_id": "RUN-observed", "mark": "helped"}]
+
+
+def test_telemetry_summary_aggregates_privacy_safe_codex_events(tmp_path):
+    append_event(
+        codex_run_event(
+            {
+                "run_id": "RUN-codex",
+                "profile": "frontier",
+                "model_alias": "large",
+                "effort": "high",
+                "terminal_status": "pass",
+                "verification_status": "passed",
+                "fallback_count": 1,
+                "escalation_count": 2,
+                "input_tokens": 10,
+                "cached_input_tokens": 4,
+                "output_tokens": 3,
+                "reasoning_output_tokens": None,
+            }
+        ),
+        tmp_path,
+        event_date=date(2026, 8, 2),
+    )
+    data = telemetry_summary({"journal_root": str(tmp_path)})["data"]["codex"]
+    assert data == {
+        "run_count": 1,
+        "profile_counts": {"balanced": 0, "efficient": 0, "frontier": 1},
+        "terminal_status_counts": {"blocked": 0, "failed": 0, "pass": 1},
+        "fallback_count": 1,
+        "escalation_count": 2,
+        "tokens": {"input_tokens": 10, "cached_input_tokens": 4, "output_tokens": 3, "reasoning_output_tokens": 0},
+    }

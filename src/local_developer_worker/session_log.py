@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from .contracts import canonical_json
-from .telemetry import normalize_telemetry_event, valid_session_record, valid_telemetry_event, valid_usefulness_mark
+from .telemetry import normalize_telemetry_event, valid_codex_run_event, valid_session_record, valid_telemetry_event, valid_usefulness_mark
 
 DEFAULT_ROOT = Path(__file__).parents[2] / ".repo_index" / "ldw_sessions"
 
@@ -18,7 +18,7 @@ def session_root(value: str | Path | None = None) -> Path:
 
 
 def append_event(event: dict[str, Any], root: str | Path | None = None, *, event_date: date | None = None) -> Path:
-    if not valid_telemetry_event(event) and not valid_usefulness_mark(event):
+    if not valid_telemetry_event(event) and not valid_usefulness_mark(event) and not valid_codex_run_event(event):
         raise ValueError("invalid session record")
     destination = session_root(root)
     destination.mkdir(parents=True, exist_ok=True)

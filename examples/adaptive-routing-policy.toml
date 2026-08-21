@@ -1,0 +1,58 @@
+# Merge and tailor this opt-in section in a repository policy. Enabling real
+# provider transport also requires the top-level `network_access = true`.
+# Concrete model
+# values are intentionally deployment-owned aliases, not classifier constants.
+[codex]
+enabled = false
+adaptive_routing = true
+allow_profile_downgrade = false
+allow_write = false
+allow_network = false
+default_profile = "balanced"
+risk_floor = "efficient"
+maximum_profile = "frontier"
+executable = "/Applications/ChatGPT.app/Contents/Resources/codex"
+allowed_executables = ["/Applications/ChatGPT.app/Contents/Resources/codex"]
+verification_executables = ["/usr/bin/true"]
+verification_commands = [["/usr/bin/true"]]
+environment_allowlist = ["HOME", "PATH", "CODEX_HOME", "SSL_CERT_FILE", "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY"]
+supported_cli_versions = ["0.147"]
+sandbox = "read-only"
+approval_policy = "never"
+max_escalations = 2
+timeout_seconds = 900
+verification_timeout_seconds = 300
+max_output_bytes = 5000000
+max_task_bytes = 100000
+retriable_error_codes = ["timeout", "provider_failed"]
+
+[codex.profiles.efficient]
+alias = "efficient-default"
+effort = "low"
+
+[codex.profiles.balanced]
+alias = "balanced-default"
+effort = "medium"
+
+[codex.profiles.frontier]
+alias = "frontier-default"
+effort = "high"
+
+[codex.aliases.efficient-default]
+model = "configure-efficient-model"
+supported_efforts = ["low"]
+fallback_aliases = []
+
+[codex.aliases.balanced-default]
+model = "configure-balanced-model"
+supported_efforts = ["medium"]
+fallback_aliases = []
+
+[codex.aliases.frontier-default]
+model = "configure-frontier-model"
+supported_efforts = ["high"]
+fallback_aliases = []
+
+[codex.escalation]
+efficient = "balanced"
+balanced = "frontier"

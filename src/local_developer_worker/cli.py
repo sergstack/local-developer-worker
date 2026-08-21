@@ -8,13 +8,14 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
+from .codex_runner import codex_run
 from .contracts import canonical_json, result, valid_tool_result
 from .policy import allowed, load_policy, root_allowed
 from .portfolio import portfolio_status, portfolio_verify
 from .session_log import append_event
 from .stage_b_cluster import log_cluster
 from .log_process import log_process
-from .telemetry import telemetry_error_code, telemetry_event, telemetry_mark, telemetry_summary
+from .telemetry import codex_run_event, telemetry_error_code, telemetry_event, telemetry_mark, telemetry_summary
 from .tools import benchmark_run, context_pack, doctor, evidence_build, file_inventory, git_facts, parse_log, parse_tests, report_summarize
 
 COMMANDS: dict[tuple[str, ...], Callable[[dict], dict]] = {
@@ -33,6 +34,7 @@ COMMANDS: dict[tuple[str, ...], Callable[[dict], dict]] = {
     ("telemetry", "mark"): telemetry_mark,
     ("portfolio", "verify"): portfolio_verify,
     ("portfolio", "status"): portfolio_status,
+    ("codex", "run"): codex_run,
 }
 CAPABILITIES = {
     ("log", "parse"): "structured_log_parser", ("log", "cluster"): "semantic_log_clustering", ("log", "process"): "structured_log_parser",
@@ -64,6 +66,8 @@ def _parser() -> argparse.ArgumentParser:
     verify = portfolio.add_parser("verify")
     verify.add_argument("--only", action="append")
     portfolio.add_parser("status")
+    codex = sub.add_parser("codex").add_subparsers(dest="action", required=True)
+    codex.add_parser("run")
     return parser
 
 
@@ -89,8 +93,10 @@ def _emit(output: dict, key: tuple[str, ...], payload: dict, raw: str, started: 
         "PYTEST_CURRENT_TEST" not in os.environ or os.environ.get("LDW_TELEMETRY_FORCE") == "1"
     ):
         telemetry_tool, context_reduction = _context_reduction(key, payload, output)
-        event = telemetry_event(
-            {
+        event = (
+            codex_run_event({"run_id": output["run_id"], **output.get("data", {})})
+            if key == ("codex", "run") and output.get("data", {}).get("profile") is not None
+            else telemetry_event({
                 "tool": telemetry_tool,
                 "input_bytes": len(raw.encode("utf-8")),
                 "output_bytes": len(stdout_text.encode("utf-8")),
@@ -100,13 +106,15 @@ def _emit(output: dict, key: tuple[str, ...], payload: dict, raw: str, started: 
                 "context_reduction": context_reduction,
                 "run_id": output["run_id"],
                 "error_code": telemetry_error_code(output),
-            }
+            })
         )
         try:
             append_event(event)
         except (OSError, ValueError):
             print("telemetry_write_failed", file=sys.stderr)
     sys.stdout.write(stdout_text)
+    if key == ("codex", "run"):
+        return 0 if output.get("data", {}).get("terminal_status") == "pass" else 2
     return 0 if output["status"] in {"success", "partial", "unsupported"} else 2
 
 
@@ -141,7 +149,7 @@ def main(argv: list[str] | None = None) -> int:
         timeout_seconds = int(limits.get("timeout_seconds", 60))
         if timeout_seconds <= 0 and key != ("log", "process"):
             output = result(" ".join(key), "stdin", raw, {"fallback": policy.get("fallback", {}).get("on_timeout", "codex")}, status="timeout", errors=[{"code": "timeout_before_execution"}])
-        elif key in {("git", "facts"), ("files", "inventory"), ("evidence", "build"), ("context", "pack")} and (
+        elif key in {("git", "facts"), ("files", "inventory"), ("evidence", "build"), ("context", "pack"), ("codex", "run")} and (
             not isinstance(payload.get("repository_root"), str)
             or not payload["repository_root"]
             or not root_allowed(policy, payload["repository_root"], Path.cwd())
@@ -158,7 +166,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             if key == ("context", "pack"):
                 payload["max_context_files"] = min(int(payload.get("max_context_files", limits.get("max_context_files", 20))), int(limits.get("max_context_files", 20)))
-            output = log_cluster(payload, policy) if key == ("log", "cluster") else log_process(payload, policy) if key == ("log", "process") else COMMANDS[key](payload)
+            output = codex_run(payload, policy) if key == ("codex", "run") else log_cluster(payload, policy) if key == ("log", "cluster") else log_process(payload, policy) if key == ("log", "process") else COMMANDS[key](payload)
         if not valid_tool_result(output):
             output = result(" ".join(key), "stdin", raw, {"fallback": policy.get("fallback", {}).get("on_invalid_schema", "codex")}, status="internal_error", errors=[{"code": "invalid_output_schema"}])
     except (OSError, ValueError):
