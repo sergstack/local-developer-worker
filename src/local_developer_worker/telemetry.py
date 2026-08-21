@@ -16,12 +16,29 @@ SAFE_FIELDS = {
     "run_id",
     "error_code",
 }
+CODEX_RUN_FIELDS = {
+    "record_type",
+    "schema_version",
+    "run_id",
+    "profile",
+    "model_alias",
+    "effort",
+    "terminal_status",
+    "verification_status",
+    "fallback_count",
+    "escalation_count",
+    "input_tokens",
+    "cached_input_tokens",
+    "output_tokens",
+    "reasoning_output_tokens",
+}
 LEGACY_SAFE_FIELDS = SAFE_FIELDS - {"error_code"}
 KNOWN_ERROR_CODES = frozenset(
     {
         "capability_disabled",
         "cases_must_be_list",
         "conflicting_cli_option",
+        "codex_git_preflight_failed",
         "duplicate_evidence_id",
         "evidence_items_must_be_list",
         "evidence_package_required",
@@ -71,6 +88,9 @@ KNOWN_ERROR_CODES = frozenset(
 USEFULNESS_MARK_FIELDS = {"run_id", "mark"}
 USEFULNESS_MARKS = {"helped", "not_helped", "unclear"}
 RUN_ID_PATTERN = re.compile(r"RUN-[A-Za-z0-9][A-Za-z0-9_-]{0,127}\Z")
+CODEX_PROFILES = {"efficient", "balanced", "frontier"}
+CODEX_TERMINAL_STATUSES = {"pass", "failed", "blocked"}
+CODEX_VERIFICATION_STATUSES = {"passed", "failed", "uncertain", "not_run"}
 
 
 def valid_telemetry_event(event: Any) -> bool:
@@ -105,6 +125,50 @@ def telemetry_event(values: dict[str, Any]) -> dict[str, Any]:
         "run_id": str(values.get("run_id", "")),
         "error_code": error_code if isinstance(error_code, str) and error_code in KNOWN_ERROR_CODES else None,
     }
+
+
+def codex_run_event(values: dict[str, Any]) -> dict[str, Any]:
+    event = {
+        "record_type": "codex_run_event_v1",
+        "schema_version": "1.0.0",
+        "run_id": values.get("run_id"),
+        "profile": values.get("profile"),
+        "model_alias": values.get("model_alias"),
+        "effort": values.get("effort"),
+        "terminal_status": values.get("terminal_status"),
+        "verification_status": values.get("verification_status"),
+        "fallback_count": values.get("fallback_count", 0),
+        "escalation_count": values.get("escalation_count", 0),
+        "input_tokens": values.get("input_tokens"),
+        "cached_input_tokens": values.get("cached_input_tokens"),
+        "output_tokens": values.get("output_tokens"),
+        "reasoning_output_tokens": values.get("reasoning_output_tokens"),
+    }
+    if not valid_codex_run_event(event):
+        raise ValueError("invalid Codex telemetry event")
+    return event
+
+
+def valid_codex_run_event(event: Any) -> bool:
+    if not isinstance(event, dict) or set(event) != CODEX_RUN_FIELDS:
+        return False
+    if event["record_type"] != "codex_run_event_v1" or event["schema_version"] != "1.0.0":
+        return False
+    if not isinstance(event["run_id"], str) or RUN_ID_PATTERN.fullmatch(event["run_id"]) is None:
+        return False
+    if event["profile"] not in CODEX_PROFILES or not isinstance(event["model_alias"], str) or not event["model_alias"]:
+        return False
+    if not isinstance(event["effort"], str) or not event["effort"]:
+        return False
+    if event["terminal_status"] not in CODEX_TERMINAL_STATUSES or event["verification_status"] not in CODEX_VERIFICATION_STATUSES:
+        return False
+    if any(not isinstance(event[field], int) or isinstance(event[field], bool) or event[field] < 0 for field in ("fallback_count", "escalation_count")):
+        return False
+    for field in ("input_tokens", "cached_input_tokens", "output_tokens", "reasoning_output_tokens"):
+        value = event[field]
+        if value is not None and (not isinstance(value, int) or isinstance(value, bool) or value < 0):
+            return False
+    return True
 
 
 def telemetry_error_code(output: Any) -> str | None:
@@ -150,7 +214,7 @@ def usefulness_mark(values: dict[str, Any]) -> dict[str, str]:
 
 
 def valid_session_record(record: Any) -> bool:
-    return normalize_telemetry_event(record) is not None or valid_usefulness_mark(record)
+    return normalize_telemetry_event(record) is not None or valid_usefulness_mark(record) or valid_codex_run_event(record)
 
 
 def telemetry_mark(payload: dict[str, Any]) -> dict[str, Any]:
@@ -202,6 +266,7 @@ def telemetry_summary(payload: dict[str, Any]) -> dict[str, Any]:
             errors=[{"code": "invalid_telemetry_range", "detail": str(exc)}],
         )
     events = [record for record in records if valid_telemetry_event(record)]
+    codex_events = [record for record in records if valid_codex_run_event(record)]
     mark_records = [record for record in records if valid_usefulness_mark(record)]
     latest_marks = {record["run_id"]: record["mark"] for record in mark_records}
     mark_counts = {mark: sum(value == mark for value in latest_marks.values()) for mark in sorted(USEFULNESS_MARKS)}
@@ -240,6 +305,23 @@ def telemetry_summary(payload: dict[str, Any]) -> dict[str, Any]:
             "ratios": {
                 mark: round(count / marked_runs, 4) if marked_runs else 0.0
                 for mark, count in mark_counts.items()
+            },
+        },
+        "codex": {
+            "run_count": len(codex_events),
+            "profile_counts": {
+                profile: sum(event["profile"] == profile for event in codex_events)
+                for profile in sorted(CODEX_PROFILES)
+            },
+            "terminal_status_counts": {
+                status: sum(event["terminal_status"] == status for event in codex_events)
+                for status in sorted(CODEX_TERMINAL_STATUSES)
+            },
+            "fallback_count": sum(event["fallback_count"] for event in codex_events),
+            "escalation_count": sum(event["escalation_count"] for event in codex_events),
+            "tokens": {
+                field: sum(event[field] or 0 for event in codex_events)
+                for field in ("input_tokens", "cached_input_tokens", "output_tokens", "reasoning_output_tokens")
             },
         },
         "invalid_records": invalid_records,

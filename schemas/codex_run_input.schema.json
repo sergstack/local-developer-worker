@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local-developer-worker.invalid/schemas/codex_run_input.schema.json",
+  "title": "Codex run input v1",
+  "type": "object",
+  "required": ["task", "repository_root"],
+  "properties": {
+    "task": {"type": "string", "minLength": 1},
+    "repository_root": {"type": "string", "minLength": 1},
+    "policy_path": {"type": "string", "minLength": 1},
+    "task_class": {
+      "enum": ["routine_read_or_docs", "bounded_change_or_debug", "cross_cutting_or_high_risk", "ambiguous"]
+    },
+    "profile": {"enum": ["efficient", "balanced", "frontier"]},
+    "verification": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind"],
+          "properties": {"kind": {"const": "execution"}},
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "argv"],
+          "properties": {
+            "kind": {"enum": ["command", "test"]},
+            "argv": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}
