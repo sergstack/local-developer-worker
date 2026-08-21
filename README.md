@@ -58,6 +58,22 @@ printf '%s' '{"repository_root":".","task":"Review the README","verification":{"
 
 The adapter does not use `--ephemeral`, because exact-session resume needs Codex's own session rollout. LDW keeps the observed session ID only in process memory and never writes it to its telemetry, stdout, or session journal. LDW also never commits, merges, deploys, resets, stashes, or cleans the caller's working tree.
 
+### Offline routing calibration
+
+With `[codex.calibration].enabled = true`, operators can inspect aggregate
+privacy-safe routing evidence and generate a human-review candidate without
+changing the active policy:
+
+```sh
+ldw routing stats
+ldw routing calibrate
+ldw routing explain < request.json
+```
+
+Calibration never auto-applies a policy change, never weakens the deterministic
+risk floor, and does not invoke a provider. Details and evidence thresholds are
+in `docs/adaptive-codex-routing/calibration.md`.
+
 Set `enabled = false` to remove the execution surface entirely. Set `adaptive_routing = false` to keep execution enabled while restoring the configured fixed `default_profile`. See `docs/adaptive-codex-routing/SPEC.md` for the versioned contract and rollback details.
 
 ## Safety

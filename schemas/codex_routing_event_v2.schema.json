@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local-developer-worker.invalid/schemas/codex_routing_event_v2.schema.json",
+  "title": "Privacy-safe Codex routing calibration telemetry v2",
+  "type": "object",
+  "required": ["record_type", "schema_version", "run_id", "task_class", "routing_signal", "deterministic_risk_floor", "initial_profile", "initial_effort", "final_profile", "final_effort", "fallback_count", "escalation_count", "first_pass_verification_status", "final_verification_status", "terminal_status", "input_tokens", "cached_input_tokens", "output_tokens", "reasoning_output_tokens", "latency_ms", "policy_revision", "routing_revision", "alias_revision", "taxonomy_revision"],
+  "properties": {
+    "record_type": {"const": "codex_routing_event_v2"}, "schema_version": {"const": "2.1.0"},
+    "run_id": {"type": "string", "pattern": "^RUN-[A-Za-z0-9][A-Za-z0-9_-]{0,127}$"},
+    "task_class": {"enum": ["routine_read_or_docs", "bounded_change_or_debug", "cross_cutting_or_high_risk", "ambiguous"]},
+    "routing_signal": {"type": "string", "minLength": 1},
+    "deterministic_risk_floor": {"enum": ["efficient", "balanced", "frontier"]},
+    "initial_profile": {"enum": ["efficient", "balanced", "frontier"]}, "initial_effort": {"type": "string", "minLength": 1},
+    "final_profile": {"enum": ["efficient", "balanced", "frontier"]}, "final_effort": {"type": "string", "minLength": 1},
+    "fallback_count": {"type": "integer", "minimum": 0}, "escalation_count": {"type": "integer", "minimum": 0},
+    "first_pass_verification_status": {"enum": ["passed", "failed", "uncertain", "not_run", "not_observed"]},
+    "final_verification_status": {"enum": ["passed", "failed", "uncertain", "not_run"]}, "terminal_status": {"enum": ["pass", "failed", "blocked"]},
+    "input_tokens": {"type": ["integer", "null"], "minimum": 0}, "cached_input_tokens": {"type": ["integer", "null"], "minimum": 0}, "output_tokens": {"type": ["integer", "null"], "minimum": 0}, "reasoning_output_tokens": {"type": ["integer", "null"], "minimum": 0},
+    "latency_ms": {"type": "integer", "minimum": 0}, "policy_revision": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "routing_revision": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "alias_revision": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "taxonomy_revision": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "additionalProperties": false
+}

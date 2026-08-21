@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from jsonschema import validate
+from local_developer_worker.session_log import iter_records
 
 
 ROOT = Path(__file__).parents[2]
@@ -68,15 +69,26 @@ balanced = "frontier"
     )
 
 
-def _run(payload: dict) -> subprocess.CompletedProcess[str]:
+def _run(payload: dict, *, telemetry_root: Path | None = None) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, "-m", "local_developer_worker.cli", "codex", "run"],
         input=json.dumps(payload),
         text=True,
         capture_output=True,
         cwd=ROOT,
-        env={**os.environ, "PYTHONPATH": str(ROOT / "src"), "LDW_TELEMETRY_DISABLED": "1"},
+        env={
+            **os.environ, "PYTHONPATH": str(ROOT / "src"),
+            **({"LDW_SESSION_LOG_DIR": str(telemetry_root), "LDW_TELEMETRY_FORCE": "1"} if telemetry_root else {"LDW_TELEMETRY_DISABLED": "1"}),
+        },
         check=False,
+    )
+
+
+def _routing_run(action: str, payload: dict) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, "-m", "local_developer_worker.cli", "routing", action],
+        input=json.dumps(payload), text=True, capture_output=True, cwd=ROOT,
+        env={**os.environ, "PYTHONPATH": str(ROOT / "src"), "LDW_TELEMETRY_DISABLED": "1"}, check=False,
     )
 
 
@@ -156,3 +168,44 @@ def test_fixed_profile_flag_restores_configured_route(tmp_path):
     output = json.loads(completed.stdout)
     assert completed.returncode == 0
     assert output["data"]["profile"] == "balanced"
+
+
+def test_routing_cli_explain_and_stats_are_read_only_and_do_not_expose_concrete_model(tmp_path):
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    executable = tmp_path / "fake-codex"
+    executable.write_text("#!/bin/sh\nexit 0\n")
+    executable.chmod(0o700)
+    policy = tmp_path / "policy.toml"
+    _policy(policy, executable, repository)
+    explain = _routing_run("explain", {"task": "Review docs", "policy_path": str(policy)})
+    stats = _routing_run("stats", {"journal_root": str(tmp_path)})
+    explain_output, stats_output = json.loads(explain.stdout), json.loads(stats.stdout)
+    assert explain.returncode == stats.returncode == 0
+    assert explain_output["data"]["selected_profile"] == "efficient"
+    assert "model" not in explain_output["data"]
+    assert stats_output["data"]["population_analyzed"] == 0
+
+
+def test_codex_cli_emits_privacy_safe_v2_calibration_event(tmp_path):
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    subprocess.run(["git", "init", "-q", str(repository)], check=True)
+    executable = tmp_path / "fake-codex"
+    executable.write_text(
+        "#!/usr/bin/env python3\nimport json, sys\n"
+        "print('codex-cli 0.147.0') if sys.argv[1:] == ['--version'] else "
+        "print('--json --strict-config --ignore-user-config --ignore-rules --model --sandbox --cd --last') if sys.argv[-1:] == ['--help'] else "
+        "print(json.dumps({'type':'turn.completed','usage':{'input_tokens':7,'output_tokens':2}}))\n"
+    )
+    executable.chmod(0o700)
+    policy = tmp_path / "policy.toml"
+    _policy(policy, executable, repository)
+    completed = _run({"task": "Review documentation", "repository_root": str(repository), "policy_path": str(policy), "verification": {"kind": "execution"}}, telemetry_root=tmp_path / "journal")
+    records, invalid = iter_records(tmp_path / "journal")
+    v2 = [record for record in records if record.get("record_type") == "codex_routing_event_v2"]
+    assert completed.returncode == 0
+    assert invalid == 0
+    assert len(v2) == 1
+    assert v2[0]["task_class"] == "routine_read_or_docs"
+    assert "documentation" not in json.dumps(v2[0])

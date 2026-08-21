@@ -32,6 +32,18 @@ ROUTINE_SIGNALS = (
     ("docs", re.compile(r"\b(doc(?:s|umentation)?|readme|comment|typo|документ\w*|ридми\w*|комментар\w*|опечат\w*)\b", re.I)),
 )
 
+TAXONOMY_REVISION = hashlib.sha256(
+    json.dumps(
+        {
+            "task_classes": TASK_CLASSES,
+            "high_risk": [(code, pattern.pattern) for code, pattern in HIGH_RISK_SIGNALS],
+            "bounded": [(code, pattern.pattern) for code, pattern in BOUNDED_SIGNALS],
+            "routine": [(code, pattern.pattern) for code, pattern in ROUTINE_SIGNALS],
+        },
+        ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+    ).encode("utf-8")
+).hexdigest()
+
 
 class CodexConfigError(ValueError):
     def __init__(self, code: str, detail: str = "") -> None:
@@ -204,6 +216,37 @@ def validate_codex_policy(policy: dict[str, Any]) -> dict[str, Any]:
     retriable = raw.get("retriable_error_codes", [])
     if not isinstance(retriable, list) or any(not isinstance(item, str) or not item for item in retriable):
         raise CodexConfigError("invalid_codex_config", "invalid retriable errors")
+    calibration = raw.get("calibration", {})
+    if not isinstance(calibration, dict):
+        raise CodexConfigError("invalid_codex_config", "calibration must be a table")
+    calibration_defaults = {
+        "enabled": False,
+        "min_samples": 20,
+        "strong_sample": 50,
+        "max_age_days": 90,
+        "under_routing_escalation_rate": 0.35,
+        "under_routing_first_pass_rate": 0.8,
+        "over_routing_first_pass_rate": 0.95,
+    }
+    unknown_calibration = set(calibration) - set(calibration_defaults)
+    if unknown_calibration:
+        raise CodexConfigError("invalid_codex_config", "unknown calibration field")
+    calibration_values = {name: calibration.get(name, default) for name, default in calibration_defaults.items()}
+    if not isinstance(calibration_values["enabled"], bool) or any(
+        not isinstance(calibration_values[name], int) or isinstance(calibration_values[name], bool) or calibration_values[name] < 1
+        for name in ("min_samples", "strong_sample", "max_age_days")
+    ):
+        raise CodexConfigError("invalid_codex_config", "invalid calibration sample configuration")
+    if calibration_values["strong_sample"] < calibration_values["min_samples"] or any(
+        not isinstance(calibration_values[name], (int, float)) or isinstance(calibration_values[name], bool) or not 0 <= calibration_values[name] <= 1
+        for name in ("under_routing_escalation_rate", "under_routing_first_pass_rate", "over_routing_first_pass_rate")
+    ):
+        raise CodexConfigError("invalid_codex_config", "invalid calibration threshold configuration")
+    routing_revision = hashlib.sha256(json.dumps({
+        "adaptive_routing": raw.get("adaptive_routing", False), "default_profile": default_profile,
+        "risk_floor": risk_floor, "maximum_profile": maximum_profile, "escalation": normalized_escalation,
+    }, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    alias_revision = hashlib.sha256(json.dumps({"profiles": normalized_profiles, "aliases": normalized_aliases}, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=list).encode("utf-8")).hexdigest()
     return {
         "adaptive_routing": raw.get("adaptive_routing", False),
         "allow_profile_downgrade": raw.get("allow_profile_downgrade", False),
@@ -230,6 +273,9 @@ def validate_codex_policy(policy: dict[str, Any]) -> dict[str, Any]:
         "policy_revision": hashlib.sha256(
             json.dumps(raw, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
         ).hexdigest(),
+        "routing_revision": routing_revision,
+        "alias_revision": alias_revision,
+        "taxonomy_revision": TAXONOMY_REVISION,
     }
 
 

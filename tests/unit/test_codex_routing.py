@@ -116,3 +116,10 @@ def test_fallback_cycle_is_rejected_at_configuration_time():
     }
     with pytest.raises(CodexConfigError):
         validate_codex_policy(policy)
+
+
+def test_invalid_calibration_configuration_fails_closed():
+    policy = codex_policy()
+    policy["codex"]["calibration"] = {"enabled": True, "min_samples": 50, "strong_sample": 20}
+    with pytest.raises(CodexConfigError):
+        validate_codex_policy(policy)

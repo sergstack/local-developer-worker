@@ -32,6 +32,14 @@ CODEX_RUN_FIELDS = {
     "output_tokens",
     "reasoning_output_tokens",
 }
+CODEX_ROUTING_V2_FIELDS = {
+    "record_type", "schema_version", "run_id", "task_class", "routing_signal",
+    "deterministic_risk_floor", "initial_profile", "initial_effort", "final_profile",
+    "final_effort", "fallback_count", "escalation_count", "first_pass_verification_status",
+    "final_verification_status", "terminal_status", "input_tokens", "cached_input_tokens",
+    "output_tokens", "reasoning_output_tokens", "latency_ms", "policy_revision",
+    "routing_revision", "alias_revision", "taxonomy_revision",
+}
 LEGACY_SAFE_FIELDS = SAFE_FIELDS - {"error_code"}
 KNOWN_ERROR_CODES = frozenset(
     {
@@ -49,6 +57,7 @@ KNOWN_ERROR_CODES = frozenset(
         "input_size_exceeded",
         "internal_error",
         "invalid_context_input",
+        "invalid_calibration_input",
         "invalid_evidence_reference",
         "invalid_json",
         "invalid_output_schema",
@@ -56,6 +65,7 @@ KNOWN_ERROR_CODES = frozenset(
         "invalid_portfolio",
         "invalid_previous_package",
         "invalid_repository_root",
+        "invalid_routing_explain",
         "invalid_semantic_candidates",
         "invalid_telemetry_range",
         "invalid_telemetry_records",
@@ -91,6 +101,7 @@ RUN_ID_PATTERN = re.compile(r"RUN-[A-Za-z0-9][A-Za-z0-9_-]{0,127}\Z")
 CODEX_PROFILES = {"efficient", "balanced", "frontier"}
 CODEX_TERMINAL_STATUSES = {"pass", "failed", "blocked"}
 CODEX_VERIFICATION_STATUSES = {"passed", "failed", "uncertain", "not_run"}
+CALIBRATION_FIRST_PASS_STATUSES = CODEX_VERIFICATION_STATUSES | {"not_observed"}
 
 
 def valid_telemetry_event(event: Any) -> bool:
@@ -171,6 +182,67 @@ def valid_codex_run_event(event: Any) -> bool:
     return True
 
 
+def codex_routing_event_v2(values: dict[str, Any]) -> dict[str, Any]:
+    """Return the calibration-only, privacy-safe extension for a Codex run."""
+    event = {
+        "record_type": "codex_routing_event_v2",
+        "schema_version": "2.1.0",
+        "run_id": values.get("run_id"),
+        "task_class": values.get("task_class"),
+        "routing_signal": values.get("routing_signal"),
+        "deterministic_risk_floor": values.get("deterministic_risk_floor"),
+        "initial_profile": values.get("initial_profile"),
+        "initial_effort": values.get("initial_effort"),
+        "final_profile": values.get("final_profile"),
+        "final_effort": values.get("final_effort"),
+        "fallback_count": values.get("fallback_count", 0),
+        "escalation_count": values.get("escalation_count", 0),
+        "first_pass_verification_status": values.get("first_pass_verification_status", "not_observed"),
+        "final_verification_status": values.get("final_verification_status"),
+        "terminal_status": values.get("terminal_status"),
+        "input_tokens": values.get("input_tokens"),
+        "cached_input_tokens": values.get("cached_input_tokens"),
+        "output_tokens": values.get("output_tokens"),
+        "reasoning_output_tokens": values.get("reasoning_output_tokens"),
+        "latency_ms": values.get("latency_ms"),
+        "policy_revision": values.get("policy_revision"),
+        "routing_revision": values.get("routing_revision"),
+        "alias_revision": values.get("alias_revision"),
+        "taxonomy_revision": values.get("taxonomy_revision"),
+    }
+    if not valid_codex_routing_event_v2(event):
+        raise ValueError("invalid Codex routing calibration event")
+    return event
+
+
+def valid_codex_routing_event_v2(event: Any) -> bool:
+    if not isinstance(event, dict) or set(event) != CODEX_ROUTING_V2_FIELDS:
+        return False
+    if event["record_type"] != "codex_routing_event_v2" or event["schema_version"] != "2.1.0":
+        return False
+    if not isinstance(event["run_id"], str) or RUN_ID_PATTERN.fullmatch(event["run_id"]) is None:
+        return False
+    if event["task_class"] not in {"routine_read_or_docs", "bounded_change_or_debug", "cross_cutting_or_high_risk", "ambiguous"}:
+        return False
+    if not all(isinstance(event[field], str) and event[field] for field in ("routing_signal", "initial_effort", "final_effort")):
+        return False
+    if any(event[field] not in CODEX_PROFILES for field in ("deterministic_risk_floor", "initial_profile", "final_profile")):
+        return False
+    if event["terminal_status"] not in CODEX_TERMINAL_STATUSES or event["final_verification_status"] not in CODEX_VERIFICATION_STATUSES:
+        return False
+    if event["first_pass_verification_status"] not in CALIBRATION_FIRST_PASS_STATUSES:
+        return False
+    if any(not isinstance(event[field], str) or not re.fullmatch(r"[0-9a-f]{64}", event[field]) for field in ("policy_revision", "routing_revision", "alias_revision", "taxonomy_revision")):
+        return False
+    if any(not isinstance(event[field], int) or isinstance(event[field], bool) or event[field] < 0 for field in ("fallback_count", "escalation_count", "latency_ms")):
+        return False
+    for field in ("input_tokens", "cached_input_tokens", "output_tokens", "reasoning_output_tokens"):
+        value = event[field]
+        if value is not None and (not isinstance(value, int) or isinstance(value, bool) or value < 0):
+            return False
+    return True
+
+
 def telemetry_error_code(output: Any) -> str | None:
     """Return only the first known public error or warning code."""
     if not isinstance(output, dict):
@@ -214,7 +286,7 @@ def usefulness_mark(values: dict[str, Any]) -> dict[str, str]:
 
 
 def valid_session_record(record: Any) -> bool:
-    return normalize_telemetry_event(record) is not None or valid_usefulness_mark(record) or valid_codex_run_event(record)
+    return normalize_telemetry_event(record) is not None or valid_usefulness_mark(record) or valid_codex_run_event(record) or valid_codex_routing_event_v2(record)
 
 
 def telemetry_mark(payload: dict[str, Any]) -> dict[str, Any]:

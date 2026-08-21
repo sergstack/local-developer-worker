@@ -56,3 +56,14 @@ fallback_aliases = []
 [codex.escalation]
 efficient = "balanced"
 balanced = "frontier"
+
+# Aggregate calibration is opt-in and can only propose a revision. It does not
+# mutate this policy, aliases, or any execution authority.
+[codex.calibration]
+enabled = false
+min_samples = 20
+strong_sample = 50
+max_age_days = 90
+under_routing_escalation_rate = 0.35
+under_routing_first_pass_rate = 0.80
+over_routing_first_pass_rate = 0.95

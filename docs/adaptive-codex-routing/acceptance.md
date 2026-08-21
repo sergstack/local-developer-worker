@@ -131,3 +131,15 @@ does not expose those fields. This is not a production-readiness claim.
 
 Obtain provider-side model/effort attestation (or a documented Codex JSONL/API
 field that exposes it) before claiming full live model-switch verification.
+
+## v2 calibration review — offline acceptance
+
+| Invariant | Status | Evidence |
+|---|---|---|
+| Policy/revision isolation | PASS | v2.1 telemetry carries policy, routing, alias, and taxonomy revision hashes; mixed records are separated and incompatible records excluded from calibration. |
+| Independent-task sample counting | PASS | One terminal `ldw codex run` record is one observation; duplicate same-run records deduplicate and conflicting same-run records are excluded. |
+| Temporal/model drift | PASS | Policy-configurable `min_samples`, `strong_sample`, and `max_age_days`; stale and incompatible observations cannot form a candidate. |
+| Active-policy mutation | PASS | Calibration creates only a pending-human-acceptance candidate revision. |
+
+The v2 review is offline evidence only. It does not change the earlier live
+provider evidence or provider-side model/effort status.
