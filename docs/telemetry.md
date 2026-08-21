@@ -12,6 +12,14 @@ Manual usefulness is a separate record type and does not expand `SAFE_FIELDS`. `
 
 Opt-in Codex execution uses a third, versioned record type, `codex_run_event_v1`, rather than expanding `SAFE_FIELDS`. Its exact fields are `record_type`, `schema_version`, `run_id`, abstract `profile`, policy `model_alias`, `effort`, terminal and verification statuses, fallback and escalation counts, and nullable input/cached-input/output/reasoning-output token counts. It excludes the task, prompt, source, paths, commands, concrete model ID, session/thread ID, provider response, and secrets. Credits are not recorded because the supported Codex JSONL contract has no stable credit observation.
 
+The optional calibration layer adds a separate `codex_routing_event_v2` record,
+also with an exact allowlist. It records only generic task class and signal,
+risk floor, initial/final profile and effort, fallback/escalation and
+verification outcomes, nullable token counters, latency, and policy revision.
+It excludes task text, prompts, source, paths, commands, concrete models,
+thread/session IDs, provider responses, credentials, and secrets. See
+`docs/adaptive-codex-routing/calibration.md` for the complete contract.
+
 ## Append-only journal
 
 The CLI appends canonical JSON records to `.repo_index/ldw_sessions/YYYY-MM-DD.jsonl`. The date lives in the partition name so it does not expand either record type. Telemetry events and usefulness marks both use append mode and never truncate or mutate an existing record. Generated journal data is ignored by Git. Calls made by pytest are excluded from automatic real-session telemetry unless a telemetry test explicitly opts in; an explicit `telemetry mark` command remains the requested write itself. If automatic telemetry is unavailable, the original evidence result remains unchanged and the CLI emits only the generic `telemetry_write_failed` diagnostic to stderr. A failed manual mark remains visibly partial and is not reported as recorded.

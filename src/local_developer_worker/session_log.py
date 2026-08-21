@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from .contracts import canonical_json
-from .telemetry import normalize_telemetry_event, valid_codex_run_event, valid_session_record, valid_telemetry_event, valid_usefulness_mark
+from .telemetry import normalize_telemetry_event, valid_codex_routing_event_v2, valid_codex_run_event, valid_session_record, valid_telemetry_event, valid_usefulness_mark
 
 DEFAULT_ROOT = Path(__file__).parents[2] / ".repo_index" / "ldw_sessions"
 
@@ -18,7 +18,7 @@ def session_root(value: str | Path | None = None) -> Path:
 
 
 def append_event(event: dict[str, Any], root: str | Path | None = None, *, event_date: date | None = None) -> Path:
-    if not valid_telemetry_event(event) and not valid_usefulness_mark(event) and not valid_codex_run_event(event):
+    if not valid_telemetry_event(event) and not valid_usefulness_mark(event) and not valid_codex_run_event(event) and not valid_codex_routing_event_v2(event):
         raise ValueError("invalid session record")
     destination = session_root(root)
     destination.mkdir(parents=True, exist_ok=True)
@@ -38,12 +38,12 @@ def append_event(event: dict[str, Any], root: str | Path | None = None, *, event
     return partition
 
 
-def iter_records(root: str | Path | None = None, *, date_from: str | None = None, date_to: str | None = None) -> tuple[list[dict[str, Any]], int]:
+def iter_dated_records(root: str | Path | None = None, *, date_from: str | None = None, date_to: str | None = None) -> tuple[list[tuple[dict[str, Any], date]], int]:
     start = date.fromisoformat(date_from) if date_from else None
     end = date.fromisoformat(date_to) if date_to else None
     if start and end and start > end:
         raise ValueError("date_from must be on or before date_to")
-    records: list[dict[str, Any]] = []
+    records: list[tuple[dict[str, Any], date]] = []
     invalid = 0
     source = session_root(root)
     if not source.is_dir():
@@ -73,8 +73,13 @@ def iter_records(root: str | Path | None = None, *, date_from: str | None = None
             if not valid_session_record(event):
                 invalid += 1
                 continue
-            records.append(normalize_telemetry_event(event) or event)
+            records.append((normalize_telemetry_event(event) or event, partition_date))
     return records, invalid
+
+
+def iter_records(root: str | Path | None = None, *, date_from: str | None = None, date_to: str | None = None) -> tuple[list[dict[str, Any]], int]:
+    records, invalid = iter_dated_records(root, date_from=date_from, date_to=date_to)
+    return [record for record, _ in records], invalid
 
 
 def iter_events(root: str | Path | None = None, *, date_from: str | None = None, date_to: str | None = None) -> tuple[list[dict[str, Any]], int]:

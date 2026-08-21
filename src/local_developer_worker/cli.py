@@ -9,13 +9,15 @@ from collections.abc import Callable
 from pathlib import Path
 
 from .codex_runner import codex_run
+from .codex_routing import route_task, validate_codex_policy
 from .contracts import canonical_json, result, valid_tool_result
 from .policy import allowed, load_policy, root_allowed
 from .portfolio import portfolio_status, portfolio_verify
 from .session_log import append_event
 from .stage_b_cluster import log_cluster
 from .log_process import log_process
-from .telemetry import codex_run_event, telemetry_error_code, telemetry_event, telemetry_mark, telemetry_summary
+from .routing_calibration import routing_calibrate, routing_explain, routing_stats
+from .telemetry import codex_routing_event_v2, codex_run_event, telemetry_error_code, telemetry_event, telemetry_mark, telemetry_summary
 from .tools import benchmark_run, context_pack, doctor, evidence_build, file_inventory, git_facts, parse_log, parse_tests, report_summarize
 
 COMMANDS: dict[tuple[str, ...], Callable[[dict], dict]] = {
@@ -35,6 +37,7 @@ COMMANDS: dict[tuple[str, ...], Callable[[dict], dict]] = {
     ("portfolio", "verify"): portfolio_verify,
     ("portfolio", "status"): portfolio_status,
     ("codex", "run"): codex_run,
+    ("routing", "stats"): routing_stats,
 }
 CAPABILITIES = {
     ("log", "parse"): "structured_log_parser", ("log", "cluster"): "semantic_log_clustering", ("log", "process"): "structured_log_parser",
@@ -68,6 +71,10 @@ def _parser() -> argparse.ArgumentParser:
     portfolio.add_parser("status")
     codex = sub.add_parser("codex").add_subparsers(dest="action", required=True)
     codex.add_parser("run")
+    routing = sub.add_parser("routing").add_subparsers(dest="action", required=True)
+    routing.add_parser("stats")
+    routing.add_parser("calibrate")
+    routing.add_parser("explain")
     return parser
 
 
@@ -87,29 +94,71 @@ def _context_reduction(key: tuple[str, ...], payload: dict, output: dict) -> tup
     return f"{tool}/context", round((total - selected_bytes) / total, 4) if total else None
 
 
+def _task_class(signal: str, uncertain: bool) -> str:
+    if signal.startswith("structured:"):
+        return signal.split(":", 1)[1]
+    if uncertain:
+        return "ambiguous"
+    if signal in {"text:security", "text:production", "text:cross_cutting"}:
+        return "cross_cutting_or_high_risk"
+    if signal in {"text:debug", "text:bounded_change"}:
+        return "bounded_change_or_debug"
+    if signal in {"text:read", "text:docs"}:
+        return "routine_read_or_docs"
+    # Fixed-profile rollback and future signal types cannot be safely inferred.
+    return "ambiguous"
+
+
+def _calibration_event(output: dict, payload: dict, elapsed_ms: int) -> dict | None:
+    data = output.get("data", {})
+    if not isinstance(data, dict) or not data.get("profile") or not isinstance(payload.get("task"), str):
+        return None
+    try:
+        config = validate_codex_policy(load_policy(payload.get("policy_path")))
+        initial = route_task(payload["task"], payload, config)
+        first = data["verification_status"] if data["fallback_count"] == 0 and data["escalation_count"] == 0 else "not_observed"
+        return codex_routing_event_v2({
+            "run_id": output["run_id"], "task_class": _task_class(initial.signal, initial.uncertain), "routing_signal": initial.signal,
+            "deterministic_risk_floor": initial.deterministic_risk_floor, "initial_profile": initial.profile, "initial_effort": initial.effort,
+            "final_profile": data["profile"], "final_effort": data["effort"], "fallback_count": data["fallback_count"],
+            "escalation_count": data["escalation_count"], "first_pass_verification_status": first,
+            "final_verification_status": data["verification_status"], "terminal_status": data["terminal_status"],
+            "input_tokens": data["input_tokens"], "cached_input_tokens": data["cached_input_tokens"], "output_tokens": data["output_tokens"],
+            "reasoning_output_tokens": data["reasoning_output_tokens"], "latency_ms": elapsed_ms, "policy_revision": initial.policy_revision,
+            "routing_revision": config["routing_revision"], "alias_revision": config["alias_revision"], "taxonomy_revision": config["taxonomy_revision"],
+        })
+    except (KeyError, ValueError):
+        return None
+
+
 def _emit(output: dict, key: tuple[str, ...], payload: dict, raw: str, started: float) -> int:
     stdout_text = canonical_json(output) + "\n"
     if os.environ.get("LDW_TELEMETRY_DISABLED") != "1" and (
         "PYTEST_CURRENT_TEST" not in os.environ or os.environ.get("LDW_TELEMETRY_FORCE") == "1"
     ):
         telemetry_tool, context_reduction = _context_reduction(key, payload, output)
-        event = (
-            codex_run_event({"run_id": output["run_id"], **output.get("data", {})})
-            if key == ("codex", "run") and output.get("data", {}).get("profile") is not None
-            else telemetry_event({
+        elapsed_ms = round((time.perf_counter() - started) * 1000)
+        events = []
+        if key == ("codex", "run") and output.get("data", {}).get("profile") is not None:
+            events.append(codex_run_event({"run_id": output["run_id"], **output.get("data", {})}))
+            calibration = _calibration_event(output, payload, elapsed_ms)
+            if calibration is not None:
+                events.append(calibration)
+        else:
+            events.append(telemetry_event({
                 "tool": telemetry_tool,
                 "input_bytes": len(raw.encode("utf-8")),
                 "output_bytes": len(stdout_text.encode("utf-8")),
-                "latency_ms": round((time.perf_counter() - started) * 1000),
+                "latency_ms": elapsed_ms,
                 "status": output["status"],
                 "fallback_used": bool(output.get("data", {}).get("fallback_used", output.get("data", {}).get("fallback"))),
                 "context_reduction": context_reduction,
                 "run_id": output["run_id"],
                 "error_code": telemetry_error_code(output),
-            })
-        )
+            }))
         try:
-            append_event(event)
+            for event in events:
+                append_event(event)
         except (OSError, ValueError):
             print("telemetry_write_failed", file=sys.stderr)
     sys.stdout.write(stdout_text)
@@ -166,7 +215,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             if key == ("context", "pack"):
                 payload["max_context_files"] = min(int(payload.get("max_context_files", limits.get("max_context_files", 20))), int(limits.get("max_context_files", 20)))
-            output = codex_run(payload, policy) if key == ("codex", "run") else log_cluster(payload, policy) if key == ("log", "cluster") else log_process(payload, policy) if key == ("log", "process") else COMMANDS[key](payload)
+            output = codex_run(payload, policy) if key == ("codex", "run") else routing_calibrate(payload, policy) if key == ("routing", "calibrate") else routing_explain(payload, policy) if key == ("routing", "explain") else log_cluster(payload, policy) if key == ("log", "cluster") else log_process(payload, policy) if key == ("log", "process") else COMMANDS[key](payload)
         if not valid_tool_result(output):
             output = result(" ".join(key), "stdin", raw, {"fallback": policy.get("fallback", {}).get("on_invalid_schema", "codex")}, status="internal_error", errors=[{"code": "invalid_output_schema"}])
     except (OSError, ValueError):
