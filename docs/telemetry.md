@@ -19,7 +19,12 @@ accepted/rejected state, and adaptive/fixed mode. It also records risk floor,
 initial/final profile and effort, fallback/escalation and
 verification outcomes, nullable token counters, latency, and policy revision.
 It excludes task text, prompts, source, paths, commands, concrete models,
-thread/session IDs, provider responses, credentials, and secrets. See
+thread/session IDs, provider responses, credentials, and secrets. Version 2.3
+adds the boolean `calibration_eligible`; blocked or non-executed operations stay
+observable but do not increase calibration population. Cached input is a subset
+of input, and reasoning inclusion in output is unknown, so canonical provider
+totals use `input_tokens + output_tokens` without adding cached or reasoning a
+second time. See
 `docs/adaptive-codex-routing/calibration.md` for the complete contract.
 
 ## Append-only journal

@@ -21,13 +21,14 @@ REVISION_FIELDS = ("policy_revision", "routing_revision", "alias_revision", "tax
 def _events(payload: dict[str, Any], *, max_age_days: int | None = None) -> tuple[list[dict[str, Any]], dict[str, int]]:
     records, invalid = iter_dated_records(payload.get("journal_root"), date_from=payload.get("date_from"), date_to=payload.get("date_to"))
     rows = [(record, observed_on) for record, observed_on in records if valid_codex_routing_event_v2(record)]
-    by_run: dict[str, list[tuple[dict[str, Any], date]]] = defaultdict(list)
+    by_run: dict[tuple[str, str, str, str, str], list[tuple[dict[str, Any], date]]] = defaultdict(list)
     for record, observed_on in rows:
-        by_run[record["run_id"]].append((record, observed_on))
+        revision_key = tuple(record[field] for field in REVISION_FIELDS)
+        by_run[(record["run_id"], *revision_key)].append((record, observed_on))
     events, duplicate_runs, conflicting_runs, stale = [], 0, 0, 0
     today = date.today()
-    for run_id in sorted(by_run):
-        candidates = by_run[run_id]
+    for run_key in sorted(by_run):
+        candidates = by_run[run_key]
         serialized = {canonical_json(record) for record, _ in candidates}
         if len(serialized) > 1:
             conflicting_runs += 1
@@ -39,6 +40,14 @@ def _events(payload: dict[str, Any], *, max_age_days: int | None = None) -> tupl
             continue
         normalized = dict(record)
         normalized["task_class"] = record.get("base_task_class", record.get("task_class"))
+        normalized["calibration_eligible"] = (
+            record["calibration_eligible"]
+            if record.get("schema_version") == "2.3.0"
+            else record.get("terminal_status") == "pass"
+            and record.get("final_verification_status") == "passed"
+            and record.get("input_tokens") is not None
+            and record.get("output_tokens") is not None
+        )
         events.append(normalized)
     return events, {"invalid_records": invalid, "duplicate_attempt_records": duplicate_runs, "conflicting_run_records": conflicting_runs, "stale_records": stale}
 
@@ -49,6 +58,25 @@ def _median(values: list[int | float]) -> int | float | None:
 
 def _rate(numerator: int, denominator: int) -> float | None:
     return round(numerator / denominator, 4) if denominator else None
+
+
+def _non_cached_input(event: dict[str, Any]) -> int | None:
+    input_tokens, cached_tokens = event.get("input_tokens"), event.get("cached_input_tokens")
+    if input_tokens is None or cached_tokens is None:
+        return None
+    return max(0, input_tokens - cached_tokens)
+
+
+def _provider_total(event: dict[str, Any]) -> int | None:
+    input_tokens, output_tokens = event.get("input_tokens"), event.get("output_tokens")
+    if input_tokens is None or output_tokens is None:
+        return None
+    return input_tokens + output_tokens
+
+
+def _observed_values(rows: list[dict[str, Any]], getter) -> list[int]:
+    values = [getter(row) for row in rows]
+    return [value for value in values if value is not None]
 
 
 def _group(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -74,7 +102,13 @@ def _group(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "under_routing_rate": _rate(sum(row["escalation_count"] > 0 for row in rows), len(rows)),
             "fallback_rate": _rate(sum(row["fallback_count"] > 0 for row in rows), len(rows)),
             "failed_or_blocked_rate": _rate(sum(row["terminal_status"] != "pass" for row in rows), len(rows)),
-            "median_tokens_per_verified_task": _median([sum(row[field] or 0 for field in ("input_tokens", "cached_input_tokens", "output_tokens", "reasoning_output_tokens")) for row in verified]),
+            "median_input_tokens_per_verified_task": _median(_observed_values(verified, lambda row: row.get("input_tokens"))),
+            "median_cached_input_tokens_per_verified_task": _median(_observed_values(verified, lambda row: row.get("cached_input_tokens"))),
+            "median_non_cached_input_tokens_per_verified_task": _median(_observed_values(verified, _non_cached_input)),
+            "median_output_tokens_per_verified_task": _median(_observed_values(verified, lambda row: row.get("output_tokens"))),
+            "median_reasoning_tokens_per_verified_task": _median(_observed_values(verified, lambda row: row.get("reasoning_output_tokens"))),
+            "median_provider_total_tokens_per_verified_task": _median(_observed_values(verified, _provider_total)),
+            "reasoning_in_output_status": "unknown",
             "median_latency_ms_per_verified_task": _median([row["latency_ms"] for row in verified]),
             "profile_distribution": {item: sum(row["final_profile"] == item for row in rows) for item in PROFILES},
             "effort_distribution": {item: sum(row["final_effort"] == item for row in rows) for item in sorted({row["final_effort"] for row in rows})},
@@ -86,12 +120,14 @@ def _group(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def routing_stats(payload: dict[str, Any]) -> dict[str, Any]:
     raw = canonical_json(payload)
     try:
-        events, diagnostics = _events(payload)
+        all_events, diagnostics = _events(payload)
     except (OSError, ValueError) as exc:
         return result("routing_stats", "session_log", raw, {}, status="invalid_input", errors=[{"code": "invalid_telemetry_range", "detail": str(exc)}])
+    events = [event for event in all_events if event["calibration_eligible"]]
+    excluded_ineligible = len(all_events) - len(events)
     groups = _group(events)
     mixed = len({tuple(group["revision"].values()) for group in groups}) > 1
-    data = {"population_analyzed": len(events), "task_classes": groups, "mixed_revision_population": mixed, **diagnostics}
+    data = {"operational_records": len(all_events), "population_analyzed": len(events), "excluded_ineligible_records": excluded_ineligible, "task_classes": groups, "mixed_revision_population": mixed, **diagnostics}
     return result("routing_stats", "session_log", raw, data, status="partial" if any(diagnostics.values()) else "success")
 
 
@@ -124,7 +160,8 @@ def _replay(events: list[dict[str, Any]], proposals: list[dict[str, Any]]) -> di
             "task_class": proposal["task_class"], "current_profile": proposal["from_profile"], "candidate_profile": proposal["to_profile"],
             "observed_escalation_count": sum(event["escalation_count"] for event in rows),
             "observed_final_verification": {status: sum(event["final_verification_status"] == status for event in rows) for status in ("passed", "failed", "uncertain", "not_run")},
-            "available_median_tokens": _median([sum(event[field] or 0 for field in ("input_tokens", "cached_input_tokens", "output_tokens", "reasoning_output_tokens")) for event in rows if event["terminal_status"] == "pass" and event["final_verification_status"] == "passed"]),
+            "available_median_provider_total_tokens": _median(_observed_values([event for event in rows if event["terminal_status"] == "pass" and event["final_verification_status"] == "passed"], _provider_total)),
+            "reasoning_in_output_status": "unknown",
             "available_median_latency_ms": _median([event["latency_ms"] for event in rows if event["terminal_status"] == "pass"]),
             "counterfactual_outcome": "unverified",
         })
@@ -144,14 +181,17 @@ def routing_calibrate(payload: dict[str, Any], policy: dict[str, Any]) -> dict[s
     try:
         config = validate_codex_policy(policy)
         calibration = _calibration_config(policy)
-        all_events, diagnostics = _events(payload, max_age_days=calibration["max_age_days"])
+        operational_events, diagnostics = _events(payload, max_age_days=calibration["max_age_days"])
     except (OSError, ValueError) as exc:
         return result("routing_calibrate", "session_log", raw, {}, status="invalid_input", errors=[{"code": "invalid_calibration_input", "detail": str(exc)}])
     if not calibration["enabled"]:
-        return result("routing_calibrate", "session_log", raw, {"current_policy_revision": config["policy_revision"], "population_analyzed": len(all_events), "verdict": "keep", "reason": "calibration_disabled", "proposed_changes": [], "replay": {"status": "not_run"}, **diagnostics}, status="partial" if any(diagnostics.values()) else "success")
+        eligible = [event for event in operational_events if event["calibration_eligible"]]
+        return result("routing_calibrate", "session_log", raw, {"current_policy_revision": config["policy_revision"], "operational_records": len(operational_events), "population_analyzed": len(eligible), "excluded_ineligible_records": len(operational_events) - len(eligible), "verdict": "keep", "reason": "calibration_disabled", "proposed_changes": [], "replay": {"status": "not_run"}, **diagnostics}, status="partial" if any(diagnostics.values()) else "success")
     current_revision = {"policy_revision": config["policy_revision"], "routing_revision": config["routing_revision"], "alias_revision": config["alias_revision"], "taxonomy_revision": config["taxonomy_revision"]}
-    events = [event for event in all_events if all(event[field] == value for field, value in current_revision.items())]
-    incompatible = len(all_events) - len(events)
+    eligible_events = [event for event in operational_events if event["calibration_eligible"]]
+    excluded_ineligible = len(operational_events) - len(eligible_events)
+    events = [event for event in eligible_events if all(event[field] == value for field, value in current_revision.items())]
+    incompatible = len(eligible_events) - len(events)
     groups = _group(events)
     proposals: list[dict[str, Any]] = []
     for group in groups:
@@ -175,7 +215,7 @@ def routing_calibrate(payload: dict[str, Any], policy: dict[str, Any]) -> dict[s
         "affected_task_classes": sorted({proposal["task_class"] for proposal in proposals}), "thresholds": {key: value for key, value in calibration.items() if key != "enabled"},
         "acceptance_status": "pending_human_acceptance", "rollback_target": config["policy_revision"],
     }
-    data = {"current_policy_revision": config["policy_revision"], "current_revision": current_revision, "population_analyzed": len(events), "excluded_incompatible_records": incompatible, "mixed_revision_population": incompatible > 0, "task_classes": groups, "detected_under_routing": [item for item in proposals if item["kind"] == "under_routing"], "detected_over_routing": [item for item in proposals if item["kind"] == "over_routing"], "proposed_changes": proposals, "candidate_revision": revision, "replay": _replay(events, proposals), "verdict": verdict, **diagnostics}
+    data = {"current_policy_revision": config["policy_revision"], "current_revision": current_revision, "operational_records": len(operational_events), "population_analyzed": len(events), "excluded_ineligible_records": excluded_ineligible, "excluded_incompatible_records": incompatible, "mixed_revision_population": incompatible > 0, "task_classes": groups, "detected_under_routing": [item for item in proposals if item["kind"] == "under_routing"], "detected_over_routing": [item for item in proposals if item["kind"] == "over_routing"], "proposed_changes": proposals, "candidate_revision": revision, "replay": _replay(events, proposals), "verdict": verdict, **diagnostics}
     return result("routing_calibrate", "session_log", raw, data, status="partial" if any(diagnostics.values()) or incompatible else "success")
 
 

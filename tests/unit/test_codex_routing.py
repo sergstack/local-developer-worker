@@ -97,6 +97,37 @@ def test_real_mutation_phrases_remain_bounded(task):
     assert (route.base_task_class, route.profile, route.signal) == ("bounded_change_or_debug", "balanced", "text:bounded_change")
 
 
+@pytest.mark.parametrize(
+    "task",
+    [
+        "Проанализируй реализованным behavior в README.",
+        "Проверь реализованную функцию.",
+        "Прочитай описание изменений.",
+        "Проверь историю изменений.",
+        "Review the implemented behavior.",
+        "Inspect the existing implementation.",
+    ],
+)
+def test_existing_state_descriptions_do_not_create_mutation_intent(task):
+    route = route_task(task, {}, validate_codex_policy(codex_policy()))
+    assert route.base_task_class == "routine_read_or_docs"
+    assert route.signal != "text:bounded_change"
+
+
+def test_last_real_documentation_task_routes_as_read_only_analysis():
+    task = (
+        "Проанализируй README.md и документацию Adaptive Codex Routing в текущем репозитории. "
+        "Найди противоречия между README и фактически реализованным routing/calibration behavior; "
+        "устаревшие формулировки; отсутствующие пользовательские инструкции по ldw codex run, "
+        "ldw routing stats и ldw routing calibrate. Ничего не изменяй. "
+        "Верни только findings с evidence по файлам."
+    )
+    route = route_task(task, {}, validate_codex_policy(codex_policy()))
+    assert (route.base_task_class, route.profile, route.signal, route.mutation_capable) == (
+        "routine_read_or_docs", "efficient", "text:docs", False,
+    )
+
+
 @pytest.mark.parametrize("task", ["Что можно улучшить?", "Посмотри и предложи улучшения.", "Что здесь стоит изменить?", "What can be improved?", "Look at this and suggest improvements.", "What improvements may be needed?", "What is worth changing here?"])
 def test_deterministic_ambiguity_signals(task):
     route = route_task(task, {}, validate_codex_policy(codex_policy()))

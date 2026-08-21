@@ -2,10 +2,10 @@
 
 ## Scope and authority
 
-This acceptance record covers the uncommitted feature branch
-`codex/adaptive-codex-routing` at `3bbe84ddd3f34f1b0e9b45567c60e598a33793a1`.
-No commit, push, merge, deployment, reset, stash, or repository cleanup was
-performed. The repository working tree was already dirty and was preserved.
+This record documents the accepted Adaptive Codex Routing contracts and their
+historical evidence. Current provenance belongs to Git history and the latest
+fresh validation report; this document intentionally does not pin a branch,
+working-tree state, commit SHA, or evergreen test count.
 
 The live configuration is deployment-owned, operator-supplied, and intentionally
 outside the repository. It keeps the generic classifier profiles, mapping them
@@ -38,23 +38,23 @@ the deployment policy does not claim `max` support.
 | Repository, network, and authority boundaries | PASS | Root gate, symlink/unlisted verifier rejection, direct argv, filtered environment, no automatic Git/deploy, and sandbox-network denial tests |
 | Privacy-safe telemetry | PASS | `codex_run_event_v1` allowlist/schema, malicious extra-field drop, and aggregate summary tests |
 | Fixed-profile and full-disable rollback | PASS | CLI disabled and `adaptive_routing=false` integration tests |
-| Existing LDW compatibility | PASS | Canonical suite parsed by LDW as passed: 233 observed tests, `RUN-f0ba337ff4923b2b` |
+| Existing LDW compatibility | PASS | Canonical suite is required to pass through `ldw test parse` in each fresh acceptance run |
 | Schema, TOML, compile, whitespace checks | PASS | Draft 2020-12 schemas, example TOML, compileall, CLI help, and `git diff --check` |
 
 Offline tests prove the adapter contract; fake provider processes do not prove
 provider availability, account authorization, or provider-side effective model
 selection.
 
-Focused Adaptive Routing suite: **PASS**, 37 observed tests, exit code 0,
-parsed by `ldw test parse` as `RUN-c3af9a18c381b4c4`.
+Focused and full-suite counts are deliberately not frozen here; use the latest
+acceptance report and its `ldw test parse` run IDs.
 
 ## Final validation record
 
 | Check | Status | Result |
 |---|---|---|
 | Deployment TOML plus routing-policy validation | PASS | Luna/Terra/Sol mapping accepted by `validate_codex_policy` |
-| Focused Adaptive Routing tests | PASS | 37 observed tests; `ldw test parse` `RUN-c3af9a18c381b4c4` |
-| Full canonical suite | PASS (previous offline evidence) | 233 observed tests; `RUN-f0ba337ff4923b2b` — not rerun for the live-only documentation/policy update |
+| Focused Adaptive Routing tests | Required | Fresh result must be established through `ldw test parse` |
+| Full canonical suite | Required | Fresh result must be established through `ldw test parse` |
 | JSON schema parse and Python compile | PASS | All `codex_*.schema.json` parsed; `compileall -q src` succeeded |
 | TOML parse | PASS | Deployment policy parsed by `tomllib` and validated above |
 | `git diff --check` | PASS | No whitespace errors |
@@ -62,11 +62,14 @@ parsed by `ldw test parse` as `RUN-c3af9a18c381b4c4`.
 
 ## Live evidence — controlled read-only smoke (2026-08-21)
 
-Each run used `ldw codex run` with an explicit generic profile, a routine
+These historical runs used `ldw codex run` with an explicit generic profile, a routine
 read-only task, execution verification, and the deployment policy above. The
 Codex sandbox was `read-only`, approvals were `never`, and model-generated
 command network access was explicitly disabled. No prompt, source code,
 provider response, or thread ID is retained in the telemetry below.
+Because the profiles were explicit overrides, these smokes prove transport and
+profile propagation only; they are not evidence that adaptive classification
+selected Luna, Terra, or Sol automatically.
 
 | Profile / alias / effort | LDW run | Result | Observed tokens (input / cached / output / reasoning) | Escalations / fallback |
 |---|---|---|---:|---:|
@@ -136,8 +139,8 @@ field that exposes it) before claiming full live model-switch verification.
 
 | Invariant | Status | Evidence |
 |---|---|---|
-| Policy/revision isolation | PASS | v2.1 telemetry carries policy, routing, alias, and taxonomy revision hashes; mixed records are separated and incompatible records excluded from calibration. |
-| Independent-task sample counting | PASS | One terminal `ldw codex run` record is one observation; duplicate same-run records deduplicate and conflicting same-run records are excluded. |
+| Policy/revision isolation | PASS | Versioned telemetry carries policy, routing, alias, and taxonomy revision hashes; mixed records are separated and incompatible records excluded from calibration. |
+| Independent-task sample counting | PASS | One calibration-eligible terminal `ldw codex run` record is one observation; blocked/non-executed records are excluded, duplicate same-run records deduplicate, and conflicting same-run records are quarantined. |
 | Temporal/model drift | PASS | Policy-configurable `min_samples`, `strong_sample`, and `max_age_days`; stale and incompatible observations cannot form a candidate. |
 | Active-policy mutation | PASS | Calibration creates only a pending-human-acceptance candidate revision. |
 

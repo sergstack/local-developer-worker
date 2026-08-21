@@ -29,6 +29,7 @@ def _routing_values():
     return {
         "run_id": "RUN-routing-safe", "base_task_class": "routine_read_or_docs", "routing_signal": "text:read",
         "routing_disposition": "adaptive", "override_requested_profile": None, "override_state": "none", "adaptive_routing": True,
+        "calibration_eligible": True,
         "deterministic_risk_floor": "efficient", "initial_profile": "efficient", "initial_effort": "low",
         "final_profile": "efficient", "final_effort": "low", "fallback_count": 0, "escalation_count": 0,
         "first_pass_verification_status": "passed", "final_verification_status": "passed", "terminal_status": "pass",
@@ -68,9 +69,18 @@ def test_v21_routing_records_remain_readable_and_schema_valid():
     repo_root = Path(__file__).parents[2]
     values = _routing_values()
     legacy = {
-        **{key: value for key, value in codex_routing_event_v2(values).items() if key not in {"base_task_class", "routing_disposition", "override_requested_profile", "override_state", "adaptive_routing"}},
+        **{key: value for key, value in codex_routing_event_v2(values).items() if key not in {"base_task_class", "routing_disposition", "override_requested_profile", "override_state", "adaptive_routing", "calibration_eligible"}},
         "schema_version": "2.1.0",
         "task_class": values["base_task_class"],
     }
+    assert valid_codex_routing_event_v2(legacy)
+    validate(legacy, json.loads((repo_root / "schemas/codex_routing_event_v2.schema.json").read_text()))
+
+
+def test_v22_routing_records_remain_readable_and_schema_valid():
+    repo_root = Path(__file__).parents[2]
+    current = codex_routing_event_v2(_routing_values())
+    legacy = {key: value for key, value in current.items() if key != "calibration_eligible"}
+    legacy["schema_version"] = "2.2.0"
     assert valid_codex_routing_event_v2(legacy)
     validate(legacy, json.loads((repo_root / "schemas/codex_routing_event_v2.schema.json").read_text()))

@@ -125,6 +125,12 @@ def test_cli_executes_selected_profile_and_validates_public_schema(tmp_path):
     assert completed.stderr == ""
     assert output["data"]["profile"] == "efficient"
     assert output["data"]["effort"] == "low"
+    assert output["data"]["execution_attempted"] is True
+    assert output["data"]["model_execution_completed"] is True
+    assert output["data"]["calibration_eligible"] is True
+    assert output["data"]["non_cached_input_tokens"] is None
+    assert output["data"]["provider_total_tokens"] == 9
+    assert output["data"]["reasoning_in_output_status"] == "unknown"
     assert "ephemeral-test-id" not in completed.stdout
 
 
@@ -208,9 +214,40 @@ def test_codex_cli_emits_privacy_safe_v2_calibration_event(tmp_path):
     assert invalid == 0
     assert len(v2) == 1
     assert v2[0]["base_task_class"] == "routine_read_or_docs"
+    assert v2[0]["schema_version"] == "2.3.0"
+    assert v2[0]["calibration_eligible"] is True
     assert v2[0]["routing_disposition"] == "adaptive"
     assert v2[0]["override_state"] == "none"
     assert "documentation" not in json.dumps(v2[0])
+
+
+def test_blocked_preflight_and_completed_run_produce_one_calibration_sample(tmp_path):
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    subprocess.run(["git", "init", "-q", str(repository)], check=True)
+    executable = tmp_path / "fake-codex"
+    executable.write_text(
+        "#!/usr/bin/env python3\nimport json, sys\n"
+        "print('codex-cli 0.147.0') if sys.argv[1:] == ['--version'] else "
+        "print('--json --strict-config --ignore-user-config --ignore-rules --model --sandbox --cd --last') if sys.argv[-1:] == ['--help'] else "
+        "print(json.dumps({'type':'turn.completed','usage':{'input_tokens':10,'cached_input_tokens':4,'output_tokens':2,'reasoning_output_tokens':1}}))\n"
+    )
+    executable.chmod(0o700)
+    policy = tmp_path / "policy.toml"
+    _policy(policy, executable, repository)
+    journal = tmp_path / "journal"
+    blocked = _run({"task": "Change this module", "repository_root": str(repository), "policy_path": str(policy), "verification": {"kind": "execution"}}, telemetry_root=journal)
+    completed = _run({"task": "Review documentation", "repository_root": str(repository), "policy_path": str(policy), "verification": {"kind": "execution"}}, telemetry_root=journal)
+    stats = _routing_run("stats", {"journal_root": str(journal)})
+    blocked_output, completed_output, stats_output = map(lambda row: json.loads(row.stdout), (blocked, completed, stats))
+    assert blocked_output["data"]["calibration_eligible"] is False
+    assert blocked_output["data"]["execution_attempted"] is False
+    assert completed_output["data"]["calibration_eligible"] is True
+    assert completed_output["data"]["provider_total_tokens"] == 12
+    assert completed_output["data"]["non_cached_input_tokens"] == 6
+    assert stats_output["data"]["operational_records"] == 2
+    assert stats_output["data"]["excluded_ineligible_records"] == 1
+    assert stats_output["data"]["population_analyzed"] == 1
 
 
 def test_codex_cli_telemetry_preserves_base_class_across_override_and_fixed_modes(tmp_path):

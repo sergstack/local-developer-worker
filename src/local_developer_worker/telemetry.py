@@ -40,7 +40,7 @@ CODEX_ROUTING_V21_FIELDS = {
     "output_tokens", "reasoning_output_tokens", "latency_ms", "policy_revision",
     "routing_revision", "alias_revision", "taxonomy_revision",
 }
-CODEX_ROUTING_V2_FIELDS = {
+CODEX_ROUTING_V22_FIELDS = {
     "record_type", "schema_version", "run_id", "base_task_class", "routing_signal",
     "routing_disposition", "override_requested_profile", "override_state", "adaptive_routing",
     "deterministic_risk_floor", "initial_profile", "initial_effort", "final_profile",
@@ -49,6 +49,7 @@ CODEX_ROUTING_V2_FIELDS = {
     "output_tokens", "reasoning_output_tokens", "latency_ms", "policy_revision",
     "routing_revision", "alias_revision", "taxonomy_revision",
 }
+CODEX_ROUTING_V2_FIELDS = CODEX_ROUTING_V22_FIELDS | {"calibration_eligible"}
 LEGACY_SAFE_FIELDS = SAFE_FIELDS - {"error_code"}
 KNOWN_ERROR_CODES = frozenset(
     {
@@ -195,7 +196,7 @@ def codex_routing_event_v2(values: dict[str, Any]) -> dict[str, Any]:
     """Return the calibration-only, privacy-safe extension for a Codex run."""
     event = {
         "record_type": "codex_routing_event_v2",
-        "schema_version": "2.2.0",
+        "schema_version": "2.3.0",
         "run_id": values.get("run_id"),
         "base_task_class": values.get("base_task_class"),
         "routing_signal": values.get("routing_signal"),
@@ -203,6 +204,7 @@ def codex_routing_event_v2(values: dict[str, Any]) -> dict[str, Any]:
         "override_requested_profile": values.get("override_requested_profile"),
         "override_state": values.get("override_state", "none"),
         "adaptive_routing": values.get("adaptive_routing", True),
+        "calibration_eligible": values.get("calibration_eligible", False),
         "deterministic_risk_floor": values.get("deterministic_risk_floor"),
         "initial_profile": values.get("initial_profile"),
         "initial_effort": values.get("initial_effort"),
@@ -232,7 +234,12 @@ def valid_codex_routing_event_v2(event: Any) -> bool:
     if not isinstance(event, dict):
         return False
     version = event.get("schema_version")
-    expected_fields = CODEX_ROUTING_V21_FIELDS if version == "2.1.0" else CODEX_ROUTING_V2_FIELDS if version == "2.2.0" else None
+    expected_fields = (
+        CODEX_ROUTING_V21_FIELDS if version == "2.1.0"
+        else CODEX_ROUTING_V22_FIELDS if version == "2.2.0"
+        else CODEX_ROUTING_V2_FIELDS if version == "2.3.0"
+        else None
+    )
     if expected_fields is None or set(event) != expected_fields or event["record_type"] != "codex_routing_event_v2":
         return False
     if not isinstance(event["run_id"], str) or RUN_ID_PATTERN.fullmatch(event["run_id"]) is None:
@@ -240,7 +247,7 @@ def valid_codex_routing_event_v2(event: Any) -> bool:
     task_class = event["task_class"] if version == "2.1.0" else event["base_task_class"]
     if task_class not in {"routine_read_or_docs", "bounded_change_or_debug", "cross_cutting_or_high_risk", "ambiguous"}:
         return False
-    if version == "2.2.0":
+    if version in {"2.2.0", "2.3.0"}:
         if event["routing_disposition"] not in {"adaptive", "fixed_profile", "explicit_override", "override_rejected"}:
             return False
         if event["override_state"] not in {"none", "accepted", "rejected"} or not isinstance(event["adaptive_routing"], bool):
@@ -252,6 +259,8 @@ def valid_codex_routing_event_v2(event: Any) -> bool:
             return False
         expected_disposition = {"none": "adaptive" if event["adaptive_routing"] else "fixed_profile", "accepted": "explicit_override", "rejected": "override_rejected"}[event["override_state"]]
         if event["routing_disposition"] != expected_disposition:
+            return False
+        if version == "2.3.0" and not isinstance(event["calibration_eligible"], bool):
             return False
     if not all(isinstance(event[field], str) and event[field] for field in ("routing_signal", "initial_effort", "final_effort")):
         return False

@@ -6,6 +6,14 @@ active policy, alter aliases, or grant execution authority.
 
 ## Commands
 
+All commands read a JSON object from stdin. When using a personal runtime
+policy from inside a repository, pass it explicitly:
+
+```sh
+printf '%s\n' '{"policy_path":"/Users/you/.config/local-developer-worker/policy.toml"}' | ldw routing stats
+printf '%s\n' '{"policy_path":"/Users/you/.config/local-developer-worker/policy.toml"}' | ldw routing calibrate
+```
+
 `ldw routing stats` reports aggregates by task class, initial profile, and
 initial effort. It includes sample size, observed first-pass verification rate,
 under-routing (observed escalation) rate, over-routing candidate rate,
@@ -53,12 +61,19 @@ observed verified success for that lower profile and cannot go below the most
 restrictive deterministic risk floor observed for the population. Failed and
 unverified records are never treated as successful evidence.
 
-`min_samples` and `strong_sample` count independent routing runs, not provider
-attempts. One terminal `ldw codex run` record is one observation; an
+`min_samples` and `strong_sample` count independent, calibration-eligible
+routing runs, not provider attempts. A v2.3 record is eligible only after a
+real Codex model execution reaches a terminal model event. Policy/preflight,
+configuration, authentication, capability, or launch blocks remain available
+as operational records but do not increase calibration population `n`. One
+eligible terminal `ldw codex run` record is one observation; an
 exact-session escalation such as Terra → failed verification → Sol → passed
 remains one observation, with its final profile and escalation count. Duplicate
-JSONL records with the same `run_id` are deduplicated. Conflicting records with
-the same `run_id` are quarantined and do not enter calibration.
+JSONL records with the same `run_id` and complete revision identity are
+deduplicated. Conflicting records inside that same revision are quarantined and
+do not enter calibration. Reusing a deterministic `run_id` after a policy,
+routing, alias, or taxonomy revision is not a conflict; revision isolation
+keeps the observations separate.
 
 `max_age_days` is evaluated from the append-only journal partition date. Older
 observations are reported as stale and excluded from `routing calibrate`. The
@@ -68,7 +83,7 @@ cannot dominate a new configuration.
 
 ## Telemetry boundary
 
-The current v2.2 record is an exact allowlist: record type/version, opaque LDW
+The current v2.3 record is an exact allowlist: record type/version, opaque LDW
 run ID, base task class, signal code, routing disposition, nullable requested
 override profile, override state, adaptive/fixed mode, risk floor, initial/final
 generic profile and effort,
@@ -81,11 +96,25 @@ It also stores opaque hashes for routing, alias/model-mapping, and taxonomy
 revisions. These hashes contain no model prompt, task, path, source, provider
 output, or credential.
 
+`calibration_eligible` is the explicit v2.3 population gate. Existing v2.1 and
+v2.2 records remain readable; legacy records are eligible only when they show a
+verified terminal pass with observed input and output tokens. This conservative
+rule prevents old policy-blocked records from entering calibration.
+
+Token semantics are versioned as follows: provider `input_tokens` is inclusive
+of `cached_input_tokens`; `non_cached_input_tokens = input_tokens -
+cached_input_tokens`; canonical `provider_total_tokens = input_tokens +
+output_tokens`. `reasoning_output_tokens` remains a separate diagnostic with
+`reasoning_in_output_status = unknown` and is never added again to the
+canonical total. Aggregate output uses
+`median_provider_total_tokens_per_verified_task` plus separate input, cached,
+non-cached, output, and reasoning medians.
+
 The base task class and matched signal are preserved when an explicit override
 is accepted or rejected and when adaptive routing is disabled. Existing v2.1
 records remain readable; calibration normalizes their legacy `task_class` to
 the internal base task class without rewriting the append-only journal.
 
-The operational rollback is simply `enabled = false`; routing and execution
-continue to use the existing v1 policy controls (`adaptive_routing = false` or
-`codex.enabled = false`) independently.
+The calibration rollback is `[codex.calibration].enabled = false`; routing and
+execution continue independently. Their controls are
+`[codex].adaptive_routing = false` and `[codex].enabled = false`.

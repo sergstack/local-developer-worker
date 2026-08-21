@@ -106,6 +106,7 @@ def _calibration_event(output: dict, payload: dict, elapsed_ms: int) -> dict | N
             "run_id": output["run_id"], "base_task_class": initial.base_task_class, "routing_signal": initial.signal,
             "routing_disposition": initial.routing_disposition, "override_requested_profile": initial.override_requested_profile,
             "override_state": initial.override_state, "adaptive_routing": initial.adaptive_routing,
+            "calibration_eligible": data.get("calibration_eligible", False),
             "deterministic_risk_floor": initial.deterministic_risk_floor, "initial_profile": initial.profile, "initial_effort": initial.effort,
             "final_profile": data["profile"], "final_effort": data["effort"], "fallback_count": data["fallback_count"],
             "escalation_count": data["escalation_count"], "first_pass_verification_status": first,
