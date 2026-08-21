@@ -28,13 +28,14 @@ def _policy(*, enabled: bool = True) -> dict:
     }
 
 
-def _event(number: int, *, task_class: str = "routine_read_or_docs", initial: str = "efficient", final: str | None = None, floor: str | None = None, first: str = "passed", terminal: str = "pass", verification: str = "passed", escalations: int = 0, revisions: dict | None = None) -> dict:
+def _event(number: int, *, task_class: str = "routine_read_or_docs", initial: str = "efficient", final: str | None = None, floor: str | None = None, first: str = "passed", terminal: str = "pass", verification: str = "passed", escalations: int = 0, eligible: bool = True, revisions: dict | None = None) -> dict:
     final = final or initial
     effort = {"efficient": "low", "balanced": "medium", "frontier": "high"}
     revisions = revisions or validate_codex_policy(_policy())
     return codex_routing_event_v2({
         "run_id": f"RUN-cal-{number}", "base_task_class": task_class, "routing_signal": "structured:" + task_class,
         "routing_disposition": "adaptive", "override_requested_profile": None, "override_state": "none", "adaptive_routing": True,
+        "calibration_eligible": eligible,
         "deterministic_risk_floor": floor or initial, "initial_profile": initial, "initial_effort": effort[initial],
         "final_profile": final, "final_effort": effort[final], "fallback_count": 0, "escalation_count": escalations,
         "first_pass_verification_status": first, "final_verification_status": verification, "terminal_status": terminal,
@@ -55,7 +56,38 @@ def test_stats_aggregate_only_v2_safe_events(tmp_path):
     assert data["population_analyzed"] == 2
     assert data["task_classes"][0]["sample_size"] == 2
     assert data["task_classes"][0]["escalation_rate"] == 0.5
-    assert data["task_classes"][0]["median_tokens_per_verified_task"] == 16
+    group = data["task_classes"][0]
+    assert group["median_non_cached_input_tokens_per_verified_task"] == 9
+    assert group["median_provider_total_tokens_per_verified_task"] == 12
+    assert group["median_reasoning_tokens_per_verified_task"] == 3
+    assert group["reasoning_in_output_status"] == "unknown"
+
+
+def test_blocked_preflight_is_operational_but_not_calibration_population(tmp_path):
+    _append_many(tmp_path, [
+        _event(1, terminal="blocked", verification="not_run", first="not_run", eligible=False),
+        _event(2, terminal="pass", verification="passed", eligible=True),
+    ])
+    stats = routing_stats({"journal_root": str(tmp_path)})["data"]
+    calibrated = routing_calibrate({"journal_root": str(tmp_path)}, _policy())["data"]
+    assert stats["operational_records"] == 2
+    assert stats["excluded_ineligible_records"] == 1
+    assert stats["population_analyzed"] == 1
+    assert stats["task_classes"][0]["sample_size"] == 1
+    assert calibrated["population_analyzed"] == 1
+    assert calibrated["excluded_ineligible_records"] == 1
+
+
+def test_cached_and_unknown_reasoning_are_not_double_counted(tmp_path):
+    event = _event(1)
+    _append_many(tmp_path, [event])
+    group = routing_stats({"journal_root": str(tmp_path)})["data"]["task_classes"][0]
+    # The canonical provider total is inclusive input plus output. Cached input
+    # and diagnostic reasoning are exposed separately, never added again.
+    assert group["median_provider_total_tokens_per_verified_task"] == 12
+    assert group["median_non_cached_input_tokens_per_verified_task"] == 9
+    assert group["median_reasoning_tokens_per_verified_task"] == 3
+    assert group["reasoning_in_output_status"] == "unknown"
 
 
 def test_calibration_requires_minimum_evidence_and_never_writes_policy(tmp_path):
@@ -103,6 +135,21 @@ def test_mixed_policy_revisions_are_separated_and_cannot_create_strong_recommend
     assert output["mixed_revision_population"] is True
     assert output["excluded_incompatible_records"] == 50
     assert output["detected_under_routing"][0]["confidence"] == "weak"
+
+
+def test_same_run_id_across_revision_identity_is_not_a_conflict(tmp_path):
+    current = validate_codex_policy(_policy())
+    old_policy = _policy()
+    old_policy["codex"]["aliases"]["small"]["model"] = "old-model"
+    old = validate_codex_policy(old_policy)
+    _append_many(tmp_path, [_event(1, revisions=old), _event(1, revisions=current)])
+    stats = routing_stats({"journal_root": str(tmp_path)})["data"]
+    calibrated = routing_calibrate({"journal_root": str(tmp_path)}, _policy())["data"]
+    assert stats["conflicting_run_records"] == 0
+    assert stats["population_analyzed"] == 2
+    assert stats["mixed_revision_population"] is True
+    assert calibrated["population_analyzed"] == 1
+    assert calibrated["excluded_incompatible_records"] == 1
 
 
 def test_attempt_records_with_one_run_id_count_as_one_independent_task(tmp_path):

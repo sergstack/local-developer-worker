@@ -51,10 +51,12 @@ Use direct bounded reading instead for a short task with one known file. A root 
 Copy the `[codex]` tables from `examples/adaptive-routing-policy.toml` into the active policy, replace the example model values with provider-supported aliases, name the exact Codex and verification executables, and only then set both `network_access = true`, `codex.allow_network = true`, and `codex.enabled = true`. The double opt-in authorizes provider transport; model-generated commands still receive an explicit sandbox network denial. Concrete model IDs stay in policy; the classifier selects only `efficient`, `balanced`, or `frontier` and their configured effort.
 
 ```bash
-printf '%s' '{"repository_root":".","task":"Review the README","verification":{"kind":"execution"}}' | uv run ldw codex run
+printf '%s\n' '{"repository_root":".","policy_path":"/Users/you/.config/local-developer-worker/policy.toml","task":"Review the README","verification":{"kind":"execution"}}' | uv run ldw codex run
 ```
 
 `execution` verification is limited to routine read/documentation work. Mutation-capable tasks must supply a `command` or `test` argv that exactly matches one of the policy's `verification_commands` and uses an allowed absolute executable. Codex is launched without a shell, with ignored user configuration and explicit model, effort, cwd, sandbox, and approval settings. A pass requires provider completion plus passed verification. Escalation uses only the exact observed session ID and explicit failure/uncertainty evidence; it never uses `--last` or a fresh blind retry.
+
+Inside this repository, always pass the personal `policy_path` explicitly as shown above (or set `LDW_POLICY_PATH`); otherwise `uv run ldw` selects the repository's deterministic no-network policy. `ldw codex run` currently returns execution, routing, verification, and token metadata only. It does not return the child model's findings in the ToolResult, and `verification_status: passed` confirms the configured execution/verifier contract—not semantic-quality acceptance of the model response.
 
 The adapter does not use `--ephemeral`, because exact-session resume needs Codex's own session rollout. LDW keeps the observed session ID only in process memory and never writes it to its telemetry, stdout, or session journal. LDW also never commits, merges, deploys, resets, stashes, or cleans the caller's working tree.
 
@@ -65,16 +67,16 @@ privacy-safe routing evidence and generate a human-review candidate without
 changing the active policy:
 
 ```sh
-ldw routing stats
-ldw routing calibrate
-ldw routing explain < request.json
+printf '%s\n' '{"policy_path":"/Users/you/.config/local-developer-worker/policy.toml"}' | ldw routing stats
+printf '%s\n' '{"policy_path":"/Users/you/.config/local-developer-worker/policy.toml"}' | ldw routing calibrate
+printf '%s\n' '{"policy_path":"/Users/you/.config/local-developer-worker/policy.toml","task":"Review README"}' | ldw routing explain
 ```
 
 Calibration never auto-applies a policy change, never weakens the deterministic
 risk floor, and does not invoke a provider. Details and evidence thresholds are
 in `docs/adaptive-codex-routing/calibration.md`.
 
-Set `enabled = false` to remove the execution surface entirely. Set `adaptive_routing = false` to keep execution enabled while restoring the configured fixed `default_profile`. See `docs/adaptive-codex-routing/SPEC.md` for the versioned contract and rollback details.
+Set `[codex].enabled = false` to remove the execution surface entirely. Set `[codex].adaptive_routing = false` to keep execution enabled while restoring the configured fixed `default_profile`. Set `[codex.calibration].enabled = false` to disable only offline calibration analysis; it does not change routing or execution. See `docs/adaptive-codex-routing/SPEC.md` for the versioned contract and rollback details.
 
 ## Safety
 

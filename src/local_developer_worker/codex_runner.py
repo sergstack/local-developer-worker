@@ -293,7 +293,32 @@ def _verify(
     return "passed" if run_status == "passed" else "failed" if run_status in {"failed", "error", "not_collected"} else "uncertain"
 
 
-def _public_data(route: Route | None, terminal: str, verification: str, fallbacks: int, escalations: int, tokens: dict[str, int | None] | None = None) -> dict[str, Any]:
+def _token_accounting(tokens: dict[str, int | None]) -> dict[str, int | str | None]:
+    input_tokens = tokens["input_tokens"]
+    cached_input_tokens = tokens["cached_input_tokens"]
+    output_tokens = tokens["output_tokens"]
+    non_cached = None
+    if input_tokens is not None and cached_input_tokens is not None:
+        non_cached = max(0, input_tokens - cached_input_tokens)
+    provider_total = None if input_tokens is None or output_tokens is None else input_tokens + output_tokens
+    return {
+        "non_cached_input_tokens": non_cached,
+        "provider_total_tokens": provider_total,
+        "reasoning_in_output_status": "unknown",
+    }
+
+
+def _public_data(
+    route: Route | None,
+    terminal: str,
+    verification: str,
+    fallbacks: int,
+    escalations: int,
+    tokens: dict[str, int | None] | None = None,
+    *,
+    execution_attempted: bool = False,
+    model_execution_completed: bool = False,
+) -> dict[str, Any]:
     token_values = tokens or {
         "input_tokens": None,
         "cached_input_tokens": None,
@@ -312,7 +337,11 @@ def _public_data(route: Route | None, terminal: str, verification: str, fallback
         "verification_status": verification,
         "fallback_count": fallbacks,
         "escalation_count": escalations,
+        "execution_attempted": execution_attempted,
+        "model_execution_completed": model_execution_completed,
+        "calibration_eligible": model_execution_completed,
         **token_values,
+        **_token_accounting(token_values),
     }
 
 
@@ -356,6 +385,7 @@ def codex_run(payload: dict[str, Any], policy: dict[str, Any], *, runner: Proces
         )
 
     fallback_count = escalation_count = 0
+    execution_attempted = model_execution_completed = False
     thread_id: str | None = None
     current_route = route
     current_alias = route.model_alias
@@ -386,6 +416,7 @@ def codex_run(payload: dict[str, Any], policy: dict[str, Any], *, runner: Proces
         argv = build_resume_argv(attempt_route, config, thread_id) if resume and thread_id else build_exec_argv(attempt_route, config, root)
         stdin = RESUME_INSTRUCTION if resume else payload["task"]
         try:
+            execution_attempted = True
             completed = _run(process_runner, argv, stdin=stdin, root=root, timeout=config["timeout_seconds"], config=config)
             observation = parse_codex_jsonl(completed.stdout or "")
             if completed.returncode != 0 and observation.error_code is None:
@@ -414,6 +445,7 @@ def codex_run(payload: dict[str, Any], policy: dict[str, Any], *, runner: Proces
             terminal, verification_status = "blocked", "not_run"
             break
         thread_id = observation.thread_id or thread_id
+        model_execution_completed = model_execution_completed or observation.completed
         current_route = attempt_route
         _merge_tokens(tokens, observation.tokens)
         if observation.error_code in MODEL_UNAVAILABLE_CODES and not observation.mutation_observed:
@@ -450,7 +482,16 @@ def codex_run(payload: dict[str, Any], policy: dict[str, Any], *, runner: Proces
     post = git_facts({"repository_root": root})
     if post["status"] != "success" and terminal == "pass":
         terminal, verification_status, error_code = "blocked", "uncertain", "codex_git_postflight_failed"
-    public = _public_data(current_route, terminal, verification_status, fallback_count, escalation_count, tokens)
+    public = _public_data(
+        current_route,
+        terminal,
+        verification_status,
+        fallback_count,
+        escalation_count,
+        tokens,
+        execution_attempted=execution_attempted,
+        model_execution_completed=model_execution_completed,
+    )
     if terminal == "pass":
         return result("codex_run", "stdin", raw, public)
     status = "policy_blocked" if terminal == "blocked" else "partial"

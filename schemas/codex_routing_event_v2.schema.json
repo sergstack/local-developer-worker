@@ -4,7 +4,8 @@
   "title": "Privacy-safe Codex routing calibration telemetry v2",
   "oneOf": [
     {"$ref": "#/$defs/v2_1"},
-    {"$ref": "#/$defs/v2_2"}
+    {"$ref": "#/$defs/v2_2"},
+    {"$ref": "#/$defs/v2_3"}
   ],
   "$defs": {
     "taskClass": {"enum": ["routine_read_or_docs", "bounded_change_or_debug", "cross_cutting_or_high_risk", "ambiguous"]},
@@ -44,6 +45,21 @@
           "override_requested_profile": {"anyOf": [{"$ref": "#/$defs/profile"}, {"type": "null"}]},
           "override_state": {"enum": ["none", "accepted", "rejected"]},
           "adaptive_routing": {"type": "boolean"}
+        }}
+      ],
+      "unevaluatedProperties": false
+    },
+    "v2_3": {
+      "allOf": [
+        {"$ref": "#/$defs/common"},
+        {"type": "object", "required": ["schema_version", "base_task_class", "routing_disposition", "override_requested_profile", "override_state", "adaptive_routing", "calibration_eligible"], "properties": {
+          "schema_version": {"const": "2.3.0"},
+          "base_task_class": {"$ref": "#/$defs/taskClass"},
+          "routing_disposition": {"enum": ["adaptive", "fixed_profile", "explicit_override", "override_rejected"]},
+          "override_requested_profile": {"anyOf": [{"$ref": "#/$defs/profile"}, {"type": "null"}]},
+          "override_state": {"enum": ["none", "accepted", "rejected"]},
+          "adaptive_routing": {"type": "boolean"},
+          "calibration_eligible": {"type": "boolean"}
         }}
       ],
       "unevaluatedProperties": false

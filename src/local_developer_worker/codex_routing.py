@@ -24,8 +24,7 @@ HIGH_RISK_SIGNALS = (
     ("cross_cutting", re.compile(r"\b(cross[- ]cutting|architecture|multi[- ]module|repository[- ]wide|refactor|архитект\w*|сквозн\w*|рефактор\w*)\b", re.I)),
 )
 BOUNDED_SIGNALS = (
-    ("debug", re.compile(r"\b(debug|fix|bug|failure|failing|regression|traceback|отлад\w*|исправ\w*|ошиб\w*|сбой\w*|регресс\w*)\b", re.I)),
-    ("bounded_change", re.compile(r"\b(implement|add|change|modify|update|patch|test|реализ\w*|добав\w*|измен\w*|обнов\w*|патч\w*|тест\w*)\b", re.I)),
+    ("debug", re.compile(r"\b(debug|bug|failure|failing|regression|traceback|отлад\w*|ошиб\w*|сбой\w*|регресс\w*)\b", re.I)),
 )
 SAFETY_NEGATIONS = (
     re.compile(r"\bничего\s+не\s+измен\w*\b", re.I),
@@ -36,6 +35,19 @@ SAFETY_NEGATIONS = (
     re.compile(r"\bdon['’]t\s+change\b", re.I),
     re.compile(r"\bno\s+changes?\b", re.I),
     re.compile(r"\bread[- ]only\b", re.I),
+)
+MUTATION_ACTION_PATTERNS = (
+    re.compile(
+        r"(?:^|[.!?;:\n]\s*|[-*]\s+)(?:пожалуйста\s+)?"
+        r"(?:измени(?:те)?|исправь(?:те)?|обнови(?:те)?|реализуй(?:те)?|"
+        r"добавь(?:те)?|протестируй(?:те)?|пропатчь(?:те)?)\b",
+        re.I,
+    ),
+    re.compile(
+        r"(?:^|[.!?;:\n]\s*|[-*]\s+)(?:please\s+)?"
+        r"(?:change|modify|update|implement|add|fix|patch|test)\b",
+        re.I,
+    ),
 )
 AMBIGUITY_SIGNALS = (
     (
@@ -64,6 +76,7 @@ TAXONOMY_REVISION = hashlib.sha256(
             "high_risk": [(code, pattern.pattern) for code, pattern in HIGH_RISK_SIGNALS],
             "bounded": [(code, pattern.pattern) for code, pattern in BOUNDED_SIGNALS],
             "safety_negations": [pattern.pattern for pattern in SAFETY_NEGATIONS],
+            "mutation_actions": [pattern.pattern for pattern in MUTATION_ACTION_PATTERNS],
             "ambiguity": [(code, pattern.pattern) for code, pattern in AMBIGUITY_SIGNALS],
             "routine": [(code, pattern.pattern) for code, pattern in ROUTINE_SIGNALS],
         },
@@ -333,6 +346,11 @@ def _without_patterns(text: str, patterns: tuple[re.Pattern[str], ...]) -> str:
     return text
 
 
+def _has_mutation_action(task: str) -> bool:
+    normalized = _without_patterns(task, SAFETY_NEGATIONS).strip()
+    return any(pattern.search(normalized) for pattern in MUTATION_ACTION_PATTERNS)
+
+
 def classify_task(task: str, task_class: str | None = None) -> Classification:
     if task_class is not None:
         if task_class not in TASK_CLASSES:
@@ -349,15 +367,14 @@ def classify_task(task: str, task_class: str | None = None) -> Classification:
         if pattern.search(task):
             return Classification("cross_cutting_or_high_risk", "frontier", f"text:{code}", False, True)
 
-    debug_code, debug_pattern = BOUNDED_SIGNALS[0]
-    if debug_pattern.search(task):
-        return Classification("bounded_change_or_debug", "balanced", f"text:{debug_code}", False, True)
+    for code, pattern in BOUNDED_SIGNALS:
+        if pattern.search(task):
+            return Classification("bounded_change_or_debug", "balanced", f"text:{code}", False, True)
 
     ambiguity_patterns = tuple(pattern for _, pattern in AMBIGUITY_SIGNALS)
-    mutation_text = _without_patterns(_without_patterns(task, SAFETY_NEGATIONS), ambiguity_patterns)
-    mutation_code, mutation_pattern = BOUNDED_SIGNALS[1]
-    if mutation_pattern.search(mutation_text):
-        return Classification("bounded_change_or_debug", "balanced", f"text:{mutation_code}", False, True)
+    mutation_text = _without_patterns(task, ambiguity_patterns)
+    if _has_mutation_action(mutation_text):
+        return Classification("bounded_change_or_debug", "balanced", "text:bounded_change", False, True)
 
     for code, pattern in AMBIGUITY_SIGNALS:
         if pattern.search(task):
