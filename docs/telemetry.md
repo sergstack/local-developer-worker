@@ -13,8 +13,10 @@ Manual usefulness is a separate record type and does not expand `SAFE_FIELDS`. `
 Opt-in Codex execution uses a third, versioned record type, `codex_run_event_v1`, rather than expanding `SAFE_FIELDS`. Its exact fields are `record_type`, `schema_version`, `run_id`, abstract `profile`, policy `model_alias`, `effort`, terminal and verification statuses, fallback and escalation counts, and nullable input/cached-input/output/reasoning-output token counts. It excludes the task, prompt, source, paths, commands, concrete model ID, session/thread ID, provider response, and secrets. Credits are not recorded because the supported Codex JSONL contract has no stable credit observation.
 
 The optional calibration layer adds a separate `codex_routing_event_v2` record,
-also with an exact allowlist. It records only generic task class and signal,
-risk floor, initial/final profile and effort, fallback/escalation and
+also with an exact allowlist. Version 2.2 records the base generic task class
+and signal separately from routing disposition, requested override and its
+accepted/rejected state, and adaptive/fixed mode. It also records risk floor,
+initial/final profile and effort, fallback/escalation and
 verification outcomes, nullable token counters, latency, and policy revision.
 It excludes task text, prompts, source, paths, commands, concrete models,
 thread/session IDs, provider responses, credentials, and secrets. See

@@ -33,7 +33,8 @@ def _event(number: int, *, task_class: str = "routine_read_or_docs", initial: st
     effort = {"efficient": "low", "balanced": "medium", "frontier": "high"}
     revisions = revisions or validate_codex_policy(_policy())
     return codex_routing_event_v2({
-        "run_id": f"RUN-cal-{number}", "task_class": task_class, "routing_signal": "structured:" + task_class,
+        "run_id": f"RUN-cal-{number}", "base_task_class": task_class, "routing_signal": "structured:" + task_class,
+        "routing_disposition": "adaptive", "override_requested_profile": None, "override_state": "none", "adaptive_routing": True,
         "deterministic_risk_floor": floor or initial, "initial_profile": initial, "initial_effort": effort[initial],
         "final_profile": final, "final_effort": effort[final], "fallback_count": 0, "escalation_count": escalations,
         "first_pass_verification_status": first, "final_verification_status": verification, "terminal_status": terminal,

@@ -68,8 +68,10 @@ cannot dominate a new configuration.
 
 ## Telemetry boundary
 
-The v2.1 record is an exact allowlist: record type/version, opaque LDW run ID,
-task class, signal code, risk floor, initial/final generic profile and effort,
+The current v2.2 record is an exact allowlist: record type/version, opaque LDW
+run ID, base task class, signal code, routing disposition, nullable requested
+override profile, override state, adaptive/fixed mode, risk floor, initial/final
+generic profile and effort,
 fallback/escalation counts, first/final verification status, terminal status,
 nullable token counters, latency, and policy-revision hash. It excludes task
 text, prompts, source code, file paths, commands, concrete model IDs, provider
@@ -78,6 +80,11 @@ responses, thread/session IDs, credentials, and secrets.
 It also stores opaque hashes for routing, alias/model-mapping, and taxonomy
 revisions. These hashes contain no model prompt, task, path, source, provider
 output, or credential.
+
+The base task class and matched signal are preserved when an explicit override
+is accepted or rejected and when adaptive routing is disabled. Existing v2.1
+records remain readable; calibration normalizes their legacy `task_class` to
+the internal base task class without rewriting the append-only journal.
 
 The operational rollback is simply `enabled = false`; routing and execution
 continue to use the existing v1 policy controls (`adaptive_routing = false` or

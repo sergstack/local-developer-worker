@@ -94,21 +94,6 @@ def _context_reduction(key: tuple[str, ...], payload: dict, output: dict) -> tup
     return f"{tool}/context", round((total - selected_bytes) / total, 4) if total else None
 
 
-def _task_class(signal: str, uncertain: bool) -> str:
-    if signal.startswith("structured:"):
-        return signal.split(":", 1)[1]
-    if uncertain:
-        return "ambiguous"
-    if signal in {"text:security", "text:production", "text:cross_cutting"}:
-        return "cross_cutting_or_high_risk"
-    if signal in {"text:debug", "text:bounded_change"}:
-        return "bounded_change_or_debug"
-    if signal in {"text:read", "text:docs"}:
-        return "routine_read_or_docs"
-    # Fixed-profile rollback and future signal types cannot be safely inferred.
-    return "ambiguous"
-
-
 def _calibration_event(output: dict, payload: dict, elapsed_ms: int) -> dict | None:
     data = output.get("data", {})
     if not isinstance(data, dict) or not data.get("profile") or not isinstance(payload.get("task"), str):
@@ -118,7 +103,9 @@ def _calibration_event(output: dict, payload: dict, elapsed_ms: int) -> dict | N
         initial = route_task(payload["task"], payload, config)
         first = data["verification_status"] if data["fallback_count"] == 0 and data["escalation_count"] == 0 else "not_observed"
         return codex_routing_event_v2({
-            "run_id": output["run_id"], "task_class": _task_class(initial.signal, initial.uncertain), "routing_signal": initial.signal,
+            "run_id": output["run_id"], "base_task_class": initial.base_task_class, "routing_signal": initial.signal,
+            "routing_disposition": initial.routing_disposition, "override_requested_profile": initial.override_requested_profile,
+            "override_state": initial.override_state, "adaptive_routing": initial.adaptive_routing,
             "deterministic_risk_floor": initial.deterministic_risk_floor, "initial_profile": initial.profile, "initial_effort": initial.effort,
             "final_profile": data["profile"], "final_effort": data["effort"], "fallback_count": data["fallback_count"],
             "escalation_count": data["escalation_count"], "first_pass_verification_status": first,

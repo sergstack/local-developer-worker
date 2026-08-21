@@ -207,5 +207,50 @@ def test_codex_cli_emits_privacy_safe_v2_calibration_event(tmp_path):
     assert completed.returncode == 0
     assert invalid == 0
     assert len(v2) == 1
-    assert v2[0]["task_class"] == "routine_read_or_docs"
+    assert v2[0]["base_task_class"] == "routine_read_or_docs"
+    assert v2[0]["routing_disposition"] == "adaptive"
+    assert v2[0]["override_state"] == "none"
     assert "documentation" not in json.dumps(v2[0])
+
+
+def test_codex_cli_telemetry_preserves_base_class_across_override_and_fixed_modes(tmp_path):
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    subprocess.run(["git", "init", "-q", str(repository)], check=True)
+    executable = tmp_path / "fake-codex"
+    executable.write_text(
+        "#!/usr/bin/env python3\nimport json, sys\n"
+        "print('codex-cli 0.147.0') if sys.argv[1:] == ['--version'] else "
+        "print('--json --strict-config --ignore-user-config --ignore-rules --model --sandbox --cd --last') if sys.argv[-1:] == ['--help'] else "
+        "print(json.dumps({'type':'turn.completed','usage':{'input_tokens':7,'output_tokens':2}}))\n"
+    )
+    executable.chmod(0o700)
+    policy = tmp_path / "policy.toml"
+    _policy(policy, executable, repository)
+    completed = _run({"task": "Review README", "profile": "frontier", "repository_root": str(repository), "policy_path": str(policy), "verification": {"kind": "execution"}}, telemetry_root=tmp_path / "journal")
+    records, invalid = iter_records(tmp_path / "journal")
+    event = [record for record in records if record.get("record_type") == "codex_routing_event_v2"][0]
+    assert completed.returncode == 0
+    assert invalid == 0
+    assert event["base_task_class"] == "routine_read_or_docs"
+    assert event["routing_signal"] == "text:read"
+    assert (event["routing_disposition"], event["override_requested_profile"], event["override_state"]) == ("explicit_override", "frontier", "accepted")
+
+    _policy(policy, executable, repository, adaptive=False)
+    fixed = _run({"task": "Review production security", "repository_root": str(repository), "policy_path": str(policy), "verification": {"kind": "command", "argv": ["/usr/bin/true"]}}, telemetry_root=tmp_path / "fixed-journal")
+    fixed_records, fixed_invalid = iter_records(tmp_path / "fixed-journal")
+    fixed_event = [record for record in fixed_records if record.get("record_type") == "codex_routing_event_v2"][0]
+    assert fixed.returncode == 0
+    assert fixed_invalid == 0
+    assert fixed_event["base_task_class"] == "cross_cutting_or_high_risk"
+    assert (fixed_event["routing_disposition"], fixed_event["override_state"], fixed_event["adaptive_routing"]) == ("fixed_profile", "none", False)
+
+    _policy(policy, executable, repository)
+    rejected = _run({"task": "Review production security", "profile": "efficient", "repository_root": str(repository), "policy_path": str(policy), "verification": {"kind": "command", "argv": ["/usr/bin/true"]}}, telemetry_root=tmp_path / "rejected-journal")
+    rejected_records, rejected_invalid = iter_records(tmp_path / "rejected-journal")
+    rejected_event = [record for record in rejected_records if record.get("record_type") == "codex_routing_event_v2"][0]
+    assert rejected.returncode == 0
+    assert rejected_invalid == 0
+    assert rejected_event["base_task_class"] == "cross_cutting_or_high_risk"
+    assert rejected_event["routing_signal"] == "text:security"
+    assert (rejected_event["routing_disposition"], rejected_event["override_requested_profile"], rejected_event["override_state"]) == ("override_rejected", "efficient", "rejected")
