@@ -34,7 +34,7 @@ the deployment policy does not claim `max` support.
 | Evidence-based exact-session escalation | PASS | Failed verifier resumes only the observed `thread-exact`, raises profile/model/effort, and never uses `--last` |
 | No escalation after successful verification | PASS | `test_success_does_not_escalate` |
 | Configurable escalation ceiling and model-unavailable fallback | PASS | Bound and missing-thread tests; stable pre-mutation model-unavailable fallback test |
-| Verification authority | PASS | Routine execution verification; mutation verifier required; exact policy argv/executable; tests interpreted with `command_observed=true` and observed exit code |
+| Verification authority | PASS | Read-only advisory execution verification for every route; write-capable mutation verifier required; exact policy argv/executable; tests interpreted with `command_observed=true` and observed exit code |
 | Repository, network, and authority boundaries | PASS | Root gate, symlink/unlisted verifier rejection, direct argv, filtered environment, no automatic Git/deploy, and sandbox-network denial tests |
 | Privacy-safe telemetry | PASS | `codex_run_event_v1` allowlist/schema, malicious extra-field drop, and aggregate summary tests |
 | Fixed-profile and full-disable rollback | PASS | CLI disabled and `adaptive_routing=false` integration tests |

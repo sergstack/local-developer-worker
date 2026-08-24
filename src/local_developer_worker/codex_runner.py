@@ -235,7 +235,7 @@ def _validate_verification(payload: dict[str, Any], route: Route, config: dict[s
     if kind == "execution":
         if set(verification) != {"kind"}:
             raise CodexConfigError("invalid_verification")
-        if route.mutation_capable:
+        if route.mutation_capable and config["allow_write"]:
             raise CodexConfigError("verification_required")
         return {"kind": kind}
     if set(verification) != {"kind", "argv"}:
