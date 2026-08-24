@@ -377,7 +377,14 @@ def codex_run(payload: dict[str, Any], policy: dict[str, Any], *, runner: Proces
         route = route_task(task, payload, config)
         verification = _validate_verification(payload, route, config)
         baseline = git_facts({"repository_root": root})
-        if baseline["status"] != "success":
+        git_evidence_unavailable = baseline["status"] != "success"
+        read_only_no_git_advisory = (
+            git_evidence_unavailable
+            and not config["allow_write"]
+            and config["sandbox"] == "read-only"
+            and verification["kind"] == "execution"
+        )
+        if git_evidence_unavailable and not read_only_no_git_advisory:
             raise CodexConfigError("codex_git_preflight_failed")
         _executable_preflight(config, root, process_runner)
     except (CodexConfigError, FileNotFoundError, OSError) as exc:
@@ -486,8 +493,8 @@ def codex_run(payload: dict[str, Any], policy: dict[str, Any], *, runner: Proces
         error_code = observation.error_code or ("verification_failed" if verification_status == "failed" else "verification_uncertain")
         break
 
-    post = git_facts({"repository_root": root})
-    if post["status"] != "success" and terminal == "pass":
+    post = git_facts({"repository_root": root}) if not read_only_no_git_advisory else baseline
+    if not read_only_no_git_advisory and post["status"] != "success" and terminal == "pass":
         terminal, verification_status, error_code = "blocked", "uncertain", "codex_git_postflight_failed"
     public = _public_data(
         current_route,
@@ -500,7 +507,8 @@ def codex_run(payload: dict[str, Any], policy: dict[str, Any], *, runner: Proces
         execution_attempted=execution_attempted,
         model_execution_completed=model_execution_completed,
     )
+    warnings = [{"code": "git_evidence_not_available"}] if read_only_no_git_advisory else []
     if terminal == "pass":
-        return result("codex_run", "stdin", raw, public)
+        return result("codex_run", "stdin", raw, public, warnings=warnings)
     status = "policy_blocked" if terminal == "blocked" else "partial"
-    return result("codex_run", "stdin", raw, public, status=status, errors=[{"code": error_code or "codex_execution_failed"}])
+    return result("codex_run", "stdin", raw, public, status=status, errors=[{"code": error_code or "codex_execution_failed"}], warnings=warnings)

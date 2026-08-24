@@ -121,6 +121,52 @@ def test_success_does_not_escalate(tmp_path):
     assert len(calls) == 4
 
 
+def test_read_only_execution_allows_no_git_directory_with_visible_missing_evidence(tmp_path):
+    root = tmp_path.resolve()
+    executable = root / "codex"
+    executable.write_text("fake")
+    executable.chmod(0o700)
+    calls = []
+
+    def runner(argv, **kwargs):
+        calls.append(argv)
+        if argv[1:] == ["--version"]:
+            return _completed(argv, stdout="codex-cli 0.147.0")
+        if argv[-1:] == ["--help"]:
+            return _completed(argv, stdout=HELP_TEXT)
+        return _completed(argv, stdout=_jsonl({"type": "turn.completed"}))
+
+    output = codex_run(
+        {"task": "Review documentation", "repository_root": str(root), "verification": {"kind": "execution"}},
+        codex_policy(str(executable)),
+        runner=runner,
+    )
+
+    assert output["status"] == "success"
+    assert output["data"]["model_execution_completed"] is True
+    assert output["warnings"] == [{"code": "git_evidence_not_available"}]
+    assert len(calls) == 4
+
+
+def test_non_git_directory_still_blocks_command_verification(tmp_path):
+    executable = tmp_path / "codex"
+    executable.write_text("fake")
+    executable.chmod(0o700)
+
+    output = codex_run(
+        {
+            "task": "Review documentation",
+            "repository_root": str(tmp_path),
+            "verification": {"kind": "command", "argv": ["/usr/bin/true"]},
+        },
+        codex_policy(str(executable)),
+        runner=lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("must not launch")),
+    )
+
+    assert output["status"] == "policy_blocked"
+    assert output["errors"] == [{"code": "codex_git_preflight_failed"}]
+
+
 def test_verified_failure_resumes_exact_thread_with_stronger_profile(tmp_path):
     executable = tmp_path / "codex"
     executable.write_text("fake")

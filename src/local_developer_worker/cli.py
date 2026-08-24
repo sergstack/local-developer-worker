@@ -17,6 +17,7 @@ from .session_log import append_event
 from .stage_b_cluster import log_cluster
 from .log_process import log_process
 from .routing_calibration import routing_calibrate, routing_explain, routing_stats
+from .routing_value import routing_value
 from .telemetry import codex_routing_event_v2, codex_run_event, telemetry_error_code, telemetry_event, telemetry_mark, telemetry_summary
 from .tools import benchmark_run, context_pack, doctor, evidence_build, file_inventory, git_facts, parse_log, parse_tests, report_summarize
 
@@ -38,6 +39,7 @@ COMMANDS: dict[tuple[str, ...], Callable[[dict], dict]] = {
     ("portfolio", "status"): portfolio_status,
     ("codex", "run"): codex_run,
     ("routing", "stats"): routing_stats,
+    ("routing", "value"): routing_value,
 }
 CAPABILITIES = {
     ("log", "parse"): "structured_log_parser", ("log", "cluster"): "semantic_log_clustering", ("log", "process"): "structured_log_parser",
@@ -75,6 +77,7 @@ def _parser() -> argparse.ArgumentParser:
     routing.add_parser("stats")
     routing.add_parser("calibrate")
     routing.add_parser("explain")
+    routing.add_parser("value")
     return parser
 
 
@@ -121,7 +124,7 @@ def _calibration_event(output: dict, payload: dict, elapsed_ms: int) -> dict | N
 
 def _emit(output: dict, key: tuple[str, ...], payload: dict, raw: str, started: float) -> int:
     stdout_text = canonical_json(output) + "\n"
-    if os.environ.get("LDW_TELEMETRY_DISABLED") != "1" and (
+    if key != ("routing", "value") and os.environ.get("LDW_TELEMETRY_DISABLED") != "1" and (
         "PYTEST_CURRENT_TEST" not in os.environ or os.environ.get("LDW_TELEMETRY_FORCE") == "1"
     ):
         telemetry_tool, context_reduction = _context_reduction(key, payload, output)
@@ -204,7 +207,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             if key == ("context", "pack"):
                 payload["max_context_files"] = min(int(payload.get("max_context_files", limits.get("max_context_files", 20))), int(limits.get("max_context_files", 20)))
-            output = codex_run(payload, policy) if key == ("codex", "run") else routing_calibrate(payload, policy) if key == ("routing", "calibrate") else routing_stats(payload, policy) if key == ("routing", "stats") else routing_explain(payload, policy) if key == ("routing", "explain") else log_cluster(payload, policy) if key == ("log", "cluster") else log_process(payload, policy) if key == ("log", "process") else COMMANDS[key](payload)
+            output = codex_run(payload, policy) if key == ("codex", "run") else routing_calibrate(payload, policy) if key == ("routing", "calibrate") else routing_stats(payload, policy) if key == ("routing", "stats") else routing_explain(payload, policy) if key == ("routing", "explain") else routing_value(payload, policy) if key == ("routing", "value") else log_cluster(payload, policy) if key == ("log", "cluster") else log_process(payload, policy) if key == ("log", "process") else COMMANDS[key](payload)
         if not valid_tool_result(output):
             output = result(" ".join(key), "stdin", raw, {"fallback": policy.get("fallback", {}).get("on_invalid_schema", "codex")}, status="internal_error", errors=[{"code": "invalid_output_schema"}])
     except (OSError, ValueError):
