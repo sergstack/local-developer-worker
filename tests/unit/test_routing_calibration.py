@@ -33,7 +33,7 @@ def _event(number: int, *, task_class: str = "routine_read_or_docs", initial: st
     effort = {"efficient": "low", "balanced": "medium", "frontier": "high"}
     revisions = revisions or validate_codex_policy(_policy())
     return codex_routing_event_v2({
-        "run_id": f"RUN-cal-{number}", "base_task_class": task_class, "routing_signal": "structured:" + task_class,
+        "run_id": f"RUN-cal-{number}", "execution_id": f"EXEC-{number:032x}", "base_task_class": task_class, "routing_signal": "structured:" + task_class,
         "routing_disposition": "adaptive", "override_requested_profile": None, "override_state": "none", "adaptive_routing": True,
         "calibration_eligible": eligible,
         "deterministic_risk_floor": floor or initial, "initial_profile": initial, "initial_effort": effort[initial],
@@ -162,6 +162,24 @@ def test_attempt_records_with_one_run_id_count_as_one_independent_task(tmp_path)
     assert data["duplicate_attempt_records"] == 5
     assert group["sample_size"] == 20
     assert group["escalation_rate"] == 0.05
+
+
+def test_distinct_executions_with_the_same_deterministic_run_id_are_not_conflicts(tmp_path):
+    first = _event(1)
+    second = {**_event(2), "run_id": first["run_id"]}
+    _append_many(tmp_path, [first, second])
+    data = routing_stats({"journal_root": str(tmp_path)})["data"]
+    assert data["population_analyzed"] == 2
+    assert data["conflicting_run_records"] == 0
+
+
+def test_conflicting_records_for_one_execution_identity_are_quarantined(tmp_path):
+    first = _event(1)
+    conflicting = {**first, "input_tokens": 99}
+    _append_many(tmp_path, [first, conflicting])
+    data = routing_stats({"journal_root": str(tmp_path)})["data"]
+    assert data["population_analyzed"] == 0
+    assert data["conflicting_run_records"] == 1
 
 
 def test_stale_observations_are_excluded_from_calibration_window(tmp_path):

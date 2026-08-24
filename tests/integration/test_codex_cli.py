@@ -214,11 +214,41 @@ def test_codex_cli_emits_privacy_safe_v2_calibration_event(tmp_path):
     assert invalid == 0
     assert len(v2) == 1
     assert v2[0]["base_task_class"] == "routine_read_or_docs"
-    assert v2[0]["schema_version"] == "2.3.0"
+    assert v2[0]["schema_version"] == "2.4.0"
+    assert v2[0]["execution_id"].startswith("EXEC-")
     assert v2[0]["calibration_eligible"] is True
     assert v2[0]["routing_disposition"] == "adaptive"
     assert v2[0]["override_state"] == "none"
     assert "documentation" not in json.dumps(v2[0])
+
+
+def test_identical_invocations_keep_deterministic_run_id_but_get_distinct_execution_ids(tmp_path):
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    subprocess.run(["git", "init", "-q", str(repository)], check=True)
+    executable = tmp_path / "fake-codex"
+    executable.write_text(
+        "#!/usr/bin/env python3\nimport json, sys\n"
+        "print('codex-cli 0.147.0') if sys.argv[1:] == ['--version'] else "
+        "print('--json --strict-config --ignore-user-config --ignore-rules --model --sandbox --cd --last') if sys.argv[-1:] == ['--help'] else "
+        "print(json.dumps({'type':'turn.completed','usage':{'input_tokens':7,'output_tokens':2}}))\n"
+    )
+    executable.chmod(0o700)
+    policy = tmp_path / "policy.toml"
+    _policy(policy, executable, repository)
+    journal = tmp_path / "journal"
+    payload = {"task": "Review documentation", "repository_root": str(repository), "policy_path": str(policy), "verification": {"kind": "execution"}}
+    first, second = _run(payload, telemetry_root=journal), _run(payload, telemetry_root=journal)
+    first_output, second_output = json.loads(first.stdout), json.loads(second.stdout)
+    records, invalid = iter_records(journal)
+    events = [record for record in records if record.get("record_type") == "codex_routing_event_v2"]
+    stats = _routing_run("stats", {"journal_root": str(journal)})
+    assert first.returncode == second.returncode == 0
+    assert first_output["run_id"] == second_output["run_id"]
+    assert first_output["data"]["execution_id"] != second_output["data"]["execution_id"]
+    assert {event["execution_id"] for event in events} == {first_output["data"]["execution_id"], second_output["data"]["execution_id"]}
+    assert invalid == 0
+    assert json.loads(stats.stdout)["data"]["population_analyzed"] == 2
 
 
 def test_blocked_preflight_and_completed_run_produce_one_calibration_sample(tmp_path):

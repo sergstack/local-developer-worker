@@ -103,7 +103,7 @@ def _calibration_event(output: dict, payload: dict, elapsed_ms: int) -> dict | N
         initial = route_task(payload["task"], payload, config)
         first = data["verification_status"] if data["fallback_count"] == 0 and data["escalation_count"] == 0 else "not_observed"
         return codex_routing_event_v2({
-            "run_id": output["run_id"], "base_task_class": initial.base_task_class, "routing_signal": initial.signal,
+            "run_id": output["run_id"], "execution_id": data["execution_id"], "base_task_class": initial.base_task_class, "routing_signal": initial.signal,
             "routing_disposition": initial.routing_disposition, "override_requested_profile": initial.override_requested_profile,
             "override_state": initial.override_state, "adaptive_routing": initial.adaptive_routing,
             "calibration_eligible": data.get("calibration_eligible", False),

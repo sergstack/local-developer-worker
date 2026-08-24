@@ -4,13 +4,14 @@
   "title": "Codex run public data v1",
   "type": "object",
   "required": [
-    "profile", "model_alias", "effort", "routing_signal", "routing_confidence",
+    "execution_id", "profile", "model_alias", "effort", "routing_signal", "routing_confidence",
     "deterministic_risk_floor", "policy_revision", "terminal_status", "verification_status",
     "fallback_count", "escalation_count", "execution_attempted", "model_execution_completed",
     "calibration_eligible", "input_tokens", "cached_input_tokens", "non_cached_input_tokens",
     "output_tokens", "reasoning_output_tokens", "provider_total_tokens", "reasoning_in_output_status"
   ],
   "properties": {
+    "execution_id": {"type": "string", "pattern": "^EXEC-[0-9a-f]{32}$"},
     "profile": {"type": ["string", "null"], "enum": ["efficient", "balanced", "frontier", null]},
     "model_alias": {"type": ["string", "null"]},
     "effort": {"type": ["string", "null"]},

@@ -6,6 +6,7 @@ import selectors
 import signal
 import subprocess
 import time
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
@@ -316,6 +317,7 @@ def _public_data(
     escalations: int,
     tokens: dict[str, int | None] | None = None,
     *,
+    execution_id: str,
     execution_attempted: bool = False,
     model_execution_completed: bool = False,
 ) -> dict[str, Any]:
@@ -326,6 +328,10 @@ def _public_data(
         "reasoning_output_tokens": None,
     }
     return {
+        # ``run_id`` belongs to the ToolResult and deliberately fingerprints
+        # its deterministic input.  This ID names one actual invocation for
+        # append-only telemetry; it has no prompt, path, or provider content.
+        "execution_id": execution_id,
         "profile": route.profile if route else None,
         "model_alias": route.model_alias if route else None,
         "effort": route.effort if route else None,
@@ -353,6 +359,7 @@ def _merge_tokens(total: dict[str, int | None], observed: dict[str, int | None])
 
 def codex_run(payload: dict[str, Any], policy: dict[str, Any], *, runner: ProcessRunner | None = None) -> dict[str, Any]:
     raw = canonical_json(payload)
+    execution_id = "EXEC-" + uuid.uuid4().hex
     process_runner = runner or _default_runner
     route: Route | None = None
     try:
@@ -379,7 +386,7 @@ def codex_run(payload: dict[str, Any], policy: dict[str, Any], *, runner: Proces
             "codex_run",
             "stdin",
             raw,
-            _public_data(route, "blocked", "not_run", 0, 0),
+            _public_data(route, "blocked", "not_run", 0, 0, execution_id=execution_id),
             status="policy_blocked" if code not in {"invalid_codex_input", "invalid_verification", "codex_task_size_exceeded"} else "invalid_input",
             errors=[{"code": code}],
         )
@@ -489,6 +496,7 @@ def codex_run(payload: dict[str, Any], policy: dict[str, Any], *, runner: Proces
         fallback_count,
         escalation_count,
         tokens,
+        execution_id=execution_id,
         execution_attempted=execution_attempted,
         model_execution_completed=model_execution_completed,
     )

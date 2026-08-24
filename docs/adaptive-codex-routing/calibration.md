@@ -62,16 +62,20 @@ restrictive deterministic risk floor observed for the population. Failed and
 unverified records are never treated as successful evidence.
 
 `min_samples` and `strong_sample` count independent, calibration-eligible
-routing runs, not provider attempts. A v2.3 record is eligible only after a
+routing runs, not provider attempts. A v2.3+ record is eligible only after a
 real Codex model execution reaches a terminal model event. Policy/preflight,
 configuration, authentication, capability, or launch blocks remain available
 as operational records but do not increase calibration population `n`. One
 eligible terminal `ldw codex run` record is one observation; an
 exact-session escalation such as Terra → failed verification → Sol → passed
 remains one observation, with its final profile and escalation count. Duplicate
-JSONL records with the same `run_id` and complete revision identity are
-deduplicated. Conflicting records inside that same revision are quarantined and
-do not enter calibration. Reusing a deterministic `run_id` after a policy,
+JSONL records emitted by the current v2.4 contract have a privacy-safe random
+`execution_id`; the deterministic public `run_id` is an input fingerprint and
+may legitimately repeat across actual executions. Duplicate records with one
+`execution_id` and complete revision identity are deduplicated. Conflicting
+records inside that same execution identity are quarantined and do not enter
+calibration. Legacy records without `execution_id` retain the conservative
+`run_id` identity rule. Reusing a deterministic `run_id` after a policy,
 routing, alias, or taxonomy revision is not a conflict; revision isolation
 keeps the observations separate.
 
