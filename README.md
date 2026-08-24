@@ -76,6 +76,11 @@ Calibration never auto-applies a policy change, never weakens the deterministic
 risk floor, and does not invoke a provider. Details and evidence thresholds are
 in `docs/adaptive-codex-routing/calibration.md`.
 
+For a reproducible, privacy-safe paired study of routing latency, provider
+tokens, and selected context (rather than a calibration recommendation), see
+`docs/adaptive-codex-routing/effect-study.md`. Its bundled fixture is
+informational only and cannot promote a routing change.
+
 Set `[codex].enabled = false` to remove the execution surface entirely. Set `[codex].adaptive_routing = false` to keep execution enabled while restoring the configured fixed `default_profile`. Set `[codex.calibration].enabled = false` to disable only offline calibration analysis; it does not change routing or execution. See `docs/adaptive-codex-routing/SPEC.md` for the versioned contract and rollback details.
 
 ## Safety
