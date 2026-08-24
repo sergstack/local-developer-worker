@@ -1,0 +1,80 @@
+{
+  "standard": "AUTONOMOUS EXECUTION LOOP STANDARD — Universal v2",
+  "goal": "Restore portable, parser-confirmed portfolio verification when the globally installed LDW runtime does not include pytest.",
+  "scope": {
+    "allowed": [
+      "src/local_developer_worker/portfolio.py",
+      "tests/integration/test_portfolio.py",
+      "autoloop_iteration_register.json"
+    ],
+    "forbidden": [
+      "execution adapter",
+      "model aliases and profiles",
+      "routing policy",
+      "network, sandbox, and write authority",
+      "remote Git operations"
+    ]
+  },
+  "iterations": [
+    {
+      "id": "P0-1",
+      "type": "main_corrective",
+      "status": "accepted",
+      "requirement": "Portfolio verification must use a pytest-capable repository runtime and establish execution results through the LDW test parser.",
+      "defect": {
+        "id": "PORT-01",
+        "severity": "high",
+        "root_cause": "portfolio.py invoked sys.executable, which resolves to LDW's isolated installer runtime; that runtime has no pytest dependency. It also treated a zero process exit code as sufficient test evidence."
+      },
+      "change": {
+        "runtime_selection": "Prefer an executable repository .venv/bin/python; otherwise use sys.executable.",
+        "test_evidence": "Run pytest with -rA and accept execution evidence only when return_code is zero and parse_tests reports status=success and run_status=passed."
+      },
+      "baseline_evidence": [
+        "RUN-1c2d00527804c592"
+      ],
+      "post_change_evidence": [
+        "RUN-8f11e8d6f19251c1",
+        "RUN-fb463b7cf97af651",
+        "RUN-95f5e20f17f31456",
+        "RUN-1ae5a5aadb566b9f"
+      ],
+      "validation": {
+        "focused_test_parse_run": "RUN-fb463b7cf97af651",
+        "full_test_parse_run": "RUN-95f5e20f17f31456",
+        "full_test_count": 298,
+        "portfolio_verify_run": "RUN-1ae5a5aadb566b9f",
+        "portfolio_complete_items": 20,
+        "parser_confirmed_portfolio_executions": 36,
+        "schemas": "22 valid",
+        "fixtures": "valid",
+        "compileall": "passed",
+        "secret_scan": "passed",
+        "diff_check": "passed"
+      },
+      "remaining_work": []
+    }
+  ],
+  "closure_review": {
+    "status": "accepted",
+    "checks": [
+      "No remaining P0 defect was found after the full suite and portfolio rerun.",
+      "The global LDW installer runtime remains pytest-free, but this is now a handled compatibility condition through the repository virtual environment.",
+      "No routing, execution-adapter, policy, sandbox, network, or remote Git behavior changed."
+    ],
+    "evidence_package": {
+      "run_id": "RUN-1ba45dbbdb49cde7",
+      "status": "partial",
+      "content_hash": "07ee11cd65904c809e91107cab98cd8a12452f9a7afd5c8a84284b904fdcaced",
+      "limitations": [
+        "git facts was policy blocked by the active root allowlist (RUN-7361aa69a14d1b10)",
+        "file inventory was not run because it was not needed for the bounded P0 change"
+      ]
+    }
+  },
+  "follow_up_not_activated": [
+    "P1 calibration-data collection requires real provider executions and sufficient eligible samples.",
+    "P2 telemetry-retention selection requires an owner decision.",
+    "P3 live provider acceptance requires a separately authorized bounded provider run."
+  ]
+}
