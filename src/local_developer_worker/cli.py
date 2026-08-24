@@ -150,6 +150,7 @@ def _emit(output: dict, key: tuple[str, ...], payload: dict, raw: str, started: 
         except (OSError, ValueError):
             print("telemetry_write_failed", file=sys.stderr)
     sys.stdout.write(stdout_text)
+    sys.stdout.flush()
     if key == ("codex", "run"):
         return 0 if output.get("data", {}).get("terminal_status") == "pass" else 2
     return 0 if output["status"] in {"success", "partial", "unsupported"} else 2
@@ -203,7 +204,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             if key == ("context", "pack"):
                 payload["max_context_files"] = min(int(payload.get("max_context_files", limits.get("max_context_files", 20))), int(limits.get("max_context_files", 20)))
-            output = codex_run(payload, policy) if key == ("codex", "run") else routing_calibrate(payload, policy) if key == ("routing", "calibrate") else routing_explain(payload, policy) if key == ("routing", "explain") else log_cluster(payload, policy) if key == ("log", "cluster") else log_process(payload, policy) if key == ("log", "process") else COMMANDS[key](payload)
+            output = codex_run(payload, policy) if key == ("codex", "run") else routing_calibrate(payload, policy) if key == ("routing", "calibrate") else routing_stats(payload, policy) if key == ("routing", "stats") else routing_explain(payload, policy) if key == ("routing", "explain") else log_cluster(payload, policy) if key == ("log", "cluster") else log_process(payload, policy) if key == ("log", "process") else COMMANDS[key](payload)
         if not valid_tool_result(output):
             output = result(" ".join(key), "stdin", raw, {"fallback": policy.get("fallback", {}).get("on_invalid_schema", "codex")}, status="internal_error", errors=[{"code": "invalid_output_schema"}])
     except (OSError, ValueError):

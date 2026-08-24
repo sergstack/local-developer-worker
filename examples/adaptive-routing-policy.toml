@@ -57,6 +57,10 @@ fallback_aliases = []
 efficient = "balanced"
 balanced = "frontier"
 
+[telemetry]
+# Logical retention only. Physical cleanup remains separately approved.
+retention_days = 90
+
 # Aggregate calibration is opt-in and can only propose a revision. It does not
 # mutate this policy, aliases, or any execution authority.
 [codex.calibration]

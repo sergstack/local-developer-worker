@@ -134,6 +134,42 @@ def test_cli_executes_selected_profile_and_validates_public_schema(tmp_path):
     assert "ephemeral-test-id" not in completed.stdout
 
 
+def test_cli_flushes_one_terminal_result_after_a_delayed_codex_execution(tmp_path):
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    subprocess.run(["git", "init", "-q", str(repository)], check=True)
+    executable = tmp_path / "fake-codex"
+    executable.write_text(
+        "#!/usr/bin/env python3\n"
+        "import json, sys, time\n"
+        "if sys.argv[1:] == ['--version']:\n"
+        " print('codex-cli 0.147.0')\n"
+        "elif sys.argv[-1:] == ['--help']:\n"
+        " print('--json --strict-config --ignore-user-config --ignore-rules --model --sandbox --cd --last')\n"
+        "else:\n"
+        " time.sleep(0.05)\n"
+        " print(json.dumps({'type':'turn.completed','usage':{'input_tokens':7,'output_tokens':2}}))\n"
+    )
+    executable.chmod(0o700)
+    policy = tmp_path / "policy.toml"
+    _policy(policy, executable, repository)
+    journal = tmp_path / "journal"
+
+    completed = _run(
+        {"task": "Review documentation", "repository_root": str(repository), "policy_path": str(policy), "verification": {"kind": "execution"}},
+        telemetry_root=journal,
+    )
+
+    assert completed.returncode == 0
+    assert len(completed.stdout.splitlines()) == 1
+    output = json.loads(completed.stdout)
+    records, invalid = iter_records(journal)
+    event = next(record for record in records if record.get("record_type") == "codex_routing_event_v2")
+    assert output["data"]["terminal_status"] == "pass"
+    assert output["data"]["execution_id"] == event["execution_id"]
+    assert invalid == 0
+
+
 def test_disabled_feature_blocks_without_launch(tmp_path):
     repository = tmp_path / "repo"
     repository.mkdir()
@@ -191,6 +227,7 @@ def test_routing_cli_explain_and_stats_are_read_only_and_do_not_expose_concrete_
     assert explain_output["data"]["selected_profile"] == "efficient"
     assert "model" not in explain_output["data"]
     assert stats_output["data"]["population_analyzed"] == 0
+    assert stats_output["data"]["retention_days"] == 90
 
 
 def test_codex_cli_emits_privacy_safe_v2_calibration_event(tmp_path):
