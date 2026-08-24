@@ -236,7 +236,7 @@ def test_blocked_preflight_and_completed_run_produce_one_calibration_sample(tmp_
     policy = tmp_path / "policy.toml"
     _policy(policy, executable, repository)
     journal = tmp_path / "journal"
-    blocked = _run({"task": "Change this module", "repository_root": str(repository), "policy_path": str(policy), "verification": {"kind": "execution"}}, telemetry_root=journal)
+    blocked = _run({"task": "Change this module", "repository_root": str(repository), "policy_path": str(policy), "verification": {"kind": "command", "argv": ["/bin/false"]}}, telemetry_root=journal)
     completed = _run({"task": "Review documentation", "repository_root": str(repository), "policy_path": str(policy), "verification": {"kind": "execution"}}, telemetry_root=journal)
     stats = _routing_run("stats", {"journal_root": str(journal)})
     blocked_output, completed_output, stats_output = map(lambda row: json.loads(row.stdout), (blocked, completed, stats))

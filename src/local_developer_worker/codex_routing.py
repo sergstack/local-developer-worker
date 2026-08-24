@@ -304,6 +304,7 @@ def validate_codex_policy(policy: dict[str, Any]) -> dict[str, Any]:
     return {
         "adaptive_routing": raw.get("adaptive_routing", False),
         "allow_profile_downgrade": raw.get("allow_profile_downgrade", False),
+        "allow_write": raw.get("allow_write", False),
         "default_profile": default_profile,
         "risk_floor": risk_floor,
         "maximum_profile": maximum_profile,

@@ -197,11 +197,33 @@ def test_model_unavailable_uses_declared_fallback_before_mutation(tmp_path):
     assert output["data"]["escalation_count"] == 0
 
 
-def test_mutation_task_requires_explicit_verifier(tmp_path):
+def test_read_only_mutation_task_uses_execution_verifier_by_default(tmp_path):
     executable = tmp_path / "codex"
     executable.write_text("fake")
     executable.chmod(0o700)
-    output = codex_run({"task": "Fix bug", "repository_root": str(tmp_path)}, codex_policy(str(executable)), runner=lambda *args, **kwargs: None)
+    _git_repo(tmp_path)
+
+    def runner(argv, **kwargs):
+        if argv[1:] == ["--version"]:
+            return _completed(argv, stdout="codex-cli 0.147.0")
+        if argv[-1:] == ["--help"]:
+            return _completed(argv, stdout=HELP_TEXT)
+        return _completed(argv, stdout=_jsonl({"type": "turn.completed"}))
+
+    output = codex_run({"task": "Fix bug", "repository_root": str(tmp_path)}, codex_policy(str(executable)), runner=runner)
+    assert output["status"] == "success"
+    assert output["data"]["terminal_status"] == "pass"
+    assert output["data"]["verification_status"] == "passed"
+
+
+def test_write_capable_mutation_task_requires_explicit_verifier(tmp_path):
+    executable = tmp_path / "codex"
+    executable.write_text("fake")
+    executable.chmod(0o700)
+    policy = codex_policy(str(executable))
+    policy["codex"]["allow_write"] = True
+    policy["codex"]["sandbox"] = "workspace-write"
+    output = codex_run({"task": "Fix bug", "repository_root": str(tmp_path)}, policy, runner=lambda *args, **kwargs: None)
     assert output["status"] == "policy_blocked"
     assert output["errors"][0]["code"] == "verification_required"
 
