@@ -134,6 +134,37 @@ def test_cli_executes_selected_profile_and_validates_public_schema(tmp_path):
     assert "ephemeral-test-id" not in completed.stdout
 
 
+def test_cli_allows_read_only_execution_without_git_and_marks_missing_git_evidence(tmp_path):
+    repository = tmp_path / "not-a-git-repository"
+    repository.mkdir()
+    executable = tmp_path / "fake-codex"
+    executable.write_text(
+        "#!/usr/bin/env python3\n"
+        "import json, sys\n"
+        "if sys.argv[1:] == ['--version']:\n print('codex-cli 0.147.0')\n"
+        "elif sys.argv[-1:] == ['--help']:\n print('--json --strict-config --ignore-user-config --ignore-rules --model --sandbox --cd --last')\n"
+        "else:\n print(json.dumps({'type':'turn.completed'}))\n"
+    )
+    executable.chmod(0o700)
+    policy = tmp_path / "policy.toml"
+    _policy(policy, executable, repository)
+
+    completed = _run(
+        {
+            "task": "Review the README",
+            "repository_root": str(repository),
+            "policy_path": str(policy),
+            "verification": {"kind": "execution"},
+        }
+    )
+
+    output = json.loads(completed.stdout)
+    assert completed.returncode == 0
+    assert output["status"] == "success"
+    assert output["data"]["model_execution_completed"] is True
+    assert output["warnings"] == [{"code": "git_evidence_not_available"}]
+
+
 def test_cli_flushes_one_terminal_result_after_a_delayed_codex_execution(tmp_path):
     repository = tmp_path / "repo"
     repository.mkdir()
@@ -168,6 +199,36 @@ def test_cli_flushes_one_terminal_result_after_a_delayed_codex_execution(tmp_pat
     assert output["data"]["terminal_status"] == "pass"
     assert output["data"]["execution_id"] == event["execution_id"]
     assert invalid == 0
+
+
+def test_routing_value_renders_existing_run_without_writing_telemetry(tmp_path):
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    subprocess.run(["git", "init", "-q", str(repository)], check=True)
+    executable = tmp_path / "fake-codex"
+    executable.write_text(
+        "#!/usr/bin/env python3\n"
+        "import json, sys\n"
+        "if sys.argv[1:] == ['--version']:\n print('codex-cli 0.147.0')\n"
+        "elif sys.argv[-1:] == ['--help']:\n print('--json --strict-config --ignore-user-config --ignore-rules --model --sandbox --cd --last')\n"
+        "else:\n print(json.dumps({'type':'turn.completed','usage':{'input_tokens':7,'output_tokens':2}}))\n"
+    )
+    executable.chmod(0o700)
+    policy = tmp_path / "policy.toml"
+    _policy(policy, executable, repository)
+    journal = tmp_path / "journal"
+    run = _run({"task": "Review documentation", "repository_root": str(repository), "policy_path": str(policy), "verification": {"kind": "execution"}}, telemetry_root=journal)
+    records_before, invalid_before = iter_records(journal)
+    rendered = _routing_run("value", {"codex_result": json.loads(run.stdout), "journal_root": str(journal)})
+    records_after, invalid_after = iter_records(journal)
+
+    output = json.loads(rendered.stdout)
+    assert run.returncode == rendered.returncode == 0
+    assert invalid_before == invalid_after == 0
+    assert records_after == records_before
+    assert output["data"]["observed"]["latency"]["status"] == "observed"
+    assert output["data"]["comparison"]["status"] == "not_available"
+    validate(output["data"], json.loads((ROOT / "schemas/routing_value_data.schema.json").read_text()))
 
 
 def test_disabled_feature_blocks_without_launch(tmp_path):

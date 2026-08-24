@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local-developer-worker.invalid/schemas/routing_value_data.schema.json",
+  "title": "Routing value summary v1",
+  "type": "object",
+  "required": ["contract_version", "execution_id", "observed", "comparison", "context", "quality", "claim_boundary"],
+  "properties": {
+    "contract_version": {"const": "1.0.0"},
+    "execution_id": {"type": "string", "pattern": "^EXEC-[0-9a-f]{32}$"},
+    "observed": {"type": "object"},
+    "comparison": {"type": "object", "required": ["status", "reason"], "properties": {"status": {"const": "not_available"}, "reason": {"const": "matched_control_not_supplied"}}},
+    "context": {"type": "object", "required": ["status"]},
+    "quality": {"type": "object", "required": ["status", "reason"], "properties": {"status": {"const": "not_measured"}, "reason": {"const": "child_findings_not_exposed_by_tool_result"}}},
+    "claim_boundary": {"type": "string"}
+  },
+  "additionalProperties": false
+}
