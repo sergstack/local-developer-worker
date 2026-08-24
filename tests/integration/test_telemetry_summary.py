@@ -159,6 +159,7 @@ def test_telemetry_summary_aggregates_privacy_safe_codex_events(tmp_path):
         codex_run_event(
             {
                 "run_id": "RUN-codex",
+                "execution_id": "EXEC-00000000000000000000000000000003",
                 "profile": "frontier",
                 "model_alias": "large",
                 "effort": "high",

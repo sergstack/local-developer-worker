@@ -36,7 +36,7 @@ the deployment policy does not claim `max` support.
 | Configurable escalation ceiling and model-unavailable fallback | PASS | Bound and missing-thread tests; stable pre-mutation model-unavailable fallback test |
 | Verification authority | PASS | Read-only advisory execution verification for every route; write-capable mutation verifier required; exact policy argv/executable; tests interpreted with `command_observed=true` and observed exit code |
 | Repository, network, and authority boundaries | PASS | Root gate, symlink/unlisted verifier rejection, direct argv, filtered environment, no automatic Git/deploy, and sandbox-network denial tests |
-| Privacy-safe telemetry | PASS | `codex_run_event_v1` allowlist/schema, malicious extra-field drop, and aggregate summary tests |
+| Privacy-safe telemetry | PASS | Versioned `codex_run_event_v2` adds a random `execution_id` per invocation while preserving deterministic public `run_id`; allowlist/schema, malicious extra-field drop, and aggregate summary tests |
 | Fixed-profile and full-disable rollback | PASS | CLI disabled and `adaptive_routing=false` integration tests |
 | Existing LDW compatibility | PASS | Canonical suite is required to pass through `ldw test parse` in each fresh acceptance run |
 | Schema, TOML, compile, whitespace checks | PASS | Draft 2020-12 schemas, example TOML, compileall, CLI help, and `git diff --check` |
@@ -140,7 +140,7 @@ field that exposes it) before claiming full live model-switch verification.
 | Invariant | Status | Evidence |
 |---|---|---|
 | Policy/revision isolation | PASS | Versioned telemetry carries policy, routing, alias, and taxonomy revision hashes; mixed records are separated and incompatible records excluded from calibration. |
-| Independent-task sample counting | PASS | One calibration-eligible terminal `ldw codex run` record is one observation; blocked/non-executed records are excluded, duplicate same-run records deduplicate, and conflicting same-run records are quarantined. |
+| Independent-task sample counting | PASS | One calibration-eligible terminal `ldw codex run` execution is one observation; `execution_id` distinguishes repeated identical inputs, blocked/non-executed records are excluded, duplicate same-execution records deduplicate, and conflicting same-execution records are quarantined. Legacy records retain conservative `run_id` handling. |
 | Temporal/model drift | PASS | Policy-configurable `min_samples`, `strong_sample`, and `max_age_days`; stale and incompatible observations cannot form a candidate. |
 | Active-policy mutation | PASS | Calibration creates only a pending-human-acceptance candidate revision. |
 

@@ -24,7 +24,11 @@ def _events(payload: dict[str, Any], *, max_age_days: int | None = None) -> tupl
     by_run: dict[tuple[str, str, str, str, str], list[tuple[dict[str, Any], date]]] = defaultdict(list)
     for record, observed_on in rows:
         revision_key = tuple(record[field] for field in REVISION_FIELDS)
-        by_run[(record["run_id"], *revision_key)].append((record, observed_on))
+        # v2.4 identifies an actual invocation.  Older journal records did
+        # not have that capability and retain their conservative run-ID
+        # conflict treatment for backward-compatible historical reporting.
+        identity = record["execution_id"] if record.get("schema_version") == "2.4.0" else record["run_id"]
+        by_run[(identity, *revision_key)].append((record, observed_on))
     events, duplicate_runs, conflicting_runs, stale = [], 0, 0, 0
     today = date.today()
     for run_key in sorted(by_run):
@@ -42,7 +46,7 @@ def _events(payload: dict[str, Any], *, max_age_days: int | None = None) -> tupl
         normalized["task_class"] = record.get("base_task_class", record.get("task_class"))
         normalized["calibration_eligible"] = (
             record["calibration_eligible"]
-            if record.get("schema_version") == "2.3.0"
+            if record.get("schema_version") in {"2.3.0", "2.4.0"}
             else record.get("terminal_status") == "pass"
             and record.get("final_verification_status") == "passed"
             and record.get("input_tokens") is not None
