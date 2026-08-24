@@ -1,5 +1,7 @@
 import copy
 import json
+import subprocess
+import sys
 
 from local_developer_worker import portfolio
 
@@ -64,7 +66,13 @@ def test_portfolio_verifier_continues_after_one_gate_failure(tmp_path, monkeypat
     monkeypatch.setattr(
         portfolio,
         "_run_pytest",
-        lambda node_id, collect_only, timeout: {"return_code": 1 if node_id == failing and not collect_only else 0, "stdout_sha256": "observed", "stderr_sha256": "observed", "elapsed_ms": 0},
+        lambda node_id, collect_only, timeout: {
+            "return_code": 1 if node_id == failing and not collect_only else 0,
+            "stdout_sha256": "observed",
+            "stderr_sha256": "observed",
+            "elapsed_ms": 0,
+            **({} if collect_only else {"test_parser": {"status": "success", "run_status": "failed" if node_id == failing else "passed"}}),
+        },
     )
     output = portfolio.portfolio_verify({})
     items = output["data"]["portfolio"]["items"]
@@ -92,3 +100,58 @@ def test_every_declared_gate_node_is_exactly_collected():
     declared = {node for item in registry["items"] if item["category"] == "gate" for node in item["evidence_test_ids"]}
     collected = portfolio._collect_all_nodes(60)
     assert declared <= collected
+
+
+def test_portfolio_prefers_executable_repository_venv_for_pytest(tmp_path, monkeypatch):
+    interpreter = tmp_path / ".venv" / "bin" / "python"
+    interpreter.parent.mkdir(parents=True)
+    interpreter.write_text("#!/bin/sh\n")
+    interpreter.chmod(0o700)
+    monkeypatch.setattr(portfolio, "ROOT", tmp_path)
+
+    assert portfolio._pytest_interpreter() == str(interpreter)
+
+
+def test_portfolio_falls_back_to_its_own_interpreter_without_repository_venv(tmp_path, monkeypatch):
+    monkeypatch.setattr(portfolio, "ROOT", tmp_path)
+
+    assert portfolio._pytest_interpreter() == sys.executable
+
+
+def test_portfolio_execution_uses_test_parser_not_return_code_alone(monkeypatch):
+    monkeypatch.setattr(portfolio, "_pytest_interpreter", lambda: sys.executable)
+    monkeypatch.setattr(
+        portfolio.subprocess,
+        "run",
+        lambda *args, **kwargs: subprocess.CompletedProcess(
+            args[0], 0, "PASSED tests/unit/test_example.py::test_ok\n", ""
+        ),
+    )
+
+    observed = portfolio._run_pytest("tests/unit/test_example.py::test_ok", collect_only=False, timeout=1)
+
+    assert observed["test_parser"]["status"] == "success"
+    assert observed["test_parser"]["run_status"] == "passed"
+
+
+def test_portfolio_rejects_zero_exit_code_without_a_confirmed_parsed_pass(tmp_path, monkeypatch):
+    _isolate_state(tmp_path, monkeypatch)
+    registry = portfolio.load_registry()
+    nodes = {node for item in registry["items"] for node in item["evidence_test_ids"]}
+    monkeypatch.setattr(portfolio, "_collect_all_nodes", lambda timeout: nodes)
+    monkeypatch.setattr(
+        portfolio,
+        "_run_pytest",
+        lambda node_id, collect_only, timeout: {
+            "return_code": 0,
+            "stdout_sha256": "observed",
+            "stderr_sha256": "observed",
+            "elapsed_ms": 0,
+            **({} if collect_only else {"test_parser": {"status": "partial", "run_status": "unknown"}}),
+        },
+    )
+
+    output = portfolio.portfolio_verify({"only": "SA-01"})
+    sa01 = next(item for item in output["data"]["portfolio"]["items"] if item["id"] == "SA-01")
+
+    assert sa01["status"] == "judge_revise"

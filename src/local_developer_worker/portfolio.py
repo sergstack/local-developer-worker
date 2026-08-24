@@ -14,6 +14,7 @@ from typing import Any
 from .contracts import canonical_json, result, sha256, stable_hash
 from .session_log import iter_events
 from .telemetry import SAFE_FIELDS
+from .tools import parse_tests
 
 ROOT = Path(__file__).parents[2]
 DEFAULT_REGISTRY = ROOT / "docs" / "gate_registry.json"
@@ -224,12 +225,20 @@ def _pytest_environment() -> dict[str, str]:
     return environment
 
 
+def _pytest_interpreter() -> str:
+    """Prefer the repository's isolated test runtime over LDW's installer runtime."""
+    candidate = ROOT / ".venv" / "bin" / "python"
+    if candidate.is_file() and os.access(candidate, os.X_OK):
+        return str(candidate)
+    return sys.executable
+
+
 def _run_pytest(node_id: str, *, collect_only: bool, timeout: int) -> dict[str, Any]:
-    command = [sys.executable, "-m", "pytest"]
+    command = [_pytest_interpreter(), "-m", "pytest"]
     if collect_only:
         command.extend(["--collect-only", "-q", node_id])
     else:
-        command.extend(["-q", node_id])
+        command.extend(["-rA", node_id])
     started = time.perf_counter()
     try:
         completed = subprocess.run(
@@ -241,12 +250,28 @@ def _run_pytest(node_id: str, *, collect_only: bool, timeout: int) -> dict[str, 
             timeout=timeout,
             check=False,
         )
-        return {
+        observed = {
             "return_code": completed.returncode,
             "stdout_sha256": sha256(completed.stdout),
             "stderr_sha256": sha256(completed.stderr),
             "elapsed_ms": round((time.perf_counter() - started) * 1000),
+            "interpreter": command[0],
         }
+        if not collect_only:
+            parsed = parse_tests(
+                {
+                    "text": completed.stdout + completed.stderr,
+                    "exit_code": completed.returncode,
+                    "command_observed": True,
+                    "source": "portfolio_verify",
+                }
+            )
+            observed["test_parser"] = {
+                "run_id": parsed["run_id"],
+                "status": parsed["status"],
+                "run_status": parsed.get("data", {}).get("run_status"),
+            }
+        return observed
     except subprocess.TimeoutExpired as exc:
         return {
             "return_code": None,
@@ -262,7 +287,7 @@ def _run_pytest(node_id: str, *, collect_only: bool, timeout: int) -> dict[str, 
 def _collect_all_nodes(timeout: int) -> set[str]:
     try:
         collection = subprocess.run(
-            [sys.executable, "-m", "pytest", "--collect-only", "-q"],
+            [_pytest_interpreter(), "-m", "pytest", "--collect-only", "-q"],
             cwd=ROOT,
             env=_pytest_environment(),
             capture_output=True,
@@ -520,7 +545,12 @@ def portfolio_verify(payload: dict[str, Any]) -> dict[str, Any]:
                     {
                         "test_id": node_id,
                         "collected": collect.get("return_code") == 0 and node_id in collected_nodes,
-                        "passed": bool(execute and execute.get("return_code") == 0),
+                        "passed": bool(
+                            execute
+                            and execute.get("return_code") == 0
+                            and execute.get("test_parser", {}).get("status") == "success"
+                            and execute.get("test_parser", {}).get("run_status") == "passed"
+                        ),
                         "collect": collect,
                         "execute": execute,
                     }
