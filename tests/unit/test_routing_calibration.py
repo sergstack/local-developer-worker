@@ -12,6 +12,7 @@ from local_developer_worker.telemetry import codex_routing_event_v2
 def _policy(*, enabled: bool = True) -> dict:
     return {
         "network_access": True,
+        "telemetry": {"retention_days": 90},
         "codex": {
             "enabled": True, "adaptive_routing": True, "allow_profile_downgrade": False, "allow_write": False,
             "allow_network": True, "default_profile": "balanced", "risk_floor": "efficient", "maximum_profile": "frontier",
@@ -192,6 +193,35 @@ def test_stale_observations_are_excluded_from_calibration_window(tmp_path):
     assert output["stale_records"] == 50
     assert output["population_analyzed"] == 20
     assert output["detected_under_routing"] == []
+
+
+def test_stats_reports_retained_current_revision_population_and_exclusions(tmp_path):
+    policy = _policy()
+    current = validate_codex_policy(policy)
+    old_policy = _policy()
+    old_policy["codex"]["aliases"]["small"]["model"] = "old-model"
+    old = validate_codex_policy(old_policy)
+    _append_many(tmp_path, [_event(1, revisions=current), _event(2, revisions=old)])
+    _append_many(tmp_path, [_event(3, revisions=current)], observed_on=date.today() - timedelta(days=91))
+
+    data = routing_stats({"journal_root": str(tmp_path)}, policy)["data"]
+
+    assert data["retention_days"] == 90
+    assert data["stale_records"] == 1
+    assert data["population_analyzed"] == 2
+    assert data["current_revision_population"] == 1
+    assert data["excluded_incompatible_records"] == 1
+    assert data["current_revision"] == {field: current[field] for field in ("policy_revision", "routing_revision", "alias_revision", "taxonomy_revision")}
+
+
+def test_calibration_rejects_retention_shorter_than_its_window(tmp_path):
+    policy = _policy()
+    policy["telemetry"]["retention_days"] = 30
+
+    output = routing_calibrate({"journal_root": str(tmp_path)}, policy)
+
+    assert output["status"] == "invalid_input"
+    assert output["errors"][0]["code"] == "invalid_calibration_input"
 
 
 def test_calibration_cannot_lower_a_deterministic_risk_floor(tmp_path):

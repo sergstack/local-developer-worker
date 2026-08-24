@@ -56,6 +56,22 @@ def _events(payload: dict[str, Any], *, max_age_days: int | None = None) -> tupl
     return events, {"invalid_records": invalid, "duplicate_attempt_records": duplicate_runs, "conflicting_run_records": conflicting_runs, "stale_records": stale}
 
 
+def _retention_days(policy: dict[str, Any] | None) -> int | None:
+    if policy is None:
+        return None
+    raw = policy.get("telemetry", {})
+    if not isinstance(raw, dict):
+        raise ValueError("invalid telemetry configuration")
+    days = raw.get("retention_days", 90)
+    if not isinstance(days, int) or isinstance(days, bool) or days < 1:
+        raise ValueError("invalid telemetry retention")
+    return days
+
+
+def _current_revision(config: dict[str, Any]) -> dict[str, str]:
+    return {field: config[field] for field in REVISION_FIELDS}
+
+
 def _median(values: list[int | float]) -> int | float | None:
     return statistics.median(values) if values else None
 
@@ -121,10 +137,17 @@ def _group(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return output
 
 
-def routing_stats(payload: dict[str, Any]) -> dict[str, Any]:
+def routing_stats(payload: dict[str, Any], policy: dict[str, Any] | None = None) -> dict[str, Any]:
     raw = canonical_json(payload)
     try:
-        all_events, diagnostics = _events(payload)
+        retention_days = _retention_days(policy)
+        all_events, diagnostics = _events(payload, max_age_days=retention_days)
+        try:
+            config = validate_codex_policy(policy) if policy is not None else None
+        except ValueError:
+            # Generic telemetry reporting must remain available when a minimal
+            # policy has no opt-in Codex execution configuration.
+            config = None
     except (OSError, ValueError) as exc:
         return result("routing_stats", "session_log", raw, {}, status="invalid_input", errors=[{"code": "invalid_telemetry_range", "detail": str(exc)}])
     events = [event for event in all_events if event["calibration_eligible"]]
@@ -132,6 +155,16 @@ def routing_stats(payload: dict[str, Any]) -> dict[str, Any]:
     groups = _group(events)
     mixed = len({tuple(group["revision"].values()) for group in groups}) > 1
     data = {"operational_records": len(all_events), "population_analyzed": len(events), "excluded_ineligible_records": excluded_ineligible, "task_classes": groups, "mixed_revision_population": mixed, **diagnostics}
+    if policy is not None:
+        data["retention_days"] = retention_days
+    if config is not None:
+        current = _current_revision(config)
+        current_events = [event for event in events if all(event[field] == value for field, value in current.items())]
+        data.update({
+            "current_revision": current,
+            "current_revision_population": len(current_events),
+            "excluded_incompatible_records": len(events) - len(current_events),
+        })
     return result("routing_stats", "session_log", raw, data, status="partial" if any(diagnostics.values()) else "success")
 
 
@@ -185,13 +218,16 @@ def routing_calibrate(payload: dict[str, Any], policy: dict[str, Any]) -> dict[s
     try:
         config = validate_codex_policy(policy)
         calibration = _calibration_config(policy)
+        retention_days = _retention_days(policy)
+        if retention_days is not None and retention_days < calibration["max_age_days"]:
+            raise ValueError("telemetry retention cannot be shorter than the calibration window")
         operational_events, diagnostics = _events(payload, max_age_days=calibration["max_age_days"])
     except (OSError, ValueError) as exc:
         return result("routing_calibrate", "session_log", raw, {}, status="invalid_input", errors=[{"code": "invalid_calibration_input", "detail": str(exc)}])
     if not calibration["enabled"]:
         eligible = [event for event in operational_events if event["calibration_eligible"]]
         return result("routing_calibrate", "session_log", raw, {"current_policy_revision": config["policy_revision"], "operational_records": len(operational_events), "population_analyzed": len(eligible), "excluded_ineligible_records": len(operational_events) - len(eligible), "verdict": "keep", "reason": "calibration_disabled", "proposed_changes": [], "replay": {"status": "not_run"}, **diagnostics}, status="partial" if any(diagnostics.values()) else "success")
-    current_revision = {"policy_revision": config["policy_revision"], "routing_revision": config["routing_revision"], "alias_revision": config["alias_revision"], "taxonomy_revision": config["taxonomy_revision"]}
+    current_revision = _current_revision(config)
     eligible_events = [event for event in operational_events if event["calibration_eligible"]]
     excluded_ineligible = len(operational_events) - len(eligible_events)
     events = [event for event in eligible_events if all(event[field] == value for field, value in current_revision.items())]
@@ -219,7 +255,7 @@ def routing_calibrate(payload: dict[str, Any], policy: dict[str, Any]) -> dict[s
         "affected_task_classes": sorted({proposal["task_class"] for proposal in proposals}), "thresholds": {key: value for key, value in calibration.items() if key != "enabled"},
         "acceptance_status": "pending_human_acceptance", "rollback_target": config["policy_revision"],
     }
-    data = {"current_policy_revision": config["policy_revision"], "current_revision": current_revision, "operational_records": len(operational_events), "population_analyzed": len(events), "excluded_ineligible_records": excluded_ineligible, "excluded_incompatible_records": incompatible, "mixed_revision_population": incompatible > 0, "task_classes": groups, "detected_under_routing": [item for item in proposals if item["kind"] == "under_routing"], "detected_over_routing": [item for item in proposals if item["kind"] == "over_routing"], "proposed_changes": proposals, "candidate_revision": revision, "replay": _replay(events, proposals), "verdict": verdict, **diagnostics}
+    data = {"current_policy_revision": config["policy_revision"], "current_revision": current_revision, "retention_days": retention_days, "operational_records": len(operational_events), "population_analyzed": len(events), "excluded_ineligible_records": excluded_ineligible, "excluded_incompatible_records": incompatible, "mixed_revision_population": incompatible > 0, "task_classes": groups, "detected_under_routing": [item for item in proposals if item["kind"] == "under_routing"], "detected_over_routing": [item for item in proposals if item["kind"] == "over_routing"], "proposed_changes": proposals, "candidate_revision": revision, "replay": _replay(events, proposals), "verdict": verdict, **diagnostics}
     return result("routing_calibrate", "session_log", raw, data, status="partial" if any(diagnostics.values()) or incompatible else "success")
 
 
