@@ -25,6 +25,7 @@
     "target_files": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
     "related_files": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
     "symbols": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "source_slices": {"type": "array", "items": {"type": "object"}},
     "observed_failures": {"type": "array"},
     "included_files": {
       "type": "array",
