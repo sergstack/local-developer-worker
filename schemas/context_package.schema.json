@@ -67,13 +67,24 @@
         "input_file_count": {"type": "integer", "minimum": 0},
         "selected_file_count": {"type": "integer", "minimum": 0},
         "excluded_file_count": {"type": "integer", "minimum": 0},
-        "sensitive_block_count": {"type": "integer", "minimum": 0}
+        "sensitive_block_count": {"type": "integer", "minimum": 0},
+        "initial_pack_bytes": {"type": "integer", "minimum": 0},
+        "expansion_bytes": {"type": "integer", "minimum": 0},
+        "total_context_bytes": {"type": "integer", "minimum": 0},
+        "full_candidate_context_avoided_bytes": {"type": "integer", "minimum": 0},
+        "initial_pack_tokens": {"type": ["number", "null"], "minimum": 0},
+        "expansion_tokens": {"type": ["number", "null"], "minimum": 0},
+        "total_context_tokens": {"type": ["number", "null"], "minimum": 0},
+        "expansion_count": {"type": "integer", "minimum": 0}
       }
     },
     "package_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "previous_run_id": {"type": "string", "pattern": "^RUN-"},
     "previous_context_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "expansion_depth": {"type": "integer", "minimum": 1},
+    "max_expansion_depth": {"type": "integer", "minimum": 1},
     "added_files": {"type": "array", "items": {"$ref": "#/$defs/includedFile"}},
+    "reused_files": {"type": "array", "items": {"$ref": "#/$defs/includedFile"}},
     "still_excluded": {"type": "array", "items": {"$ref": "#/$defs/excludedFile"}}
   },
   "allOf": [

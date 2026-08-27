@@ -23,6 +23,7 @@ DOCKER_ERROR = re.compile(r"(?:ERROR|error|failed|Exited \(\d+\))", re.I)
 TIMEOUT_LINE = re.compile(r"^(?!PASSED\s|FAILED\s|SKIPPED\s|XFAIL\s|XPASS\s|ERROR\s).*\b(?:timeout|timed out)\b", re.I | re.M)
 TEST_STATUS_REMINDER = "Test status must be established via ldw test parse. Reading pytest or other test-runner output directly to determine pass/fail is not permitted."
 WAVE2_CONTRACT_VERSION = "2.0.0"
+DEFAULT_MAX_EXPANSION_DEPTH = 2
 WAVE2_ORIGINS = {"observed", "deterministic-derived", "model-derived-candidate", "user-provided", "unknown"}
 WAVE2_EXCLUSION_REASONS = {
     "outside_repository_root", "sensitive_path", "ignored_by_policy", "binary",
@@ -499,6 +500,14 @@ def _context_common(payload: dict[str, Any], root: Path, explicit_root: bool, se
             "eligible_input_bytes": selected["eligible_input_bytes"],
             "selected_bytes": selected["selected_bytes"],
             "context_reduction": selected["context_reduction"],
+            "initial_pack_bytes": selected["selected_bytes"],
+            "expansion_bytes": 0,
+            "total_context_bytes": selected["selected_bytes"],
+            "full_candidate_context_avoided_bytes": max(0, selected["eligible_input_bytes"] - selected["selected_bytes"]),
+            "initial_pack_tokens": None,
+            "expansion_tokens": None,
+            "total_context_tokens": None,
+            "expansion_count": 0,
             "input_file_count": len(payload.get("files", [])),
             "selected_file_count": len(included),
             "excluded_file_count": len(excluded),
@@ -636,16 +645,26 @@ def context_pack(payload: dict[str, Any]) -> dict[str, Any]:
         previous = payload.get("previous_package")
         previous_run_id = payload.get("previous_run_id")
         requested_paths = payload.get("requested_paths", [])
+        reason = payload.get("reason")
+        trigger = payload.get("deterministic_trigger")
         if not isinstance(previous, dict) or not isinstance(previous_run_id, str) or previous.get("run_id") != previous_run_id:
             return result("context_packer", "stdin", raw, {}, status="invalid_input", errors=[{"code": "previous_package_link_required"}])
         if not isinstance(requested_paths, list) or not all(isinstance(path, str) for path in requested_paths):
             return result("context_packer", "stdin", raw, {}, status="invalid_input", errors=[{"code": "requested_paths_must_be_list"}])
+        if not (isinstance(reason, str) and reason.strip()) and not (isinstance(trigger, str) and trigger.strip()):
+            return result("context_packer", "stdin", raw, {}, status="invalid_input", errors=[{"code": "expansion_reason_or_trigger_required"}])
         previous_data = previous.get("data") if isinstance(previous.get("data"), dict) else previous
         previous_included = previous_data.get("included_files", [])
         if not isinstance(previous_included, list):
             return result("context_packer", "stdin", raw, {}, status="invalid_input", errors=[{"code": "invalid_previous_package"}])
+        previous_depth = previous_data.get("expansion_depth", 0)
+        max_depth = payload.get("max_expansion_depth", DEFAULT_MAX_EXPANSION_DEPTH)
+        if not isinstance(previous_depth, int) or previous_depth < 0 or not isinstance(max_depth, int) or max_depth < 1:
+            return result("context_packer", "stdin", raw, {}, status="invalid_input", errors=[{"code": "invalid_expansion_bound"}])
+        if previous_depth >= max_depth:
+            return result("context_packer", "stdin", raw, {}, status="partial", errors=[{"code": "expansion_depth_limit_reached", "max_expansion_depth": max_depth}])
         try:
-            selected = _select_context(payload, root, limit, set(requested_paths))
+            selected = _select_context(payload, root, max(limit, len(payload.get("files", []))), set(requested_paths))
         except TypeError:
             return result("context_packer", "stdin", raw, {}, status="invalid_input", errors=[{"code": "files_must_be_list"}])
         safe_previous: list[dict[str, Any]] = []
@@ -661,7 +680,11 @@ def context_pack(payload: dict[str, Any]) -> dict[str, Any]:
                 safe_previous.append(item)
         previous_paths = {item["path"] for item in safe_previous}
         requested_set = set(requested_paths)
-        added = [item for item in selected["included_files"] if item["path"] in requested_set and item["path"] not in previous_paths]
+        available_slots = max(0, limit - len(previous_paths))
+        eligible_added = [item for item in selected["included_files"] if item["path"] in requested_set and item["path"] not in previous_paths]
+        added = eligible_added[:available_slots]
+        for item in eligible_added[available_slots:]:
+            still_excluded.append(_excluded_file(item["path"], "over_context_limit", "max_context_files"))
         combined = safe_previous + added
         data = _context_common(payload, root, explicit_root, selected, limit)
         data.update({
@@ -670,11 +693,27 @@ def context_pack(payload: dict[str, Any]) -> dict[str, Any]:
             "previous_context_hash": stable_hash(previous_data),
             "requested_paths": requested_paths,
             "requested_symbols": payload.get("requested_symbols", []),
-            "expansion_reason": payload.get("reason", ""),
+            "expansion_reason": reason.strip() if isinstance(reason, str) else "",
+            "deterministic_trigger": trigger.strip() if isinstance(trigger, str) else "",
+            "expansion_depth": previous_depth + 1,
+            "max_expansion_depth": max_depth,
             "added_files": added,
+            "reused_files": safe_previous,
             "still_excluded": sorted(still_excluded, key=lambda item: (item["path"], item["reason_code"])),
             "included_files": combined,
             "relevant_files": [item["path"] for item in combined],
+            "source_slices": _python_slices(root, added, set(payload.get("target_symbols", []))),
+        })
+        total_bytes = sum(item.get("size_bytes", 0) for item in combined)
+        data["metrics"].update({
+            "selected_bytes": total_bytes,
+            "context_reduction": round((selected["eligible_input_bytes"] - total_bytes) / selected["eligible_input_bytes"], 4) if selected["eligible_input_bytes"] else None,
+            "initial_pack_bytes": sum(item.get("size_bytes", 0) for item in safe_previous),
+            "expansion_bytes": sum(item.get("size_bytes", 0) for item in added),
+            "total_context_bytes": total_bytes,
+            "full_candidate_context_avoided_bytes": max(0, selected["eligible_input_bytes"] - total_bytes),
+            "expansion_count": previous_depth + 1,
+            "selected_file_count": len(combined),
         })
         data["package_hash"] = stable_hash({key: value for key, value in data.items() if key != "package_hash"})
         blocked_requested = requested_set - {item["path"] for item in added} - previous_paths
