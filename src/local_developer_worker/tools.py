@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import json
 import os
 import re
@@ -432,6 +433,41 @@ def _select_context(payload: dict[str, Any], root: Path, limit: int, forced_path
     }
 
 
+def _python_slices(root: Path, included: list[dict[str, Any]], symbols: set[str]) -> list[dict[str, Any]]:
+    """Return deterministic, AST-bounded slices; unsupported inputs retain whole-file fallback."""
+    slices = []
+    for item in included:
+        path = item["path"]
+        source_path = root / path
+        if not symbols or source_path.suffix != ".py" or not source_path.is_file():
+            continue
+        try:
+            source = source_path.read_text(encoding="utf-8")
+            tree = ast.parse(source)
+        except (OSError, UnicodeDecodeError, SyntaxError):
+            slices.append({"path": path, "mode": "whole_file_fallback", "reason": "unsupported_python_syntax", "symbols": [], "ranges": []})
+            continue
+        lines = source.splitlines(keepends=True)
+        imports = [node for node in tree.body if isinstance(node, (ast.Import, ast.ImportFrom))]
+        definitions = {node.name: node for node in tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))}
+        constants = {
+            target.id: node for node in tree.body if isinstance(node, ast.Assign)
+            for target in node.targets if isinstance(target, ast.Name)
+        }
+        selected = [definitions[name] for name in sorted(symbols & definitions.keys())]
+        referenced = {child.id for node in selected for child in ast.walk(node) if isinstance(child, ast.Name)}
+        selected += [definitions[name] for name in sorted(referenced & definitions.keys()) if definitions[name] not in selected]
+        selected += [constants[name] for name in sorted(referenced & constants.keys()) if constants[name] not in selected]
+        if not selected:
+            continue
+        ranges = [(node.lineno, node.end_lineno) for node in imports]
+        ranges += [(min([node.lineno, *(decorator.lineno for decorator in getattr(node, "decorator_list", []))]), node.end_lineno) for node in selected]
+        ranges = sorted(set(ranges))
+        content = "".join("".join(lines[start - 1:end]) for start, end in ranges)
+        slices.append({"path": path, "mode": "structural_slice", "reason": "target_symbol_with_module_imports", "symbols": sorted(symbols & definitions.keys()), "ranges": [{"line_start": start, "line_end": end} for start, end in ranges], "content": content, "slice_bytes": len(content.encode())})
+    return slices
+
+
 def _context_common(payload: dict[str, Any], root: Path, explicit_root: bool, selected: dict[str, Any], limit: int) -> dict[str, Any]:
     included = selected["included_files"]
     excluded = selected["excluded_files"]
@@ -444,6 +480,7 @@ def _context_common(payload: dict[str, Any], root: Path, explicit_root: bool, se
         "target_files": sorted(set(payload.get("target_files", [])) | set(payload.get("named_files", []))),
         "related_files": [item["path"] for item in included if item["relevance_status"] == "deterministic_dependency"],
         "symbols": sorted(set(payload.get("target_symbols", []))),
+        "source_slices": _python_slices(root, included, set(payload.get("target_symbols", []))),
         "observed_failures": payload.get("observed_failures", []),
         "included_files": included,
         "excluded_files": excluded,

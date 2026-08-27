@@ -186,6 +186,37 @@ def test_context_retains_distinct_or_explicit_candidates_despite_similar_metadat
     assert not any(item["reason_code"] == "redundant_content" for item in output["excluded_files"])
 
 
+def test_context_returns_reproducible_python_symbol_slice_with_imports(tmp_path):
+    source = tmp_path / "src" / "sample.py"
+    source.parent.mkdir()
+    source.write_text("import os\n\nCONSTANT = 1\n\ndef helper():\n    return CONSTANT\n\ndef target():\n    return helper()\n")
+    output = context_pack({"repository_root": str(tmp_path), "files": [{"path": "src/sample.py", "size_bytes": source.stat().st_size}], "target_files": ["src/sample.py"], "target_symbols": ["target"]})["data"]
+
+    slice_ = output["source_slices"][0]
+    assert slice_["path"] == "src/sample.py"
+    assert slice_["mode"] == "structural_slice"
+    assert slice_["symbols"] == ["target"]
+    assert slice_["ranges"] == [{"line_start": 1, "line_end": 1}, {"line_start": 5, "line_end": 6}, {"line_start": 8, "line_end": 9}]
+    assert "import os" in slice_["content"] and "def helper" in slice_["content"] and "def target" in slice_["content"]
+
+
+def test_context_slice_keeps_decorators_constants_and_nested_definitions(tmp_path):
+    source = tmp_path / "src" / "decorated.py"
+    source.parent.mkdir()
+    source.write_text("VALUE = 3\n\ndef decorate(fn):\n    return fn\n\n@decorate\ndef target():\n    def nested():\n        return VALUE\n    return nested()\n")
+    data = context_pack({"repository_root": str(tmp_path), "files": [{"path": "src/decorated.py", "size_bytes": source.stat().st_size}], "target_files": ["src/decorated.py"], "target_symbols": ["target"]})["data"]
+    content = data["source_slices"][0]["content"]
+    assert "VALUE = 3" in content and "@decorate" in content and "def nested" in content
+
+
+def test_context_slice_falls_back_for_invalid_python(tmp_path):
+    source = tmp_path / "src" / "broken.py"
+    source.parent.mkdir()
+    source.write_text("def broken(:\n")
+    data = context_pack({"repository_root": str(tmp_path), "files": [{"path": "src/broken.py", "size_bytes": source.stat().st_size}], "target_files": ["src/broken.py"], "target_symbols": ["broken"]})["data"]
+    assert data["source_slices"] == [{"path": "src/broken.py", "mode": "whole_file_fallback", "reason": "unsupported_python_syntax", "symbols": [], "ranges": []}]
+
+
 def test_unsupported_candidate_is_visible_not_silently_dropped(tmp_path):
     output = context_pack({
         "repository_root": str(tmp_path),
