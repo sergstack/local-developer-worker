@@ -1,0 +1,9 @@
+{
+  "schema_version": "1.1.0",
+  "baseline_reference": "context-efficiency-vnext-issue-23",
+  "cases": [
+    {"case_id":"overlap-exact","task_class":"redundancy","raw_context":"Inspect canonical module.","files":[{"path":"src/canonical.py","size_bytes":100,"hash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},{"path":"docs/canonical-copy.md","size_bytes":100,"hash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}],"target_files":["src/canonical.py"],"changed_files":["docs/canonical-copy.md"],"critical_files":["src/canonical.py"]},
+    {"case_id":"overlap-paths","task_class":"redundancy","raw_context":"Inspect the implementation evidence.","files":[{"path":"src/evidence.py","size_bytes":120,"hash":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},{"path":"docs/evidence.md","size_bytes":120,"hash":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}],"target_files":["src/evidence.py"],"changed_files":["docs/evidence.md"],"critical_files":["src/evidence.py"]},
+    {"case_id":"negative-distinct","task_class":"negative_control","raw_context":"Inspect both contract and evidence.","files":[{"path":"src/contract.py","size_bytes":100,"hash":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},{"path":"docs/contract-evidence.md","size_bytes":100,"hash":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}],"target_files":["src/contract.py","docs/contract-evidence.md"],"critical_files":["src/contract.py","docs/contract-evidence.md"]}
+  ]
+}

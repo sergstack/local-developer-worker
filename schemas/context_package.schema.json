@@ -108,7 +108,7 @@
       "required": ["path", "reason_code", "policy_rule"],
       "properties": {
         "path": {"type": "string", "minLength": 1},
-        "reason_code": {"enum": ["outside_repository_root", "sensitive_path", "ignored_by_policy", "binary", "generated_not_required", "over_context_limit", "not_selected", "unsupported"]},
+        "reason_code": {"enum": ["outside_repository_root", "sensitive_path", "ignored_by_policy", "binary", "generated_not_required", "over_context_limit", "not_selected", "redundant_content", "unsupported"]},
         "policy_rule": {"type": "string", "minLength": 1}
       }
     }
