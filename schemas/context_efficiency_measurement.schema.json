@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ContextEfficiencyMeasurement",
+  "type": "object",
+  "required": ["measurement_contract_version", "baseline_id", "source_revision", "corpus", "case_count", "measurement_status", "cases"],
+  "properties": {
+    "measurement_contract_version": {"const": "1.0.0"},
+    "baseline_id": {"const": "context-efficiency-vnext-issue-23"},
+    "source_revision": {"type": "object", "required": ["git_commit", "working_tree_state", "runner_sha256"], "properties": {"git_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "working_tree_state": {"enum": ["clean", "dirty", "unknown"]}, "runner_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}},
+    "corpus": {"type": "object", "required": ["manifest_path", "manifest_sha256", "case_count"], "properties": {"manifest_path": {"const": "benchmarks/task_manifest.json"}, "manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "case_count": {"type": "integer", "minimum": 1}}},
+    "measurement_status": {"const": "observed"},
+    "case_count": {"type": "integer", "minimum": 1},
+    "cases": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/case"}}
+  },
+  "$defs": {
+    "metric": {
+      "type": "object",
+      "required": ["status", "unit", "value"],
+      "properties": {
+        "status": {"enum": ["observed", "estimated", "unavailable", "not_measured"]},
+        "unit": {"type": "string", "minLength": 1},
+        "value": {"type": ["integer", "number", "null"], "minimum": 0},
+        "method": {"type": "string"}
+      },
+      "allOf": [{"if": {"properties": {"status": {"enum": ["observed", "estimated"]}}}, "then": {"properties": {"value": {"type": ["integer", "number"]}}, "required": ["method"]}}, {"if": {"properties": {"status": {"enum": ["unavailable", "not_measured"]}}}, "then": {"properties": {"value": {"type": "null"}}}}]
+    },
+    "case": {
+      "type": "object",
+      "required": ["case_id", "metrics"],
+      "properties": {
+        "case_id": {"type": "string", "minLength": 1},
+        "metrics": {
+          "type": "object",
+          "required": ["candidate_context_bytes", "selected_context_bytes", "estimated_input_tokens_before", "estimated_input_tokens_after", "files_considered", "files_selected", "context_expansions", "coding_agent_tool_calls", "task_latency_ms", "task_success", "provider_tokens", "provider_cost"],
+          "properties": {
+            "candidate_context_bytes": {"$ref": "#/$defs/metric"}, "selected_context_bytes": {"$ref": "#/$defs/metric"},
+            "estimated_input_tokens_before": {"$ref": "#/$defs/metric"}, "estimated_input_tokens_after": {"$ref": "#/$defs/metric"},
+            "files_considered": {"$ref": "#/$defs/metric"}, "files_selected": {"$ref": "#/$defs/metric"},
+            "context_expansions": {"$ref": "#/$defs/metric"}, "coding_agent_tool_calls": {"$ref": "#/$defs/metric"},
+            "task_latency_ms": {"$ref": "#/$defs/metric"}, "task_success": {"$ref": "#/$defs/metric"},
+            "provider_tokens": {"$ref": "#/$defs/metric"}, "provider_cost": {"$ref": "#/$defs/metric"}
+          }
+        }
+      }
+    }
+  }
+}

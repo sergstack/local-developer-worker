@@ -4,11 +4,23 @@ import subprocess
 import sys
 from pathlib import Path
 
+from jsonschema import Draft202012Validator
+
+
+def _without_latency(output):
+    normalized = json.loads(json.dumps(output))
+    for case in normalized["cases"]:
+        case["worker_latency_ms"] = None
+        case["metrics"]["task_latency_ms"]["value"] = None
+    return normalized
+
 
 def test_reference_benchmark_has_twelve_observed_cases():
     root = Path(__file__).parents[2]
     completed = subprocess.run([sys.executable, "scripts/run_reference_benchmark.py"], cwd=root, capture_output=True, text=True, check=True)
     output = json.loads(completed.stdout)
+    schema = json.loads((root / "schemas" / "context_efficiency_measurement.schema.json").read_text())
+    Draft202012Validator(schema).validate(output)
     assert output["status"] == "OBSERVED"
     assert output["gate_status"] == "INFORMATIONAL_ONLY"
     assert "not used for promotion decisions" in output["measurement"]
@@ -38,3 +50,26 @@ def test_reference_benchmark_has_twelve_observed_cases():
     assert all(0 <= case["critical_recall"] <= 1 for case in output["cases"])
     assert all(0 <= case["distractor_rejection_rate"] <= 1 for case in output["cases"])
     assert all(case[field] == "NOT RUN" for case in output["cases"] for field in ("fallback", "review_time", "rejected_results"))
+    assert output["measurement_contract_version"] == "1.0.0"
+    assert output["baseline_id"] == "context-efficiency-vnext-issue-23"
+    assert output["corpus"]["case_count"] == output["case_count"]
+    assert len(output["corpus"]["manifest_sha256"]) == 64
+    assert len(output["source_revision"]["runner_sha256"]) == 64
+    for case in output["cases"]:
+        metrics = case["metrics"]
+        assert metrics["candidate_context_bytes"]["status"] == "observed"
+        assert metrics["estimated_input_tokens_before"]["status"] == "estimated"
+        assert "not a provider token count" in metrics["estimated_input_tokens_before"]["method"]
+        assert metrics["provider_tokens"] == {"status": "unavailable", "unit": "tokens", "value": None}
+        assert metrics["provider_cost"] == {"status": "unavailable", "unit": "currency", "value": None}
+        assert metrics["coding_agent_tool_calls"]["status"] == "not_measured"
+        assert metrics["task_success"]["status"] == "not_measured"
+
+
+def test_reference_benchmark_is_repeatable_except_for_observed_latency():
+    root = Path(__file__).parents[2]
+    command = [sys.executable, "scripts/run_reference_benchmark.py"]
+    first = json.loads(subprocess.run(command, cwd=root, capture_output=True, text=True, check=True).stdout)
+    second = json.loads(subprocess.run(command, cwd=root, capture_output=True, text=True, check=True).stdout)
+
+    assert _without_latency(first) == _without_latency(second)
