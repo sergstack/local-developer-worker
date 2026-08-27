@@ -32,3 +32,27 @@ def test_replay_requires_explicit_baseline_and_candidate_revisions():
     del data["baseline_revision"]
     with pytest.raises(ValueError, match="invalid_replay_manifest"):
         analyze_replay(data)
+
+
+def test_synthetic_matched_replay_preserves_agent_metrics_and_outliers_without_promotion():
+    data = json.loads((Path(__file__).parents[2] / "fixtures/context_efficiency_replay/synthetic_matched_replay_manifest.json").read_text())
+    result = analyze_replay(data)
+    assert result["verdict"] == "REVISE"
+    assert result["provider_calls"] is False
+    assert result["task_success_regression"] is False
+    assert result["median_delta_percent"] == {"context_bytes": -20.0, "tool_calls": -12.5, "latency_ms": -10.0}
+    assert result["pair_outcomes"][2] == {
+        "pair_id": "SYNTHETIC-003",
+        "baseline_task_accepted": True,
+        "candidate_task_accepted": True,
+        "delta_percent": {"context_bytes": 0.0, "tool_calls": 40.0, "latency_ms": 50.0},
+    }
+
+
+def test_synthetic_replay_stops_live_verdict_on_required_context_regression():
+    data = json.loads((Path(__file__).parents[2] / "fixtures/context_efficiency_replay/synthetic_matched_replay_manifest.json").read_text())
+    data["mode"] = "live"
+    data["pairs"][2]["candidate"]["task_accepted"] = False
+    result = analyze_replay(data)
+    assert result["verdict"] == "STOP"
+    assert result["task_success_regression"] is True
