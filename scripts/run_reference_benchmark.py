@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import statistics
+import subprocess
 import time
 from collections import defaultdict
 from pathlib import Path
@@ -9,6 +11,12 @@ from pathlib import Path
 from local_developer_worker.contracts import canonical_json
 from local_developer_worker.contracts import valid_tool_result
 from local_developer_worker.tools import context_pack
+
+
+ROOT = Path(__file__).parents[1]
+MANIFEST_PATH = ROOT / "benchmarks" / "task_manifest.json"
+MEASUREMENT_CONTRACT_VERSION = "1.0.0"
+BASELINE_ID = "context-efficiency-vnext-issue-23"
 
 
 def token_proxy(byte_count: int) -> int:
@@ -36,8 +44,33 @@ def summarize(values: list[float | int]) -> dict:
     }
 
 
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _source_revision() -> dict[str, str]:
+    try:
+        git_commit = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True, check=True
+        ).stdout.strip()
+        working_tree_state = "dirty" if subprocess.run(
+            ["git", "status", "--porcelain"], cwd=ROOT, capture_output=True, text=True, check=False
+        ).stdout else "clean"
+    except (OSError, subprocess.CalledProcessError):
+        git_commit = "0" * 40
+        working_tree_state = "unknown"
+    return {"git_commit": git_commit, "working_tree_state": working_tree_state, "runner_sha256": _sha256(Path(__file__))}
+
+
+def _metric(status: str, unit: str, value: int | float | None, method: str | None = None) -> dict:
+    metric = {"status": status, "unit": unit, "value": value}
+    if method is not None:
+        metric["method"] = method
+    return metric
+
+
 def main() -> None:
-    manifest = json.loads((Path(__file__).parents[1] / "benchmarks" / "task_manifest.json").read_text())
+    manifest = json.loads(MANIFEST_PATH.read_text())
     rows = []
     for case in manifest["cases"]:
         payload = {key: case[key] for key in ("files", "named_files", "changed_files", "failure_files", "import_edges") if key in case}
@@ -60,7 +93,7 @@ def main() -> None:
         critical_files = set(case["critical_files"])
         rejected_distractors = distractor_files - included_paths
         context_reduction_percent = reduction_percent(task_bytes, case["files"], included_paths, distractor_files)
-        rows.append({"case_id": case["case_id"], "task_class": case["task_class"], "task_bytes": task_bytes, "candidate_file_bytes": candidate_bytes, "codex_only_input_bytes": baseline_bytes, "minimal_audit_protocol_bytes": audit_bytes, "minimal_context_projection_bytes": projection_bytes, "minimal_context_bytes": minimal_context_bytes, "context_reduction_bytes": baseline_bytes - minimal_context_bytes, "context_reduction_percent": context_reduction_percent, "excluded_file_bytes": candidate_bytes - selected_bytes, "excluded_file_count": excluded_file_count, "excluded_file_ratio": round(excluded_file_count / len(case["files"]), 4), "critical_recall": round(len(critical_files & included_paths) / len(critical_files), 4) if critical_files else 1.0, "distractor_rejection_rate": round(len(rejected_distractors) / len(distractor_files), 4) if distractor_files else 1.0, "sensitivity_context_reduction_percent": {"x0.1": reduction_percent(task_bytes, case["files"], included_paths, distractor_files, 0.1), "x10": reduction_percent(task_bytes, case["files"], included_paths, distractor_files, 10.0)}, "token_proxy_before": token_proxy(baseline_bytes), "token_proxy_after": token_proxy(minimal_context_bytes), "token_proxy_saving": token_proxy(baseline_bytes) - token_proxy(minimal_context_bytes), "worker_latency_ms": latency_ms, "schema_validity": "OBSERVED" if valid_tool_result(audit) and valid_tool_result(context) else "FAILED", "fallback": "NOT RUN", "review_time": "NOT RUN", "rejected_results": "NOT RUN", "critical_omissions": critical_omissions, "unexpected_inclusions": unexpected_inclusions})
+        rows.append({"case_id": case["case_id"], "task_class": case["task_class"], "task_bytes": task_bytes, "candidate_file_bytes": candidate_bytes, "codex_only_input_bytes": baseline_bytes, "minimal_audit_protocol_bytes": audit_bytes, "minimal_context_projection_bytes": projection_bytes, "minimal_context_bytes": minimal_context_bytes, "context_reduction_bytes": baseline_bytes - minimal_context_bytes, "context_reduction_percent": context_reduction_percent, "excluded_file_bytes": candidate_bytes - selected_bytes, "excluded_file_count": excluded_file_count, "excluded_file_ratio": round(excluded_file_count / len(case["files"]), 4), "critical_recall": round(len(critical_files & included_paths) / len(critical_files), 4) if critical_files else 1.0, "distractor_rejection_rate": round(len(rejected_distractors) / len(distractor_files), 4) if distractor_files else 1.0, "sensitivity_context_reduction_percent": {"x0.1": reduction_percent(task_bytes, case["files"], included_paths, distractor_files, 0.1), "x10": reduction_percent(task_bytes, case["files"], included_paths, distractor_files, 10.0)}, "token_proxy_before": token_proxy(baseline_bytes), "token_proxy_after": token_proxy(minimal_context_bytes), "token_proxy_saving": token_proxy(baseline_bytes) - token_proxy(minimal_context_bytes), "worker_latency_ms": latency_ms, "schema_validity": "OBSERVED" if valid_tool_result(audit) and valid_tool_result(context) else "FAILED", "fallback": "NOT RUN", "review_time": "NOT RUN", "rejected_results": "NOT RUN", "critical_omissions": critical_omissions, "unexpected_inclusions": unexpected_inclusions, "metrics": {"candidate_context_bytes": _metric("observed", "bytes", candidate_bytes, "sum of fixed corpus candidate sizes"), "selected_context_bytes": _metric("observed", "bytes", selected_bytes, "sum of selected fixed corpus candidate sizes"), "estimated_input_tokens_before": _metric("estimated", "tokens", token_proxy(baseline_bytes), "ceil(bytes / 4); not a provider token count"), "estimated_input_tokens_after": _metric("estimated", "tokens", token_proxy(minimal_context_bytes), "ceil(bytes / 4); not a provider token count"), "files_considered": _metric("observed", "files", len(case["files"]), "fixed corpus candidate list"), "files_selected": _metric("observed", "files", len(included_paths), "context pack output"), "context_expansions": _metric("observed", "expansions", 0, "baseline invokes no expand mode"), "coding_agent_tool_calls": _metric("not_measured", "calls", None), "task_latency_ms": _metric("observed", "milliseconds", latency_ms, "offline audit and context-pack wall-clock duration"), "task_success": _metric("not_measured", "boolean", None), "provider_tokens": _metric("unavailable", "tokens", None), "provider_cost": _metric("unavailable", "currency", None)}})
 
     grouped = defaultdict(list)
     for row in rows:
@@ -90,7 +123,7 @@ def main() -> None:
                 for name in ("excluded_file_count", "excluded_file_ratio", "critical_recall", "distractor_rejection_rate")
             },
         }
-    output = {"status": "OBSERVED", "gate_status": "INFORMATIONAL_ONLY", "measurement": "Baseline assumes the agent fully reads every candidate file, so reported context reduction is an upper bound on savings; a real agent may inspect candidates selectively. Minimal context is task bytes plus selected-file bytes. Protocol envelopes are reported separately. TOKEN PROXY uses bytes/4; no Codex token usage was measured. Results are not used for promotion decisions.", "case_count": len(rows), "class_results": class_results, "cases": rows}
+    output = {"measurement_contract_version": MEASUREMENT_CONTRACT_VERSION, "baseline_id": BASELINE_ID, "source_revision": _source_revision(), "corpus": {"manifest_path": "benchmarks/task_manifest.json", "manifest_sha256": _sha256(MANIFEST_PATH), "case_count": len(rows)}, "measurement_status": "observed", "status": "OBSERVED", "gate_status": "INFORMATIONAL_ONLY", "measurement": "Baseline assumes the agent fully reads every candidate file, so reported context reduction is an upper bound on savings; a real agent may inspect candidates selectively. Minimal context is task bytes plus selected-file bytes. Protocol envelopes are reported separately. TOKEN PROXY uses bytes/4; no Codex token usage was measured. Results are not used for promotion decisions.", "case_count": len(rows), "class_results": class_results, "cases": rows}
     print(canonical_json(output))
 
 
