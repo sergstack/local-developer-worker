@@ -196,7 +196,7 @@ def test_context_returns_reproducible_python_symbol_slice_with_imports(tmp_path)
     assert slice_["path"] == "src/sample.py"
     assert slice_["mode"] == "structural_slice"
     assert slice_["symbols"] == ["target"]
-    assert slice_["ranges"] == [{"line_start": 1, "line_end": 1}, {"line_start": 5, "line_end": 6}, {"line_start": 8, "line_end": 9}]
+    assert slice_["ranges"] == [{"line_start": 1, "line_end": 1}, {"line_start": 3, "line_end": 3}, {"line_start": 5, "line_end": 6}, {"line_start": 8, "line_end": 9}]
     assert "import os" in slice_["content"] and "def helper" in slice_["content"] and "def target" in slice_["content"]
 
 
@@ -207,6 +207,15 @@ def test_context_slice_keeps_decorators_constants_and_nested_definitions(tmp_pat
     data = context_pack({"repository_root": str(tmp_path), "files": [{"path": "src/decorated.py", "size_bytes": source.stat().st_size}], "target_files": ["src/decorated.py"], "target_symbols": ["target"]})["data"]
     content = data["source_slices"][0]["content"]
     assert "VALUE = 3" in content and "@decorate" in content and "def nested" in content
+
+
+def test_context_slice_keeps_class_and_reexport_context(tmp_path):
+    source = tmp_path / "src" / "service.py"
+    source.parent.mkdir()
+    source.write_text("from shared import Contract as PublicContract\n\nclass Service:\n    contract = PublicContract\n")
+    data = context_pack({"repository_root": str(tmp_path), "files": [{"path": "src/service.py", "size_bytes": source.stat().st_size}], "target_files": ["src/service.py"], "target_symbols": ["Service"]})["data"]
+    content = data["source_slices"][0]["content"]
+    assert "from shared import Contract as PublicContract" in content and "class Service" in content
 
 
 def test_context_slice_falls_back_for_invalid_python(tmp_path):

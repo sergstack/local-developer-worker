@@ -457,6 +457,7 @@ def _python_slices(root: Path, included: list[dict[str, Any]], symbols: set[str]
         selected = [definitions[name] for name in sorted(symbols & definitions.keys())]
         referenced = {child.id for node in selected for child in ast.walk(node) if isinstance(child, ast.Name)}
         selected += [definitions[name] for name in sorted(referenced & definitions.keys()) if definitions[name] not in selected]
+        referenced = {child.id for node in selected for child in ast.walk(node) if isinstance(child, ast.Name)}
         selected += [constants[name] for name in sorted(referenced & constants.keys()) if constants[name] not in selected]
         if not selected:
             continue
