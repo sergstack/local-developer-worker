@@ -769,6 +769,45 @@ def context_route(payload: dict[str, Any]) -> dict[str, Any]:
     })
 
 
+def context_refresh(payload: dict[str, Any]) -> dict[str, Any]:
+    """Plan a bounded post-failure refresh from observed evidence only."""
+    raw = canonical_json(payload)
+    previous = payload.get("previous_package")
+    previous_run_id = payload.get("previous_run_id")
+    failures = payload.get("observed_failures", [])
+    max_refreshes = payload.get("max_refreshes", 1)
+    prior_refreshes = payload.get("prior_refreshes", 0)
+    if not isinstance(previous, dict) or not isinstance(previous_run_id, str) or previous.get("run_id") != previous_run_id:
+        return result("context_refresher", "stdin", raw, {}, status="invalid_input", errors=[{"code": "previous_package_link_required"}])
+    if not isinstance(failures, list) or not isinstance(max_refreshes, int) or not isinstance(prior_refreshes, int) or max_refreshes < 1 or prior_refreshes < 0:
+        return result("context_refresher", "stdin", raw, {}, status="invalid_input", errors=[{"code": "invalid_refresh_input"}])
+    if prior_refreshes >= max_refreshes:
+        return result("context_refresher", "stdin", raw, {}, status="partial", errors=[{"code": "refresh_limit_reached", "max_refreshes": max_refreshes}])
+    previous_data = previous.get("data") if isinstance(previous.get("data"), dict) else previous
+    included = previous_data.get("included_files", [])
+    observed = [item for item in failures if isinstance(item, dict) and isinstance(item.get("source_path") or item.get("source_file") or item.get("path"), str)]
+    paths = sorted({item.get("source_path") or item.get("source_file") or item.get("path") for item in observed})
+    ids = sorted({item["event_id"] for item in observed if isinstance(item.get("event_id"), str)})
+    known_paths = {item.get("path") for item in included if isinstance(item, dict)}
+    localized = len(paths) == 1 and paths[0] in known_paths
+    refresh_files = [item for item in included if isinstance(item, dict) and item.get("path") in paths] if localized else included
+    bytes_resent = sum(item.get("size_bytes", 0) for item in refresh_files if isinstance(item.get("size_bytes", 0), int))
+    return result("context_refresher", "stdin", raw, {
+        "previous_run_id": previous_run_id,
+        "previous_context_hash": stable_hash(previous_data),
+        "observed_failure_event_ids": ids,
+        "observed_failure_paths": paths,
+        "inferred_root_cause": None,
+        "refresh_mode": "localized_delta" if localized else "whole_pack_fallback",
+        "refresh_files": refresh_files,
+        "reused_files": [item for item in included if item not in refresh_files],
+        "refresh_reason": "observed_failure_source" if localized else "insufficient_or_ambiguous_failure_localization",
+        "refresh_count": prior_refreshes + 1,
+        "max_refreshes": max_refreshes,
+        "metrics": {"context_bytes_resent": bytes_resent, "context_tokens_resent": None, "files_refreshed": len(refresh_files), "additional_tool_calls": 1},
+    }, status="success" if localized else "partial")
+
+
 def report_summarize(payload: dict[str, Any]) -> dict[str, Any]:
     raw = canonical_json(payload)
     package = payload.get("evidence_package")
