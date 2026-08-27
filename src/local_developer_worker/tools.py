@@ -737,6 +737,38 @@ def context_pack(payload: dict[str, Any]) -> dict[str, Any]:
     return result("context_packer", "stdin", raw, data, status=status, warnings=data["warnings"])
 
 
+def context_route(payload: dict[str, Any]) -> dict[str, Any]:
+    """Choose a deterministic, bounded retrieval plan without reading repository content."""
+    raw = canonical_json(payload)
+    named = sorted(set(payload.get("target_files", [])) | set(payload.get("named_files", [])))
+    symbols = sorted(set(payload.get("target_symbols", [])))
+    failures = sorted(set(payload.get("failure_files", [])))
+    task = payload.get("task", "")
+    if not isinstance(task, str) or not all(isinstance(items, list) and all(isinstance(item, str) for item in items) for items in (named, symbols, failures)):
+        return result("context_router", "stdin", raw, {}, status="invalid_input", errors=[{"code": "invalid_routing_signals"}])
+    docs_only = bool(named) and all(path.startswith("docs/") or path.lower().endswith((".md", ".rst")) for path in named)
+    if len(named) == 1 and not symbols and not failures:
+        strategy, reason, calls = "direct_bounded_read", "one_explicit_file", 1
+    elif symbols and named:
+        strategy, reason, calls = "structural_symbol_slice", "explicit_symbol_and_file", 1
+    elif failures:
+        strategy, reason, calls = "focused_failure_neighborhood", "observed_failure_file", 2
+    elif docs_only:
+        strategy, reason, calls = "docs_and_referenced_contracts", "explicit_docs_only", 1
+    else:
+        strategy, reason, calls = "inventory_then_context_pack", "ambiguous_or_multifile_task", 2
+    return result("context_router", "stdin", raw, {
+        "strategy": strategy,
+        "reason": reason,
+        "target_files": named,
+        "target_symbols": symbols,
+        "failure_files": failures,
+        "planned_tool_calls": calls,
+        "fallback": strategy == "inventory_then_context_pack",
+        "repository_content_read": False,
+    })
+
+
 def report_summarize(payload: dict[str, Any]) -> dict[str, Any]:
     raw = canonical_json(payload)
     package = payload.get("evidence_package")
