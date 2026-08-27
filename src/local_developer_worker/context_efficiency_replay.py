@@ -5,6 +5,7 @@ import statistics
 from typing import Any
 
 RUN = {"context_bytes", "tool_calls", "latency_ms", "task_accepted"}
+PAIR = {"pair_id", "environment_revision", "budget", "timeout_ms", "verifier_id", "baseline", "candidate"}
 
 
 def analyze_replay(manifest: dict[str, Any]) -> dict[str, Any]:
@@ -12,7 +13,7 @@ def analyze_replay(manifest: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("invalid_replay_manifest")
     deltas, accepted = [], []
     for pair in manifest["pairs"]:
-        if set(pair) != {"pair_id", "baseline", "candidate"} or not isinstance(pair["pair_id"], str) or not pair["pair_id"]:
+        if set(pair) != PAIR or not all(isinstance(pair[field], str) and pair[field] for field in ("pair_id", "environment_revision", "verifier_id")) or not isinstance(pair["budget"], (int, float)) or isinstance(pair["budget"], bool) or pair["budget"] < 0 or not isinstance(pair["timeout_ms"], int) or isinstance(pair["timeout_ms"], bool) or pair["timeout_ms"] < 1:
             raise ValueError("invalid_replay_pair")
         for arm in ("baseline", "candidate"):
             run = pair[arm]
