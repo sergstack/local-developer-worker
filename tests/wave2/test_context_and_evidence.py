@@ -149,6 +149,43 @@ def test_context_limit_and_low_benefit_are_visible(tmp_path):
     assert low_benefit["metrics"]["context_reduction"] == 0.0
 
 
+def test_context_excludes_nonexplicit_identical_content_with_canonical_reason(tmp_path):
+    same_hash = "a" * 64
+    output = context_pack({
+        "repository_root": str(tmp_path),
+        "files": [
+            {"path": "src/canonical.py", "size_bytes": 100, "hash": same_hash},
+            {"path": "docs/copy.md", "size_bytes": 100, "hash": same_hash},
+        ],
+        "target_files": ["src/canonical.py"],
+        "changed_files": ["docs/copy.md"],
+    })["data"]
+
+    assert [item["path"] for item in output["included_files"]] == ["src/canonical.py"]
+    assert output["excluded_files"] == [{
+        "path": "docs/copy.md", "included": False, "reason": "redundant_content",
+        "reason_code": "redundant_content", "policy_rule": "identical_content_hash_to:src/canonical.py",
+    }]
+
+
+def test_context_retains_distinct_or_explicit_candidates_despite_similar_metadata(tmp_path):
+    output = context_pack({
+        "repository_root": str(tmp_path),
+        "files": [
+            {"path": "src/contract.py", "size_bytes": 100, "hash": "a" * 64},
+            {"path": "docs/contract.md", "size_bytes": 100, "hash": "b" * 64},
+            {"path": "docs/verbatim-copy.md", "size_bytes": 100, "hash": "a" * 64},
+        ],
+        "target_files": ["src/contract.py", "docs/verbatim-copy.md"],
+        "changed_files": ["docs/contract.md"],
+    })["data"]
+
+    assert {item["path"] for item in output["included_files"]} == {
+        "src/contract.py", "docs/contract.md", "docs/verbatim-copy.md",
+    }
+    assert not any(item["reason_code"] == "redundant_content" for item in output["excluded_files"])
+
+
 def test_unsupported_candidate_is_visible_not_silently_dropped(tmp_path):
     output = context_pack({
         "repository_root": str(tmp_path),

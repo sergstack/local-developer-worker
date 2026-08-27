@@ -25,7 +25,7 @@ WAVE2_CONTRACT_VERSION = "2.0.0"
 WAVE2_ORIGINS = {"observed", "deterministic-derived", "model-derived-candidate", "user-provided", "unknown"}
 WAVE2_EXCLUSION_REASONS = {
     "outside_repository_root", "sensitive_path", "ignored_by_policy", "binary",
-    "generated_not_required", "over_context_limit", "not_selected", "unsupported",
+    "generated_not_required", "over_context_limit", "not_selected", "redundant_content", "unsupported",
 }
 
 
@@ -374,6 +374,7 @@ def _select_context(payload: dict[str, Any], root: Path, limit: int, forced_path
             "relevance_status": primary["relevance_status"],
             "size_bytes": size,
             "symbols": matched_symbols,
+            "content_hash": item.get("hash") if isinstance(item.get("hash"), str) and re.fullmatch(r"[0-9a-f]{64}", item["hash"]) else None,
         }
     for signaled_path in sorted(set(signals) - seen):
         path, path_issue = _safe_relative_path(root, signaled_path)
@@ -383,14 +384,27 @@ def _select_context(payload: dict[str, Any], root: Path, limit: int, forced_path
             excluded.append(_excluded_file(path, "sensitive_path", "sensitive_path_policy"))
         else:
             excluded.append(_excluded_file(path or signaled_path, "unsupported", "candidate_not_in_inventory"))
-    ranked = sorted(
-        candidates.values(),
-        key=lambda item: (
+    def rank(item: dict[str, Any]) -> tuple[int, int, str]:
+        return (
             {"explicit": 0, "deterministic_dependency": 1, "candidate": 2, "unknown": 3}[item["relevance_status"]],
             -len(item["selection_reasons"]),
             item["path"],
-        ),
-    )
+        )
+
+    for content_hash in sorted({item["content_hash"] for item in candidates.values() if item["content_hash"]}):
+        identical = sorted((item for item in candidates.values() if item["content_hash"] == content_hash), key=rank)
+        if len(identical) < 2 or sum(item["relevance_status"] == "explicit" for item in identical) > 1:
+            continue
+        canonical = identical[0]
+        for duplicate in identical[1:]:
+            if duplicate["relevance_status"] == "explicit":
+                continue
+            del candidates[duplicate["path"]]
+            excluded.append(_excluded_file(
+                duplicate["path"], "redundant_content", f"identical_content_hash_to:{canonical['path']}"
+            ))
+
+    ranked = sorted(candidates.values(), key=rank)
     included = ranked[:limit]
     for item in ranked[limit:]:
         excluded.append(_excluded_file(item["path"], "over_context_limit", "max_context_files"))
