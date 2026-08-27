@@ -39,6 +39,7 @@ def test_context_and_expansion_payloads_validate_public_schema(tmp_path):
         "previous_run_id": initial["run_id"],
         "previous_package": initial,
         "requested_paths": ["src/config.py"],
+        "reason": "Missing imported configuration",
         "files": files,
     })
     validator = _schema("context_package.schema.json")

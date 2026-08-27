@@ -280,6 +280,31 @@ def test_expansion_rejects_unlinked_previous_package(tmp_path):
     assert output["errors"][0]["code"] == "previous_package_link_required"
 
 
+def test_expansion_requires_evidence_and_delivers_only_delta_with_bounded_depth(tmp_path):
+    files = [
+        {"path": "src/app.py", "size_bytes": 100},
+        {"path": "src/config.py", "size_bytes": 80},
+        {"path": "src/unused.py", "size_bytes": 200},
+    ]
+    initial = context_pack({"repository_root": str(tmp_path), "files": files, "target_files": ["src/app.py"], "max_context_files": 2})
+    missing_reason = context_pack({"mode": "expand", "repository_root": str(tmp_path), "previous_run_id": initial["run_id"], "previous_package": initial, "requested_paths": ["src/config.py"], "files": files})
+    assert missing_reason["errors"][0]["code"] == "expansion_reason_or_trigger_required"
+
+    expanded = context_pack({"mode": "expand", "repository_root": str(tmp_path), "previous_run_id": initial["run_id"], "previous_package": initial, "requested_paths": ["src/config.py", "src/unused.py"], "reason": "Observed missing configuration import", "files": files, "max_context_files": 2, "max_expansion_depth": 1})
+    data = expanded["data"]
+    assert [item["path"] for item in data["added_files"]] == ["src/config.py"]
+    assert [item["path"] for item in data["reused_files"]] == ["src/app.py"]
+    assert len(data["included_files"]) == 2
+    assert data["metrics"]["initial_pack_bytes"] == 100
+    assert data["metrics"]["expansion_bytes"] == 80
+    assert data["metrics"]["total_context_bytes"] == 180
+    assert data["metrics"]["full_candidate_context_avoided_bytes"] == 200
+
+    bounded = context_pack({"mode": "expand", "repository_root": str(tmp_path), "previous_run_id": expanded["run_id"], "previous_package": expanded, "requested_paths": ["src/unused.py"], "reason": "Still missing context", "files": files, "max_context_files": 2, "max_expansion_depth": 1})
+    assert bounded["status"] == "partial"
+    assert bounded["errors"][0]["code"] == "expansion_depth_limit_reached"
+
+
 def test_evidence_lineage_and_resume_state_are_complete(tmp_path):
     items = [
         _lineage_item("log_event", {"level": "error"}),
