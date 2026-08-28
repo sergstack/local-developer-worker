@@ -56,3 +56,53 @@ def test_synthetic_replay_stops_live_verdict_on_required_context_regression():
     result = analyze_replay(data)
     assert result["verdict"] == "STOP"
     assert result["task_success_regression"] is True
+
+
+def _approved_live_manifest():
+    data = json.loads((Path(__file__).parents[2] / "fixtures/context_efficiency_replay/dry_run_manifest.json").read_text())
+    data["contract_version"] = "1.1.0"
+    data["mode"] = "live"
+    data["evidence_status"] = "observed"
+    data["owner_approval_id"] = "owner-approved-materiality-v1"
+    data["materiality_threshold_percent"] = {"context_bytes": 20, "tool_calls": 10, "latency_ms": 5}
+    for pair in data["pairs"]:
+        pair["baseline_evidence_id"] = f"{pair['pair_id']}-baseline-evidence"
+        pair["candidate_evidence_id"] = f"{pair['pair_id']}-candidate-evidence"
+    return data
+
+
+def test_v1_live_manifest_cannot_promote_without_materiality_contract():
+    data = json.loads((Path(__file__).parents[2] / "fixtures/context_efficiency_replay/dry_run_manifest.json").read_text())
+    data["mode"] = "live"
+    assert analyze_replay(data)["verdict"] == "REVISE"
+
+
+def test_v11_live_manifest_requires_observed_evidence_and_all_material_thresholds_for_pass():
+    data = _approved_live_manifest()
+    result = analyze_replay(data)
+    assert result["verdict"] == "PASS"
+    assert result["materiality"] == {
+        "approval_id": "owner-approved-materiality-v1",
+        "evidence_status": "observed",
+        "threshold_percent": {"context_bytes": 20, "tool_calls": 10, "latency_ms": 5},
+        "all_required_metrics_met": True,
+    }
+
+    data["evidence_status"] = "synthetic"
+    assert analyze_replay(data)["verdict"] == "REVISE"
+
+    data = _approved_live_manifest()
+    data["materiality_threshold_percent"]["tool_calls"] = 40
+    assert analyze_replay(data)["verdict"] == "REVISE"
+
+
+def test_v11_live_manifest_requires_pair_evidence_ids_and_positive_thresholds():
+    data = _approved_live_manifest()
+    del data["pairs"][0]["baseline_evidence_id"]
+    with pytest.raises(ValueError, match="invalid_replay_pair"):
+        analyze_replay(data)
+
+    data = _approved_live_manifest()
+    data["materiality_threshold_percent"]["latency_ms"] = 0
+    with pytest.raises(ValueError, match="invalid_replay_manifest"):
+        analyze_replay(data)
