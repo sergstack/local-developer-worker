@@ -10,7 +10,7 @@ Every command consumes one JSON object and returns a `ToolResult` v1.0.0. Tool f
 
 `ldw evidence build` payload contract `2.0.0` preserves only supplied evidence with applicable source tool/run/path/event/test/Git lineage and controlled origins. Test status authority belongs only to `ldw test parse`; Git authority belongs to `ldw git facts` or explicit user-provided evidence; model groups remain candidates. Missing tests, questions, and next bounded action stay visible in resumable state. Legacy evidence keys remain readable.
 
-`related_test` matching is intentionally limited to relative `src/` and `tests/` paths.
+`related_test` matching is intentionally limited to relative `src/` and `tests/` paths. Callers may supply `required_files` for immutable, task-specific verifier dependencies (for example a frozen fixture or schema); these are included as deterministic dependencies after the same root and safety checks. This lets a bounded initial pack retain required acceptance context without treating unrelated files as relevant.
 
 `ldw telemetry summary` reads privacy-safe local session events. `ldw portfolio verify` reconciles all declared gate tests and action artifacts without stopping after an item failure; `--only ID` resumes one item while preserving 20 output rows. `ldw portfolio status` reports saved evidence and marks completed evidence stale when the commit or workspace fingerprint changes.
 

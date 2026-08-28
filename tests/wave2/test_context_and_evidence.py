@@ -100,6 +100,46 @@ def test_context_selection_is_traceable_and_exclusions_are_visible(tmp_path):
     assert excluded["docs/notes.md"]["reason_code"] == "not_selected"
 
 
+def test_context_keeps_explicit_required_dependencies_for_t01_like_verifier(tmp_path):
+    output = context_pack({
+        "repository_root": str(tmp_path),
+        "task": "Implement bounded progressive expansion",
+        "files": [
+            {"path": "src/local_developer_worker/tools.py", "size_bytes": 38_000},
+            {"path": "tests/integration/test_context_expansion_corpus.py", "size_bytes": 1_700},
+            {"path": "fixtures/context_expansion/reference_corpus.json", "size_bytes": 900},
+            {"path": "schemas/context_package.schema.json", "size_bytes": 6_200},
+            {"path": "docs/unrelated.md", "size_bytes": 2_000},
+        ],
+        "target_files": ["src/local_developer_worker/tools.py"],
+        "related_tests": ["tests/integration/test_context_expansion_corpus.py"],
+        "required_files": [
+            "fixtures/context_expansion/reference_corpus.json",
+            "schemas/context_package.schema.json",
+        ],
+        "max_context_files": 4,
+    })["data"]
+
+    included = {item["path"]: item for item in output["included_files"]}
+    assert set(included) == {
+        "src/local_developer_worker/tools.py",
+        "tests/integration/test_context_expansion_corpus.py",
+        "fixtures/context_expansion/reference_corpus.json",
+        "schemas/context_package.schema.json",
+    }
+    for path in ("fixtures/context_expansion/reference_corpus.json", "schemas/context_package.schema.json"):
+        assert included[path]["selection_reason"] == "required_dependency"
+        assert included[path]["evidence_source"] == "required_files"
+        assert included[path]["relevance_status"] == "deterministic_dependency"
+    assert output["excluded_files"] == [{
+        "path": "docs/unrelated.md",
+        "included": False,
+        "reason": "no_deterministic_signal",
+        "reason_code": "not_selected",
+        "policy_rule": "no_deterministic_signal",
+    }]
+
+
 def test_context_blocks_all_minimum_sensitive_path_classes_without_contents(tmp_path):
     sensitive_paths = [
         ".env", ".repo_index/diagnostic.json", "auth_store.json",
