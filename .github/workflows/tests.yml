@@ -21,4 +21,5 @@ jobs:
         with:
           python-version-file: .python-version
       - run: uv sync --extra dev --locked
+      - run: uv build
       - run: uv run python -m pytest -rA
