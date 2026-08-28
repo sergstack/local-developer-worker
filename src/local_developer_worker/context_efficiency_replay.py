@@ -1,6 +1,7 @@
 """Analyze supplied paired replay facts; never launch an agent or provider."""
 from __future__ import annotations
 
+import json
 import statistics
 from typing import Any
 
@@ -16,6 +17,7 @@ CAPTURE = {
     "tool_calls", "latency_ms", "task_accepted", "provider_cost_usd",
 }
 CAPTURE_STUDY = ROOT_V11 - {"pairs"} | {"captures"}
+OBSERVED_TOOL_ITEM_TYPES = frozenset({"command_execution", "custom_tool_call", "function_call", "mcp_tool_call", "web_search"})
 
 
 def _is_nonempty_string(value: Any) -> bool:
@@ -54,6 +56,46 @@ def _valid_capture(capture: Any) -> bool:
     if capture["provider_cost_usd"] is not None and (not isinstance(capture["provider_cost_usd"], (int, float)) or isinstance(capture["provider_cost_usd"], bool) or capture["provider_cost_usd"] < 0):
         return False
     return isinstance(capture["task_accepted"], bool)
+
+
+def observe_agent_jsonl(text: str) -> dict[str, int | bool | None]:
+    """Reduce transient Codex JSONL to allowed aggregate replay evidence.
+
+    The caller owns the stream lifetime. This function retains no event, thread
+    ID, command, prompt, tool argument, or provider text.
+    """
+    completed = False
+    tool_calls = 0
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    for line in text.splitlines():
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(event, dict):
+            continue
+        if event.get("type") == "turn.completed":
+            completed = True
+            usage = event.get("usage")
+            if isinstance(usage, dict):
+                for field in ("input_tokens", "output_tokens"):
+                    value = usage.get(field)
+                    if isinstance(value, int) and not isinstance(value, bool) and value >= 0:
+                        if field == "input_tokens":
+                            input_tokens = value
+                        else:
+                            output_tokens = value
+        elif event.get("type") == "item.started":
+            item = event.get("item")
+            if isinstance(item, dict) and item.get("type") in OBSERVED_TOOL_ITEM_TYPES:
+                tool_calls += 1
+    return {
+        "completed": completed,
+        "tool_calls": tool_calls,
+        "observed_input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+    }
 
 
 def build_replay_manifest(study: dict[str, Any]) -> dict[str, Any]:

@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from local_developer_worker.context_efficiency_replay import analyze_replay, build_replay_manifest
+from local_developer_worker.context_efficiency_replay import analyze_replay, build_replay_manifest, observe_agent_jsonl
 
 
 def test_dry_replay_is_bounded_and_cannot_promote():
@@ -164,3 +164,28 @@ def test_capture_rejects_raw_payload_and_nonmatched_arms(mutation):
     mutation(study)
     with pytest.raises(ValueError, match="invalid_capture_study"):
         build_replay_manifest(study)
+
+
+def test_agent_observer_returns_only_aggregate_tool_and_token_evidence():
+    events = "\n".join(json.dumps(event) for event in [
+        {"type": "thread.started", "thread_id": "must-not-leak"},
+        {"type": "item.started", "item": {"type": "command_execution", "command": "secret command"}},
+        {"type": "item.started", "item": {"type": "mcp_tool_call", "arguments": {"secret": "value"}}},
+        {"type": "item.completed", "item": {"type": "command_execution"}},
+        {"type": "turn.completed", "usage": {"input_tokens": 111, "output_tokens": 22}},
+    ])
+    assert observe_agent_jsonl(events) == {
+        "completed": True,
+        "tool_calls": 2,
+        "observed_input_tokens": 111,
+        "output_tokens": 22,
+    }
+
+
+def test_agent_observer_ignores_malformed_or_non_tool_events():
+    assert observe_agent_jsonl("not-json\n" + json.dumps({"type": "item.started", "item": {"type": "file_change"}})) == {
+        "completed": False,
+        "tool_calls": 0,
+        "observed_input_tokens": None,
+        "output_tokens": None,
+    }
