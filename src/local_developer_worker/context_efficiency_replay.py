@@ -10,6 +10,12 @@ PAIR_V1 = {"pair_id", "environment_revision", "budget", "timeout_ms", "verifier_
 PAIR_V11 = PAIR_V1 | {"baseline_evidence_id", "candidate_evidence_id"}
 ROOT_V1 = {"contract_version", "mode", "baseline_revision", "candidate_revision", "pairs"}
 ROOT_V11 = ROOT_V1 | {"evidence_status", "owner_approval_id", "materiality_threshold_percent"}
+CAPTURE = {
+    "pair_id", "arm", "evidence_id", "task_id", "environment_revision", "budget", "timeout_ms", "verifier_id",
+    "context_bytes", "estimated_input_tokens", "observed_input_tokens", "files_selected", "context_expansions",
+    "tool_calls", "latency_ms", "task_accepted", "provider_cost_usd",
+}
+CAPTURE_STUDY = ROOT_V11 - {"pairs"} | {"captures"}
 
 
 def _is_nonempty_string(value: Any) -> bool:
@@ -27,6 +33,82 @@ def _valid_thresholds(value: Any) -> bool:
             for metric in METRICS
         )
     )
+
+
+def _valid_capture(capture: Any) -> bool:
+    if not isinstance(capture, dict) or set(capture) != CAPTURE:
+        return False
+    if capture["arm"] not in {"baseline", "candidate"}:
+        return False
+    if not all(_is_nonempty_string(capture[field]) for field in ("pair_id", "evidence_id", "task_id", "environment_revision", "verifier_id")):
+        return False
+    if not isinstance(capture["budget"], (int, float)) or isinstance(capture["budget"], bool) or capture["budget"] < 0:
+        return False
+    if not isinstance(capture["timeout_ms"], int) or isinstance(capture["timeout_ms"], bool) or capture["timeout_ms"] < 1:
+        return False
+    integer_fields = ("context_bytes", "estimated_input_tokens", "files_selected", "context_expansions", "tool_calls", "latency_ms")
+    if any(not isinstance(capture[field], int) or isinstance(capture[field], bool) or capture[field] < 0 for field in integer_fields):
+        return False
+    if capture["observed_input_tokens"] is not None and (not isinstance(capture["observed_input_tokens"], int) or isinstance(capture["observed_input_tokens"], bool) or capture["observed_input_tokens"] < 0):
+        return False
+    if capture["provider_cost_usd"] is not None and (not isinstance(capture["provider_cost_usd"], (int, float)) or isinstance(capture["provider_cost_usd"], bool) or capture["provider_cost_usd"] < 0):
+        return False
+    return isinstance(capture["task_accepted"], bool)
+
+
+def build_replay_manifest(study: dict[str, Any]) -> dict[str, Any]:
+    """Convert supplied aggregate arm captures into the v1.1 replay manifest.
+
+    This is deliberately a pure boundary: callers retain the supplied evidence
+    records, while the analyzer receives only the three promotion metrics and
+    opaque evidence IDs.  It never reads a transcript, calls a provider, starts
+    an agent, or persists data.
+    """
+    if not isinstance(study, dict) or set(study) != CAPTURE_STUDY:
+        raise ValueError("invalid_capture_study")
+    if study["contract_version"] != "1.1.0" or study["mode"] != "live" or study["evidence_status"] != "observed":
+        raise ValueError("invalid_capture_study")
+    if not all(_is_nonempty_string(study[field]) for field in ("baseline_revision", "candidate_revision", "owner_approval_id")) or study["baseline_revision"] == study["candidate_revision"] or not _valid_thresholds(study["materiality_threshold_percent"]):
+        raise ValueError("invalid_capture_study")
+    captures = study["captures"]
+    if not isinstance(captures, list) or not captures or not all(_valid_capture(capture) for capture in captures):
+        raise ValueError("invalid_capture_study")
+    grouped: dict[str, dict[str, dict[str, Any]]] = {}
+    for capture in captures:
+        arms = grouped.setdefault(capture["pair_id"], {})
+        if capture["arm"] in arms:
+            raise ValueError("invalid_capture_study")
+        arms[capture["arm"]] = capture
+    pairs = []
+    shared_fields = ("environment_revision", "budget", "timeout_ms", "verifier_id")
+    for pair_id in sorted(grouped):
+        arms = grouped[pair_id]
+        if set(arms) != {"baseline", "candidate"}:
+            raise ValueError("invalid_capture_study")
+        baseline, candidate = arms["baseline"], arms["candidate"]
+        if baseline["evidence_id"] == candidate["evidence_id"] or baseline["task_id"] != candidate["task_id"] or any(baseline[field] != candidate[field] for field in shared_fields):
+            raise ValueError("invalid_capture_study")
+        pairs.append({
+            "pair_id": pair_id,
+            "environment_revision": baseline["environment_revision"],
+            "budget": baseline["budget"],
+            "timeout_ms": baseline["timeout_ms"],
+            "verifier_id": baseline["verifier_id"],
+            "baseline_evidence_id": baseline["evidence_id"],
+            "candidate_evidence_id": candidate["evidence_id"],
+            "baseline": {field: baseline[field] for field in RUN},
+            "candidate": {field: candidate[field] for field in RUN},
+        })
+    return {
+        "contract_version": "1.1.0",
+        "mode": "live",
+        "baseline_revision": study["baseline_revision"],
+        "candidate_revision": study["candidate_revision"],
+        "evidence_status": "observed",
+        "owner_approval_id": study["owner_approval_id"],
+        "materiality_threshold_percent": study["materiality_threshold_percent"],
+        "pairs": pairs,
+    }
 
 
 def _materiality(medians: dict[str, float | None], manifest: dict[str, Any]) -> dict[str, Any]:
