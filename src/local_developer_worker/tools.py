@@ -267,6 +267,7 @@ def _selection_signals(payload: dict[str, Any]) -> tuple[dict[str, list[dict[str
             if isinstance(candidate, str):
                 failure_files.add(candidate)
     related_tests = set(payload.get("related_tests", []))
+    required_files = set(payload.get("required_files", []))
     for path in sorted(target_files):
         add(path, "explicit_target", "target_files", "explicit")
     for path in sorted(changed_files):
@@ -275,8 +276,10 @@ def _selection_signals(payload: dict[str, Any]) -> tuple[dict[str, list[dict[str
         add(path, "observed_failure_source", "observed_failures", "deterministic_dependency")
     for path in sorted(related_tests):
         add(path, "related_test", "related_tests", "deterministic_dependency")
+    for path in sorted(required_files):
+        add(path, "required_dependency", "required_files", "deterministic_dependency")
     import_edges = payload.get("imports", payload.get("import_edges", {}))
-    direct = target_files | changed_files | failure_files
+    direct = target_files | changed_files | failure_files | required_files
     if isinstance(import_edges, dict):
         for origin, targets in sorted(import_edges.items()):
             if origin in direct and isinstance(targets, list):
