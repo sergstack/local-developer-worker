@@ -51,6 +51,11 @@ def expected_phase_2_safety_matrix(baseline: str) -> str:
         '            "LDW_SESSION_LOG_DIR": str(ROOT / ".repo_index" / "pytest_matrix_sessions"),\n',
     )
     expected = expected.replace(
+        '            "PYTHONPATH": str(ROOT / "src"),\n',
+        '            "PYTHONPATH": str(ROOT / "src"),\n'
+        '            "LDW_POLICY_PATH": str(ROOT / "policy.toml"),\n',
+    )
+    expected = expected.replace(
         '        (["telemetry", "summary"], {}),\n',
         '        (["telemetry", "summary"], {}),\n'
         '        (["telemetry", "mark", "RUN-matrix", "unclear"], {}),\n',
@@ -58,6 +63,19 @@ def expected_phase_2_safety_matrix(baseline: str) -> str:
     expected = expected.replace(
         '"benchmark-run", "telemetry-summary", "portfolio-verify"',
         '"benchmark-run", "telemetry-summary", "telemetry-mark", "portfolio-verify"',
+    )
+    expected = expected.replace(
+        '        (["portfolio", "status"], {}),\n',
+        '        (["portfolio", "status"], {}),\n'
+        '        (["ollama", "advise"], {"task": "Review one function"}),\n',
+    )
+    expected = expected.replace(
+        '"portfolio-verify", "portfolio-status"]',
+        '"portfolio-verify", "portfolio-status", "ollama-advise"]',
+    )
+    expected = expected.replace(
+        '    assert completed.returncode == (2 if args == ["log", "cluster"] else 0)\n',
+        '    assert completed.returncode == (2 if args in (["log", "cluster"], ["ollama", "advise"]) else 0)\n',
     )
     return expected
 

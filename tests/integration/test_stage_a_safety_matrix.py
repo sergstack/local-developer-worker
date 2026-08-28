@@ -28,6 +28,7 @@ def _run(args: list[str], payload: dict) -> subprocess.CompletedProcess[str]:
         env={
             **os.environ,
             "PYTHONPATH": str(ROOT / "src"),
+            "LDW_POLICY_PATH": str(ROOT / "policy.toml"),
             "LDW_TELEMETRY_DISABLED": "1",
             "LDW_SESSION_LOG_DIR": str(ROOT / ".repo_index" / "pytest_matrix_sessions"),
             "LDW_PORTFOLIO_STATE": str(ROOT / ".repo_index" / "pytest_matrix_portfolio_state.json"),
@@ -60,12 +61,13 @@ def _run(args: list[str], payload: dict) -> subprocess.CompletedProcess[str]:
         (["telemetry", "mark", "RUN-matrix", "unclear"], {}),
         (["portfolio", "verify", "--only", "AI-02"], {}),
         (["portfolio", "status"], {}),
+        (["ollama", "advise"], {"task": "Review one function"}),
     ],
-    ids=["doctor", "log-parse", "log-process", "log-cluster", "test-parse", "git-facts", "files-inventory", "evidence-build", "context-pack", "report-summarize", "benchmark-run", "telemetry-summary", "telemetry-mark", "portfolio-verify", "portfolio-status"],
+    ids=["doctor", "log-parse", "log-process", "log-cluster", "test-parse", "git-facts", "files-inventory", "evidence-build", "context-pack", "report-summarize", "benchmark-run", "telemetry-summary", "telemetry-mark", "portfolio-verify", "portfolio-status", "ollama-advise"],
 )
 def test_gate_schema_valid_output_for_all_public_commands(args, payload):
     completed = _run(args, payload)
-    assert completed.returncode == (2 if args == ["log", "cluster"] else 0)
+    assert completed.returncode == (2 if args in (["log", "cluster"], ["ollama", "advise"]) else 0)
     assert completed.stderr == ""
     validate(instance=json.loads(completed.stdout), schema=TOOL_RESULT_SCHEMA)
 

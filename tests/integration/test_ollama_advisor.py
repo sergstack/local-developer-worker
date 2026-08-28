@@ -1,0 +1,52 @@
+from __future__ import annotations
+
+from local_developer_worker.ollama_advisor import _NoRedirect, ollama_advise
+
+
+def _policy(*, endpoint: str = "http://127.0.0.1:11435/api/generate") -> dict:
+    return {"ollama": {"model": "qwen3:8b", "endpoint": endpoint, "timeout_seconds": 5}}
+
+
+def test_ollama_advisory_blocks_non_loopback_before_transport():
+    calls: list[object] = []
+    output = ollama_advise(
+        {"task": "Review one function"}, _policy(endpoint="http://203.0.113.3/api/generate"),
+        transport=lambda *args: calls.append(args),
+    )
+    assert output["status"] == "policy_blocked"
+    assert output["errors"] == [{"code": "non_loopback_inference_endpoint"}]
+    assert calls == []
+
+
+def test_ollama_transport_disables_http_redirects():
+    assert _NoRedirect().redirect_request(None, None, 302, "Found", {}, "https://example.invalid") is None
+
+
+def test_ollama_advisory_never_returns_raw_candidate(monkeypatch):
+    def guarded(endpoint, request, transport):
+        assert request["model"] == "qwen3:8b"
+        assert "Review one function" in request["prompt"]
+        return {"status": "success", "data": {"local_runtime_verified": True, "physical_inference_locality": "not_provable"}}, {
+            "summary": "Inspect the focused function first.", "next_actions": ["Run its focused tests."], "raw": "must not escape",
+        }
+
+    monkeypatch.setattr("local_developer_worker.ollama_advisor.guarded_inference_call", guarded)
+    output = ollama_advise({"task": "Review one function"}, _policy())
+    assert output["status"] == "partial"
+    assert output["data"]["raw_response_retained"] is False
+    assert "must not escape" not in str(output)
+
+
+def test_ollama_advisory_returns_only_validated_structured_advice(monkeypatch):
+    monkeypatch.setattr(
+        "local_developer_worker.ollama_advisor.guarded_inference_call",
+        lambda endpoint, request, transport: (
+            {"status": "success", "data": {"local_runtime_verified": True, "physical_inference_locality": "not_provable"}},
+            {"summary": "Inspect the focused function first.", "next_actions": ["Run its focused tests."]},
+        ),
+    )
+    output = ollama_advise({"task": "Review one function"}, _policy())
+    assert output["status"] == "success"
+    assert output["data"]["advisory_status"] == "accepted"
+    assert output["data"]["advice"] == {"summary": "Inspect the focused function first.", "next_actions": ["Run its focused tests."]}
+    assert output["data"]["raw_response_retained"] is False

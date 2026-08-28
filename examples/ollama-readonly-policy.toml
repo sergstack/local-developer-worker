@@ -1,0 +1,9 @@
+# Copy these explicit opt-ins into a local policy only after confirming the local Ollama listener.
+[automatic]
+ollama_readonly_advisory = true
+
+[ollama]
+enabled = true
+model = "qwen3:8b"
+endpoint = "http://127.0.0.1:11435/api/generate"
+timeout_seconds = 30

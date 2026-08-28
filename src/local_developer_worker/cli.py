@@ -16,6 +16,7 @@ from .portfolio import portfolio_status, portfolio_verify
 from .session_log import append_event
 from .stage_b_cluster import log_cluster
 from .log_process import log_process
+from .ollama_advisor import ollama_advise
 from .routing_calibration import routing_calibrate, routing_explain, routing_stats
 from .routing_value import routing_value
 from .telemetry import codex_routing_event_v2, codex_run_event, telemetry_error_code, telemetry_event, telemetry_mark, telemetry_summary
@@ -40,6 +41,7 @@ COMMANDS: dict[tuple[str, ...], Callable[[dict], dict]] = {
     ("portfolio", "verify"): portfolio_verify,
     ("portfolio", "status"): portfolio_status,
     ("codex", "run"): codex_run,
+    ("ollama", "advise"): ollama_advise,
     ("routing", "stats"): routing_stats,
     ("routing", "value"): routing_value,
 }
@@ -79,6 +81,8 @@ def _parser() -> argparse.ArgumentParser:
     portfolio.add_parser("status")
     codex = sub.add_parser("codex").add_subparsers(dest="action", required=True)
     codex.add_parser("run")
+    ollama = sub.add_parser("ollama").add_subparsers(dest="action", required=True)
+    ollama.add_parser("advise")
     routing = sub.add_parser("routing").add_subparsers(dest="action", required=True)
     routing.add_parser("stats")
     routing.add_parser("calibrate")
@@ -204,6 +208,11 @@ def main(argv: list[str] | None = None) -> int:
             output = result(" ".join(key), "stdin", raw, {"fallback": policy.get("fallback", {}).get("on_policy_violation", "codex")}, status="policy_blocked", errors=[{"code": "repository_root_not_allowed"}])
         elif key in {("log", "parse"), ("log", "process")} and len(raw.encode("utf-8")) > max_log_bytes:
             output = result(" ".join(key), "stdin", raw, {"fallback": policy.get("fallback", {}).get("on_policy_violation", "codex")}, status="policy_blocked", errors=[{"code": "input_size_exceeded", "limit_bytes": max_log_bytes}])
+        elif key == ("ollama", "advise") and (
+            policy.get("ollama", {}).get("enabled") is not True
+            or not allowed(policy, "ollama_readonly_advisory")
+        ):
+            output = result(" ".join(key), "stdin", raw, {"fallback": policy.get("fallback", {}).get("on_policy_violation", "codex")}, status="policy_blocked", errors=[{"code": "ollama_advisory_disabled"}])
         elif key == ("log", "cluster") and policy.get("semantic", {}).get("enabled") is not True:
             output = result(" ".join(key), "stdin", raw, {"fallback_used": False, "semantic_groups": []}, status="policy_blocked", errors=[{"code": "semantic_disabled"}])
         elif key == ("log", "cluster") and policy.get("semantic", {}).get("code_artifact") != "disabled":
@@ -213,7 +222,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             if key == ("context", "pack"):
                 payload["max_context_files"] = min(int(payload.get("max_context_files", limits.get("max_context_files", 20))), int(limits.get("max_context_files", 20)))
-            output = codex_run(payload, policy) if key == ("codex", "run") else routing_calibrate(payload, policy) if key == ("routing", "calibrate") else routing_stats(payload, policy) if key == ("routing", "stats") else routing_explain(payload, policy) if key == ("routing", "explain") else routing_value(payload, policy) if key == ("routing", "value") else log_cluster(payload, policy) if key == ("log", "cluster") else log_process(payload, policy) if key == ("log", "process") else COMMANDS[key](payload)
+            output = codex_run(payload, policy) if key == ("codex", "run") else ollama_advise(payload, policy) if key == ("ollama", "advise") else routing_calibrate(payload, policy) if key == ("routing", "calibrate") else routing_stats(payload, policy) if key == ("routing", "stats") else routing_explain(payload, policy) if key == ("routing", "explain") else routing_value(payload, policy) if key == ("routing", "value") else log_cluster(payload, policy) if key == ("log", "cluster") else log_process(payload, policy) if key == ("log", "process") else COMMANDS[key](payload)
         if not valid_tool_result(output):
             output = result(" ".join(key), "stdin", raw, {"fallback": policy.get("fallback", {}).get("on_invalid_schema", "codex")}, status="internal_error", errors=[{"code": "invalid_output_schema"}])
     except (OSError, ValueError):

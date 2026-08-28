@@ -1,0 +1,27 @@
+{
+  "contract_version": "1.0.0",
+  "mode": "dry_run",
+  "evidence_status": "synthetic",
+  "study_id": "ollama-advisory-dry-run-v1",
+  "threshold_percent": {
+    "development_latency_ms": 10,
+    "codex_provider_tokens": 15,
+    "codex_context_bytes": 15
+  },
+  "pairs": [
+    {
+      "pair_id": "DRY-001",
+      "task_class": "bounded_batch_triage",
+      "task_kind": "terminal_deterministic",
+      "control": {"accepted": true, "development_latency_ms": 1000, "codex_input_tokens": 800, "codex_output_tokens": 200, "codex_context_bytes": 4000, "ollama_input_tokens": 0, "ollama_output_tokens": 0, "ollama_latency_ms": 0},
+      "candidate": {"accepted": true, "development_latency_ms": 800, "codex_input_tokens": 650, "codex_output_tokens": 150, "codex_context_bytes": 3000, "ollama_input_tokens": 100, "ollama_output_tokens": 30, "ollama_latency_ms": 300}
+    },
+    {
+      "pair_id": "DRY-002",
+      "task_class": "one_off_code_review",
+      "task_kind": "codex_review_required",
+      "control": {"accepted": true, "development_latency_ms": 1000, "codex_input_tokens": 800, "codex_output_tokens": 200, "codex_context_bytes": 4000, "ollama_input_tokens": 0, "ollama_output_tokens": 0, "ollama_latency_ms": 0},
+      "candidate": {"accepted": true, "development_latency_ms": 1200, "codex_input_tokens": 760, "codex_output_tokens": 190, "codex_context_bytes": 3600, "ollama_input_tokens": 100, "ollama_output_tokens": 30, "ollama_latency_ms": 300}
+    }
+  ]
+}

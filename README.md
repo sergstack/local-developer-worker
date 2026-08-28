@@ -56,6 +56,10 @@ printf '%s\n' '{"repository_root":".","policy_path":"/Users/you/.config/local-de
 
 With `allow_write = false` and `sandbox = "read-only"`, `execution` verification is available to every route: it confirms only that the isolated advisory child completed, not the semantic quality of its response. A write-capable mutation task must instead supply a `command` or `test` argv that exactly matches one of the policy's `verification_commands` and uses an allowed absolute executable. Codex is launched without a shell, with ignored user configuration and explicit model, effort, cwd, sandbox, and approval settings. A pass requires provider completion plus passed verification. Escalation uses only the exact observed session ID and explicit failure/uncertainty evidence; it never uses `--last` or a fresh blind retry.
 
+## Local Ollama advisory (opt-in)
+
+`ldw ollama advise` is a separate, read-only local-model path for small advisory tasks. It does not replace `ldw codex run`, never edits a repository, and accepts only an explicitly supplied task. Enable both `[ollama].enabled = true` and `[automatic].ollama_readonly_advisory = true`; the endpoint must pass the existing loopback and local-Ollama runtime checks. The result retains only a schema-validated summary and up to five actions; raw prompts, provider envelopes, and raw responses are not retained.
+
 An explicitly allowed directory without `.git` may use only this read-only `execution` mode. The result carries `warnings: [{"code":"git_evidence_not_available"}]`; it has no Git baseline. `command` or `test` verification, a write-capable policy, or a non-read-only sandbox still require a working Git repository.
 
 Inside this repository, always pass the personal `policy_path` explicitly as shown above (or set `LDW_POLICY_PATH`); otherwise `uv run ldw` selects the repository's deterministic no-network policy. `ldw codex run` currently returns execution, routing, verification, and token metadata only. It does not return the child model's findings in the ToolResult, and `verification_status: passed` confirms the configured execution/verifier contract—not semantic-quality acceptance of the model response.
