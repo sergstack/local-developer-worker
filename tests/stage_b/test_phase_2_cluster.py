@@ -53,13 +53,15 @@ def _enabled_policy(*, endpoint="http://127.0.0.1:11435/api/generate", code_arti
 
 
 def _run_cli(payload):
+    environment = {**os.environ, "PYTHONPATH": str(ROOT / "src"), "LDW_TELEMETRY_DISABLED": "1"}
+    environment.pop("LDW_POLICY_PATH", None)
     return subprocess.run(
         [sys.executable, "-m", "local_developer_worker.cli", "log", "cluster"],
         input=json.dumps(payload),
         text=True,
         capture_output=True,
         cwd=ROOT,
-        env={**os.environ, "PYTHONPATH": str(ROOT / "src"), "LDW_TELEMETRY_DISABLED": "1"},
+        env=environment,
         check=False,
     )
 
