@@ -1,106 +1,189 @@
 # Local Developer Worker
 
-`ldw` produces deterministic, evidence-linked JSON for logs, tests, Git state, file inventory, context selection, and factual reports. Its default surface is not an autonomous coding agent. An independent, disabled-by-default Codex adapter can execute an explicitly submitted task under additional policy gates.
+Local Developer Worker (`ldw`) is a deterministic, read-only evidence layer
+for coding agents. It helps an agent work with less irrelevant context, retain
+an auditable chain of evidence, and distinguish observed results from guesses.
 
-## Install and run
+It is **not** an autonomous coding agent and it does not replace Codex. LDW
+does not edit repositories, commit, merge, deploy, or silently turn an
+incomplete check into success.
+
+## Why use it
+
+LDW is most useful when a task is large enough that process mistakes become
+expensive:
+
+- select a bounded, explainable repository context instead of reading broadly;
+- establish test outcomes from captured runner output;
+- preserve Git facts, verifier results, and open questions for review or
+  handoff;
+- make release gates resumable and detect evidence that became stale after a
+  revision changes;
+- keep optional local-model assistance tightly bounded and privacy-aware.
+
+For a one-file question or a trivial edit, direct reading is normally faster.
+
+## What it does
+
+| Need | LDW command | Result |
+| --- | --- | --- |
+| Verify the local setup | `ldw doctor` | Capability and policy status |
+| Establish test status | `ldw test parse` | Observed pass/fail evidence |
+| Inspect repository state | `ldw git facts` | Read-only branch, diff, and revision facts |
+| Select code context | `ldw context pack` | Bounded files with selection and exclusion reasons |
+| Preserve task evidence | `ldw evidence build` | Source-linked evidence and resumable state |
+| Review a release portfolio | `ldw portfolio verify` | Complete gate reconciliation, including failures |
+| Inspect process health | `ldw telemetry summary` | Privacy-safe local aggregates |
+| Route an isolated Codex run | `ldw codex run` | Opt-in routing and execution metadata |
+| Ask a local Ollama model | `ldw ollama advise` | Opt-in, read-only structured advisory |
+
+All commands read one JSON object from stdin and return one versioned JSON
+`ToolResult` on stdout. Diagnostics go to stderr.
+
+## Install
 
 ```bash
 uv sync --extra dev
 uv run ldw doctor
-printf '%s' '{"text":"ERROR failed"}' | uv run ldw log parse
 
-# Install once for all local Codex projects, then select the balanced policy.
+# Optional: install the CLI once for all local projects.
 uv tool install --editable .
 mkdir -p ~/.config/local-developer-worker
 cp examples/policies/balanced.toml ~/.config/local-developer-worker/policy.toml
 ```
 
-All commands accept one JSON object on stdin and write one versioned JSON envelope to stdout. Diagnostics are written to stderr. The default policy blocks network access, edits, commits, merges, deployments, and semantic-model capabilities. Bounded log clustering remains default-off and requires both `[semantic].enabled` and `[automatic].semantic_log_clustering`; `code_artifact` is never enabled.
+The repository policy is intentionally restrictive. After copying the balanced
+policy, add the exact repository root you intend LDW to inspect under
+`[security].allowed_repository_roots`; an empty list is a deliberate block.
+For personal usage, pass an explicit policy path or set `LDW_POLICY_PATH`; the
+active policy remains the authority for repository roots, network access, model
+calls, and adapters.
 
-## Portfolio and personal telemetry
+## Recommended workflow with Codex
+
+Use the lightest tool that fits the task:
+
+1. For a short task with one known file, read it directly.
+2. For unfamiliar or multi-file work, build a `context pack` from an explicit
+   allowed repository root.
+3. Run tests through the supplied capture-and-parse wrapper, so the test
+   result is observed rather than inferred.
+4. Before a PR, merge, or handoff, collect `git facts`, build evidence, and
+   run the relevant portfolio gates.
+
+Example context request:
+
+```bash
+printf '%s' '{"repository_root":".","task":"Inspect CLI behavior","files":[{"path":"src/local_developer_worker/cli.py","size_bytes":9537}],"target_files":["src/local_developer_worker/cli.py"]}' \
+  | uv run ldw context pack
+```
+
+Example authoritative test capture:
+
+```bash
+/Users/sst/.codex/skills/local-developer-worker/scripts/run_and_parse_tests.py \
+  -- uv run python -m pytest -rA
+```
+
+`ldw test parse` reports only what the runner output establishes. A partial,
+blocked, unsupported, invalid, or timed-out result is never a passing check.
+
+## Context efficiency
+
+`ldw context pack` makes context selection explicit: every retained path has a
+reason and every rejected candidate has a controlled exclusion reason. It
+reports byte-based reduction, not token savings; token or latency savings must
+come from a matched measurement study.
+
+Use `mode=expand` to request a bounded addition to a prior package instead of
+restarting a repository-wide scan. The packer repeats root, symlink, secret,
+binary, generated-file, and size-limit checks on each expansion.
+
+See [the tool contracts](docs/tool-contracts.md) and
+[Wave 2 migration guide](docs/wave-2-migration.md) for the versioned contract.
+
+## Quality and release evidence
+
+`ldw portfolio verify` runs every declared gate independently and continues
+after a failure, so the output shows the complete state rather than the first
+problem only. `ldw portfolio status` marks saved evidence stale when the
+commit or workspace fingerprint changes.
 
 ```bash
 uv run ldw portfolio verify
 uv run ldw portfolio status
-uv run ldw portfolio verify --only AI-01
 uv run ldw telemetry summary --from-date 2026-08-01 --to-date 2026-08-31
 ```
 
-The 20-item Stage A portfolio is defined in `docs/gate_registry.json`; `docs/release-gates.md` is generated from it. Verification runs each declared gate test independently, checks transition artifacts, and saves resumable local state under `.repo_index/`. CLI calls append privacy-safe events to date-partitioned local JSONL files; source text, logs, prompts, secrets, and provider responses are never recorded.
+Telemetry is local and privacy-safe: it does not retain source text, logs,
+prompts, secrets, or provider responses.
 
-Stage B Phase 1 remains a validation workflow. Run its separate 10-object regression portfolio with `PYTHONPATH=src python scripts/run_stage_b_portfolio.py`; see `docs/stage-b-phase-1.md`.
+## Optional Codex routing
 
-`ldw log cluster` accepts only parsed Stage A log events under `events`. When narrowly enabled, it reads the model and loopback endpoint from `policy.toml`, validates model candidates through the Stage B gate, and returns normalized `model-derived` groups or an explicit observed-event fallback. Raw model responses are not emitted or recorded.
-
-`ldw log process` accepts raw log text, runs Stage A first, and routes only valid observed parsed events to Stage B. It bypasses semantic processing for short logs unless `semantic: true` is supplied, recognises repeated failure signatures, records source accounting and semantic attempt/acceptance/fallback state, and preserves the Stage A observed-event fallback if inference is unavailable or rejected. The balanced global policy has no allowed repository roots: `ldw git facts` and `ldw files inventory` remain blocked until a policy explicitly names the requested root.
-
-## Wave 2 context and evidence
-
-`ldw context pack` accepts an explicit allowed `repository_root`, caller-supplied safe candidate metadata, and deterministic task signals. Contract `2.0.0` keeps every considered inclusion and exclusion visible, labels candidate relevance honestly, reports byte reduction without claiming token savings, and supports bounded expansion linked to a previous package.
-
-`ldw evidence build` accepts only supplied evidence. Contract `2.0.0` preserves per-item origin and source lineage, keeps missing tests visible, and emits resumable handoff state without asserting root cause.
+`ldw codex run` is disabled until its policy explicitly permits it. It selects
+a configured routing profile for an isolated advisory run and returns routing,
+execution, verification, and token metadata. It does **not** return the child
+model's answer and a passed execution verifier is not a semantic-quality
+verdict.
 
 ```bash
-printf '%s' '{"repository_root":".","task":"Inspect CLI","files":[{"path":"src/local_developer_worker/cli.py","size_bytes":9537}],"target_files":["src/local_developer_worker/cli.py"]}' | uv run ldw context pack
+printf '%s\n' '{"repository_root":".","policy_path":"/Users/you/.config/local-developer-worker/policy.toml","task":"Review the README","verification":{"kind":"execution"}}' \
+  | uv run ldw codex run
 ```
 
-Use direct bounded reading instead for a short task with one known file. A root outside the active policy allowlist remains blocked. See `docs/wave-2-migration.md` for compatibility and expansion details.
+Enable this only after configuring the exact executable, supported model
+aliases, network policy, and verifier commands. Details are in
+[Adaptive Codex Routing](docs/adaptive-codex-routing/SPEC.md).
 
-## Adaptive Codex routing (opt-in)
+## Optional local Ollama advisory
 
-Copy the `[codex]` tables from `examples/adaptive-routing-policy.toml` into the active policy, replace the example model values with provider-supported aliases, name the exact Codex and verification executables, and only then set both `network_access = true`, `codex.allow_network = true`, and `codex.enabled = true`. The double opt-in authorizes provider transport; model-generated commands still receive an explicit sandbox network denial. Concrete model IDs stay in policy; the classifier selects only `efficient`, `balanced`, or `frontier` and their configured effort.
+`ldw ollama advise` is a separate, read-only advisory boundary for a small
+local model. It has no repository access, tool execution, or write capability.
+It accepts an explicitly supplied bounded task, requires both
+`[ollama].enabled = true` and
+`[automatic].ollama_readonly_advisory = true`, and permits only a verified
+loopback Ollama runtime.
 
-```bash
-printf '%s\n' '{"repository_root":".","policy_path":"/Users/you/.config/local-developer-worker/policy.toml","task":"Review the README","verification":{"kind":"execution"}}' | uv run ldw codex run
-```
+Only a schema-validated `summary` and up to five `next_actions` cross the
+boundary. Raw prompts, envelopes, and model responses are not retained.
 
-With `allow_write = false` and `sandbox = "read-only"`, `execution` verification is available to every route: it confirms only that the isolated advisory child completed, not the semantic quality of its response. A write-capable mutation task must instead supply a `command` or `test` argv that exactly matches one of the policy's `verification_commands` and uses an allowed absolute executable. Codex is launched without a shell, with ignored user configuration and explicit model, effort, cwd, sandbox, and approval settings. A pass requires provider completion plus passed verification. Escalation uses only the exact observed session ID and explicit failure/uncertainty evidence; it never uses `--last` or a fresh blind retry.
+The currently supported use is narrow: high-volume semantic terminal triage
+whose small output is fully consumed by a deterministic verifier. Do not use
+it for code review, debugging hypotheses, architecture, generated patches, or
+any workflow where Codex must semantically review the local answer.
 
-## Local Ollama advisory (opt-in)
+### What the pilot measured
 
-`ldw ollama advise` is a separate, read-only local-model path for small advisory tasks. It does not replace `ldw codex run`, never edits a repository, and accepts only an explicitly supplied task. Enable both `[ollama].enabled = true` and `[automatic].ollama_readonly_advisory = true`; the endpoint must pass the existing loopback and local-Ollama runtime checks. The result retains only a schema-validated summary and up to five actions; raw prompts, provider envelopes, and raw responses are not retained.
+A five-pair **synthetic** terminal-triage pilot compared a Codex-only control
+with `qwen3:8b` behind `ldw ollama advise` under the same deterministic marker
+verifier:
 
-An explicitly allowed directory without `.git` may use only this read-only `execution` mode. The result carries `warnings: [{"code":"git_evidence_not_available"}]`; it has no Git baseline. `command` or `test` verification, a write-capable policy, or a non-read-only sandbox still require a working Git repository.
+| Measure | Control | Local candidate | Matched median delta |
+| --- | ---: | ---: | ---: |
+| Accepted pairs | 5 / 5 | 5 / 5 | No regression |
+| End-to-end latency | 3,851–5,139 ms | 1,764–1,967 ms | **-54.1937%** |
+| Codex provider tokens | 16,824–16,826 / pair | 0 | **-100%** |
+| Bytes presented to Codex | Control input | 0 | **-100%** |
 
-Inside this repository, always pass the personal `policy_path` explicitly as shown above (or set `LDW_POLICY_PATH`); otherwise `uv run ldw` selects the repository's deterministic no-network policy. `ldw codex run` currently returns execution, routing, verification, and token metadata only. It does not return the child model's findings in the ToolResult, and `verification_status: passed` confirms the configured execution/verifier contract—not semantic-quality acceptance of the model response.
+This proves a technical shape, not a production benefit: the corpus is
+synthetic, the local model's own token counts were not observed, and no real
+repository task is currently promoted to the local-model allowlist. Read the
+[study contract](docs/ollama-advisory-effect-study.md) and
+[pilot record](docs/ollama-advisory-synthetic-pilot-2026-08-28.md) before
+running a live study.
 
-The adapter does not use `--ephemeral`, because exact-session resume needs Codex's own session rollout. LDW keeps the observed session ID only in process memory and never writes it to its telemetry, stdout, or session journal. LDW also never commits, merges, deploys, resets, stashes, or cleans the caller's working tree.
+## Safety boundaries
 
-### Offline routing calibration
+- Repository, context, and evidence commands require an explicitly allowed
+  repository root.
+- Sensitive paths and symlinks escaping the root are blocked.
+- Git collection is read-only.
+- Non-loopback, ambiguous, proxy, tunnel, or unverified local inference
+  endpoints are policy-blocked.
+- Model-derived output remains a candidate; it is never silently elevated to
+  observed evidence.
+- The default policy blocks edits, commits, merges, deployments, network
+  access, and semantic-model capabilities.
 
-With `[codex.calibration].enabled = true`, operators can inspect aggregate
-privacy-safe routing evidence and generate a human-review candidate without
-changing the active policy:
-
-```sh
-printf '%s\n' '{"policy_path":"/Users/you/.config/local-developer-worker/policy.toml"}' | ldw routing stats
-printf '%s\n' '{"policy_path":"/Users/you/.config/local-developer-worker/policy.toml"}' | ldw routing calibrate
-printf '%s\n' '{"policy_path":"/Users/you/.config/local-developer-worker/policy.toml","task":"Review README"}' | ldw routing explain
-```
-
-Calibration never auto-applies a policy change, never weakens the deterministic
-risk floor, and does not invoke a provider. Details and evidence thresholds are
-in `docs/adaptive-codex-routing/calibration.md`.
-
-After a terminal `ldw codex run`, render its privacy-safe observed route,
-latency, token, and evidence boundary without starting a second model:
-
-```sh
-printf '%s\n' '<codex-run-tool-result-json>' | ldw routing value
-```
-
-`ldw routing value` reports `comparison: not_available` unless an approved
-matched-study result exists, reports context as `not_measured` unless a safe
-context observation is supplied, and never treats execution verification as a
-semantic-quality verdict.
-
-For a reproducible, privacy-safe paired study of routing latency, provider
-tokens, and selected context (rather than a calibration recommendation), see
-`docs/adaptive-codex-routing/effect-study.md`. Its bundled fixture is
-informational only and cannot promote a routing change.
-
-Set `[codex].enabled = false` to remove the execution surface entirely. Set `[codex].adaptive_routing = false` to keep execution enabled while restoring the configured fixed `default_profile`. Set `[codex.calibration].enabled = false` to disable only offline calibration analysis; it does not change routing or execution. See `docs/adaptive-codex-routing/SPEC.md` for the versioned contract and rollback details.
-
-## Safety
-
-Repository, context, and evidence tools require an explicit allowed `repository_root`. The inventory and selector block secret-like paths and symlinks escaping that root. Git collection is read-only. Unsupported, low-benefit, or partial input is visible in the result; it is never silently treated as success.
+For precise input and output schemas, read
+[docs/tool-contracts.md](docs/tool-contracts.md).
