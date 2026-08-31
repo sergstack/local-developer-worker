@@ -107,6 +107,11 @@ invokes a model nor renders Markdown/HTML/D2/SVG. `not_run` and `unknown`
 checks remain visible, and the package cannot promote a finding, change a
 repository, or infer root cause.
 
+Review P1 adds an optional `1.1.0` structural comparison: a derived evidence
+ledger and declared field-ID delta between opaque, hashed contract manifests.
+It does not assess compatibility or infer semantics from contract text. The
+`1.0.0` P0 input and output remain unchanged.
+
 ## Context efficiency
 
 `ldw context pack` makes context selection explicit: every retained path has a

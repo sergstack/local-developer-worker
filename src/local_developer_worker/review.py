@@ -13,6 +13,7 @@ from .contracts import canonical_json, result, stable_hash
 
 
 ROOT = {"contract_version", "objective", "scope", "git_facts", "evidence", "required_checks"}
+P1_ROOT = ROOT | {"contract_comparison"}
 SCOPE = {"scope_id", "change_size", "changed_components", "declared_boundaries", "contract_change"}
 COMPONENT = {"component_id", "kind"}
 GIT_FACTS = {"source_tool", "source_run_id", "working_tree_clean", "changed_component_ids"}
@@ -47,6 +48,14 @@ def _safe_text(value: Any, label: str, *, limit: int) -> str:
 
 def _hash(value: Any, label: str) -> str:
     if not isinstance(value, str) or len(value) != 64 or any(character not in "0123456789abcdef" for character in value):
+        raise ValueError(f"invalid_{label}")
+    return value
+
+
+def _version_label(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not value or len(value) > 64 or not all(
+        character.isascii() and (character.isalnum() or character in "._-") for character in value
+    ):
         raise ValueError(f"invalid_{label}")
     return value
 
@@ -167,6 +176,69 @@ def _profile_details(profile: str) -> tuple[list[str], list[str]]:
     return ["scope_is_bounded", "required_checks_visible", "unknowns_preserved"], ["summary", "scoped_evidence", "required_checks"]
 
 
+def _validate_contract_comparison(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict) or set(value) != {"availability", "unavailable_reason_id", "baseline", "candidate", "added_field_ids", "removed_field_ids", "changed_field_ids"}:
+        raise ValueError("invalid_contract_comparison")
+    availability = value["availability"]
+    if availability == "unavailable":
+        if not isinstance(value["unavailable_reason_id"], str):
+            raise ValueError("invalid_contract_comparison")
+        _identifier(value["unavailable_reason_id"], "comparison_unavailable_reason")
+        if any(value[field] is not None for field in ("baseline", "candidate", "added_field_ids", "removed_field_ids", "changed_field_ids")):
+            raise ValueError("unavailable_comparison_must_not_claim_delta")
+        return value
+    if availability != "available" or value["unavailable_reason_id"] is not None:
+        raise ValueError("invalid_contract_comparison")
+    for endpoint in ("baseline", "candidate"):
+        manifest = value[endpoint]
+        if not isinstance(manifest, dict) or set(manifest) != {"contract_id", "version_label", "content_hash"}:
+            raise ValueError("invalid_contract_manifest")
+        _identifier(manifest["contract_id"], f"{endpoint}_contract_id")
+        _version_label(manifest["version_label"], f"{endpoint}_version_label")
+        _hash(manifest["content_hash"], f"{endpoint}_content_hash")
+    if value["baseline"]["content_hash"] == value["candidate"]["content_hash"]:
+        raise ValueError("contract_comparison_requires_distinct_hashes")
+    field_sets = {}
+    for field in ("added_field_ids", "removed_field_ids", "changed_field_ids"):
+        field_sets[field] = set(_identifiers(value[field], field[:-1]))
+    if not any(field_sets.values()):
+        raise ValueError("contract_comparison_requires_declared_delta")
+    if any(field_sets[left] & field_sets[right] for left, right in (("added_field_ids", "removed_field_ids"), ("added_field_ids", "changed_field_ids"), ("removed_field_ids", "changed_field_ids"))):
+        raise ValueError("contract_delta_field_state_conflict")
+    return value
+
+
+def _evidence_ledger(evidence: dict[str, Any], checks: list[dict[str, Any]]) -> dict[str, Any]:
+    rows: list[dict[str, Any]] = []
+    for state, field in (("observed", "observed_evidence_refs"), ("candidate", "candidate_evidence_refs"), ("missing", "missing_evidence_ids"), ("unknown", "unknown_ids")):
+        rows.extend({"row_id": f"LEDGER_{state.upper()}_{reference}", "kind": "evidence_reference", "state": state, "evidence_refs": [reference]} for reference in evidence[field])
+    for check in sorted(checks, key=lambda item: item["check_id"]):
+        state = "observed" if check["status"] in {"passed", "failed"} else check["status"]
+        rows.append({"row_id": f"LEDGER_CHECK_{check['check_id']}", "kind": "required_check", "state": state, "check_id": check["check_id"], "status": check["status"], "evidence_refs": check["evidence_refs"]})
+    return {
+        "contract_version": "1.0.0",
+        "derived": True,
+        "authoritative_input": "caller_retained_evidence",
+        "rows": sorted(rows, key=lambda item: item["row_id"]),
+    }
+
+
+def _contract_delta(value: dict[str, Any] | None) -> dict[str, Any]:
+    if value is None:
+        return {"status": "not_applicable", "reason": "no_contract_comparison_declared"}
+    if value["availability"] == "unavailable":
+        return {"status": "unavailable", "unavailable_reason_id": value["unavailable_reason_id"]}
+    return {
+        "status": "structural_delta",
+        "baseline": value["baseline"],
+        "candidate": value["candidate"],
+        "added_field_ids": sorted(value["added_field_ids"]),
+        "removed_field_ids": sorted(value["removed_field_ids"]),
+        "changed_field_ids": sorted(value["changed_field_ids"]),
+        "compatibility_assessment": "not_in_p1",
+    }
+
+
 def build_review_package(payload: dict[str, Any]) -> dict[str, Any]:
     """Validate compact provenance and derive a non-authoritative ReviewPackage."""
     if not isinstance(payload, dict) or set(payload) != ROOT or payload.get("contract_version") != "1.0.0":
@@ -221,10 +293,37 @@ def build_review_package(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def build_review_package_v1_1(payload: dict[str, Any]) -> dict[str, Any]:
+    """Add a derived ledger and structural-only contract delta without changing P0."""
+    if not isinstance(payload, dict) or set(payload) != P1_ROOT or payload.get("contract_version") != "1.1.0":
+        raise ValueError("invalid_review_build_input")
+    comparison = payload["contract_comparison"]
+    if comparison is not None:
+        comparison = _validate_contract_comparison(comparison)
+    base_payload = {key: payload[key] for key in ROOT}
+    base_payload["contract_version"] = "1.0.0"
+    base = build_review_package(base_payload)
+    package_hash = stable_hash(payload)
+    base.update({
+        "contract_version": "1.1.0",
+        "review_package_id": f"REVIEW_{package_hash[:12].upper()}",
+        "derived_view_plan": {**base["derived_view_plan"], "rendering": "not_in_p1"},
+        "evidence_ledger": _evidence_ledger(payload["evidence"], payload["required_checks"]),
+        "contract_delta": _contract_delta(comparison),
+        "evidence_export": {
+            "format": "review_package_v1_1",
+            "input_sha256": package_hash,
+            "git_source_run_id": payload["git_facts"]["source_run_id"],
+            "evidence_source_run_id": payload["evidence"]["source_run_id"],
+        },
+    })
+    return base
+
+
 def review_build(payload: dict[str, Any]) -> dict[str, Any]:
     raw = canonical_json(payload)
     try:
-        data = build_review_package(payload)
+        data = build_review_package(payload) if payload.get("contract_version") == "1.0.0" else build_review_package_v1_1(payload)
     except ValueError as exc:
         return result("review_package_builder", "stdin", raw, {}, status="invalid_input", errors=[{"code": str(exc)}])
     return result("review_package_builder", "stdin", raw, data)

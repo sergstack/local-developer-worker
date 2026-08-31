@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ReviewBuildInputV1_1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "objective", "scope", "git_facts", "evidence", "required_checks", "contract_comparison"],
+  "properties": {
+    "contract_version": {"const": "1.1.0"},
+    "objective": {"type": "string", "minLength": 1, "maxLength": 1000},
+    "scope": {"$ref": "#/$defs/scope"},
+    "git_facts": {"$ref": "#/$defs/git_facts"},
+    "evidence": {"$ref": "#/$defs/evidence"},
+    "required_checks": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/check"}},
+    "contract_comparison": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/comparison"}]}
+  },
+  "$defs": {
+    "identifier": {"type": "string", "pattern": "^[A-Z][A-Z0-9_-]{0,63}$"},
+    "hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "component": {"type": "object", "additionalProperties": false, "required": ["component_id", "kind"], "properties": {"component_id": {"$ref": "#/$defs/identifier"}, "kind": {"enum": ["source", "test", "contract", "configuration", "documentation"]}}},
+    "scope": {"type": "object", "additionalProperties": false, "required": ["scope_id", "change_size", "changed_components", "declared_boundaries", "contract_change"], "properties": {"scope_id": {"$ref": "#/$defs/identifier"}, "change_size": {"enum": ["local", "bounded", "cross_boundary"]}, "changed_components": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/component"}}, "declared_boundaries": {"type": "array", "items": {"type": "string", "minLength": 1, "maxLength": 160}}, "contract_change": {"type": "boolean"}}},
+    "git_facts": {"type": "object", "additionalProperties": false, "required": ["source_tool", "source_run_id", "working_tree_clean", "changed_component_ids"], "properties": {"source_tool": {"const": "git_facts_collector"}, "source_run_id": {"$ref": "#/$defs/identifier"}, "working_tree_clean": {"type": "boolean"}, "changed_component_ids": {"type": "array", "items": {"$ref": "#/$defs/identifier"}}}},
+    "evidence": {"type": "object", "additionalProperties": false, "required": ["source_tool", "source_run_id", "content_hash", "lineage_complete", "observed_evidence_refs", "candidate_evidence_refs", "missing_evidence_ids", "unknown_ids"], "properties": {"source_tool": {"const": "evidence_package_builder"}, "source_run_id": {"$ref": "#/$defs/identifier"}, "content_hash": {"$ref": "#/$defs/hash"}, "lineage_complete": {"type": "boolean"}, "observed_evidence_refs": {"type": "array", "items": {"$ref": "#/$defs/identifier"}}, "candidate_evidence_refs": {"type": "array", "items": {"$ref": "#/$defs/identifier"}}, "missing_evidence_ids": {"type": "array", "items": {"$ref": "#/$defs/identifier"}}, "unknown_ids": {"type": "array", "items": {"$ref": "#/$defs/identifier"}}}},
+    "check": {"type": "object", "additionalProperties": false, "required": ["check_id", "check_type", "status", "source_tool", "evidence_refs"], "properties": {"check_id": {"$ref": "#/$defs/identifier"}, "check_type": {"enum": ["test", "schema", "git", "manual"]}, "status": {"enum": ["passed", "failed", "not_run", "unknown"]}, "source_tool": {"enum": ["test_result_parser", "git_facts_collector", "evidence_package_builder", "none"]}, "evidence_refs": {"type": "array", "items": {"$ref": "#/$defs/identifier"}}}},
+    "version_label": {"type": "string", "pattern": "^[A-Za-z0-9._-]{1,64}$"},
+    "manifest": {"type": "object", "additionalProperties": false, "required": ["contract_id", "version_label", "content_hash"], "properties": {"contract_id": {"$ref": "#/$defs/identifier"}, "version_label": {"$ref": "#/$defs/version_label"}, "content_hash": {"$ref": "#/$defs/hash"}}},
+    "available_comparison": {"type": "object", "additionalProperties": false, "required": ["availability", "unavailable_reason_id", "baseline", "candidate", "added_field_ids", "removed_field_ids", "changed_field_ids"], "properties": {"availability": {"const": "available"}, "unavailable_reason_id": {"type": "null"}, "baseline": {"$ref": "#/$defs/manifest"}, "candidate": {"$ref": "#/$defs/manifest"}, "added_field_ids": {"type": "array", "items": {"$ref": "#/$defs/identifier"}}, "removed_field_ids": {"type": "array", "items": {"$ref": "#/$defs/identifier"}}, "changed_field_ids": {"type": "array", "items": {"$ref": "#/$defs/identifier"}}}},
+    "unavailable_comparison": {"type": "object", "additionalProperties": false, "required": ["availability", "unavailable_reason_id", "baseline", "candidate", "added_field_ids", "removed_field_ids", "changed_field_ids"], "properties": {"availability": {"const": "unavailable"}, "unavailable_reason_id": {"$ref": "#/$defs/identifier"}, "baseline": {"type": "null"}, "candidate": {"type": "null"}, "added_field_ids": {"type": "null"}, "removed_field_ids": {"type": "null"}, "changed_field_ids": {"type": "null"}}},
+    "comparison": {"oneOf": [{"$ref": "#/$defs/available_comparison"}, {"$ref": "#/$defs/unavailable_comparison"}]}
+  }
+}
