@@ -23,6 +23,10 @@ ADVICE_SCHEMA = {
 }
 
 
+class OllamaModelUnavailable(RuntimeError):
+    pass
+
+
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
     """Preserve the loopback-only endpoint boundary during the request."""
 
@@ -41,8 +45,14 @@ def _transport(endpoint: str, request_payload: dict[str, Any], *, timeout: int) 
         urllib.request.ProxyHandler({}),
         _NoRedirect(),
     )
-    with opener.open(request, timeout=timeout) as response:
-        body = response.read(65_537)
+    try:
+        with opener.open(request, timeout=timeout) as response:
+            body = response.read(65_537)
+    except urllib.error.HTTPError as exc:
+        error_body = exc.read(4096).decode("utf-8", errors="replace").lower()
+        if exc.code == 404 and "model" in error_body and ("not found" in error_body or "not available" in error_body):
+            raise OllamaModelUnavailable from exc
+        raise
     if len(body) > 65_536:
         raise ValueError("model_response_too_large")
     envelope = json.loads(body)
@@ -85,7 +95,11 @@ def ollama_advise(
     config = policy.get("ollama", {})
     model, endpoint = config.get("model"), config.get("endpoint")
     if not isinstance(model, str) or not model or not isinstance(endpoint, str) or not endpoint:
-        return result("ollama_advisory", "stdin", raw, {}, status="policy_blocked", errors=[{"code": "ollama_runtime_not_configured"}])
+        return result(
+            "ollama_advisory", "stdin", raw,
+            {"local_runtime_state": "not_configured", "local_model_state": "not_configured"},
+            status="policy_blocked", errors=[{"code": "ollama_runtime_not_configured"}],
+        )
     request_payload = {
         "model": model,
         "stream": False,
@@ -102,12 +116,29 @@ def ollama_advise(
     call = transport or (lambda guarded_endpoint, body: _transport(guarded_endpoint, body, timeout=timeout))
     try:
         policy_result, candidate = guarded_inference_call(endpoint, request_payload, call)
-    except (KeyError, TypeError, ValueError, OSError, TimeoutError, urllib.error.HTTPError, urllib.error.URLError, json.JSONDecodeError):
+    except OllamaModelUnavailable:
+        return result(
+            "ollama_advisory", "stdin", raw,
+            {"terminal_status": "failed", "advisory_status": "unavailable", "raw_response_retained": False,
+             "endpoint_policy": "loopback_only", "local_runtime_state": "available", "local_model_state": "unavailable",
+             "physical_inference_locality": "not_provable"},
+            status="partial", errors=[{"code": "ollama_model_unavailable"}],
+        )
+    except (OSError, TimeoutError, urllib.error.HTTPError, urllib.error.URLError):
+        return result(
+            "ollama_advisory", "stdin", raw,
+            {"terminal_status": "failed", "advisory_status": "unavailable", "raw_response_retained": False,
+             "endpoint_policy": "loopback_only", "local_runtime_state": "unavailable", "local_model_state": "unknown",
+             "physical_inference_locality": "not_provable"},
+            status="partial", errors=[{"code": "ollama_runtime_unavailable"}],
+        )
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError):
         policy_result, candidate = None, None
     if policy_result is not None and policy_result["status"] != "success":
         return result(
             "ollama_advisory", "stdin", raw,
             {"terminal_status": "blocked", "advisory_status": "not_run", "raw_response_retained": False,
+             "local_runtime_state": "policy_blocked", "local_model_state": "unknown",
              "endpoint_policy": "loopback_only", "physical_inference_locality": "not_provable"},
             status="policy_blocked", errors=policy_result["errors"],
         )
@@ -116,6 +147,7 @@ def ollama_advise(
         return result(
             "ollama_advisory", "stdin", raw,
             {"terminal_status": "failed", "advisory_status": "unavailable", "raw_response_retained": False,
+             "local_runtime_state": "available", "local_model_state": "unknown",
              "endpoint_policy": "loopback_only", "physical_inference_locality": "not_provable"},
             status="partial", errors=[{"code": "ollama_advisory_unavailable"}],
         )
@@ -123,6 +155,7 @@ def ollama_advise(
     return result(
         "ollama_advisory", "stdin", raw,
         {"terminal_status": "pass", "advisory_status": "accepted", "model": model, "advice": advice,
+         "local_runtime_state": "available", "local_model_state": "available",
          "raw_response_retained": False, "endpoint_policy": "loopback_only",
          "local_runtime_verified": locality.get("local_runtime_verified", False),
          "physical_inference_locality": locality.get("physical_inference_locality", "not_provable")},

@@ -37,6 +37,7 @@ For a one-file question or a trivial edit, direct reading is normally faster.
 | Inspect process health | `ldw telemetry summary` | Privacy-safe local aggregates |
 | Route an isolated Codex run | `ldw codex run` | Opt-in routing and execution metadata |
 | Ask a local Ollama model | `ldw ollama advise` | Opt-in, read-only structured advisory |
+| Execute an AI-OS offload envelope | `ldw offload execute` | Caller-owned route, capability, fallback, and provenance result |
 
 All commands read one JSON object from stdin and return one versioned JSON
 `ToolResult` on stdout. Diagnostics go to stderr.
@@ -141,6 +142,29 @@ printf '%s\n' '{"repository_root":".","policy_path":"/Users/you/.config/local-de
 Enable this only after configuring the exact executable, supported model
 aliases, network policy, and verifier commands. Details are in
 [Adaptive Codex Routing](docs/adaptive-codex-routing/SPEC.md).
+
+## Policy-owned local offload
+
+`ldw offload execute` accepts a caller-owned envelope containing `task_class`,
+`risk_floor`, `offload_mode`, `verification_kind`, `fallback_policy`, and an
+immutable `policy_revision`. LDW validates and executes that route; it does not
+classify the task, promote a class, or alter authority. A successful local
+response remains a `candidate_only` result with local-model provenance.
+
+Local inference is optional. If its runtime or requested model is unavailable,
+the command consumes an explicitly supplied successful deterministic ToolResult
+first, invokes the authorized frontier route second, or returns a visible block.
+It never installs, starts, or pulls Ollama or silently changes the policy mode.
+
+The core feature adds no Python dependency. Local execution uses the configured
+Ollama `/api/generate` endpoint only after the existing loopback and local
+listener/process checks pass; a model-not-found response is reported separately
+from runtime unavailability. Enable it with `[ollama].enabled = true` and
+`[automatic].ollama_readonly_advisory = true`. Setting either flag to `false`
+disables the local path without affecting deterministic commands. Frontier
+fallback additionally requires the existing `ldw codex run` policy and an
+allowed repository root. That flag change is the rollback; no evidence migration
+or Ollama lifecycle action is required.
 
 ## Optional local Ollama advisory
 

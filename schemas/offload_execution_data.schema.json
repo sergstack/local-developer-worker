@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OffloadExecutionData",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "task_class", "risk_floor", "offload_mode",
+    "verification_kind", "fallback_policy", "policy_revision", "selected_route",
+    "terminal_status", "authority_status", "candidate_provenance", "candidate",
+    "local_capability", "fallback_used", "fallback_reason",
+    "deterministic_result_ref", "route_result"
+  ],
+  "properties": {
+    "contract_version": {"const": "1.0.0"},
+    "task_class": {"type": "string", "minLength": 1},
+    "risk_floor": {"enum": ["efficient", "balanced", "frontier"]},
+    "offload_mode": {"enum": ["local_first", "candidate_review", "frontier_floor", "blocked"]},
+    "verification_kind": {"type": "string", "minLength": 1},
+    "fallback_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deterministic", "frontier"],
+      "properties": {
+        "deterministic": {"enum": ["use_if_available", "skip"]},
+        "frontier": {"enum": ["allowed", "forbidden"]}
+      }
+    },
+    "policy_revision": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "selected_route": {"type": ["string", "null"], "enum": ["local", "deterministic", "frontier", null]},
+    "terminal_status": {"enum": ["candidate_ready", "pass", "failed", "blocked"]},
+    "authority_status": {"enum": ["caller_owned", "candidate_only"]},
+    "candidate_provenance": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["source", "tool", "run_id"],
+          "properties": {
+            "source": {"const": "local_model"},
+            "tool": {"type": "string"},
+            "run_id": {"type": "string", "minLength": 1}
+          }
+        }
+      ]
+    },
+    "candidate": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["summary", "next_actions"],
+          "properties": {
+            "summary": {"type": "string", "minLength": 1, "maxLength": 600},
+            "next_actions": {
+              "type": "array", "maxItems": 5,
+              "items": {"type": "string", "minLength": 1, "maxLength": 240}
+            }
+          }
+        }
+      ]
+    },
+    "local_capability": {
+      "type": "object", "additionalProperties": false,
+      "required": ["runtime", "model"],
+      "properties": {
+        "runtime": {"enum": ["not_checked", "available", "unavailable", "policy_blocked", "incompatible", "not_configured", "unknown"]},
+        "model": {"enum": ["not_checked", "available", "unavailable", "not_configured", "unknown"]}
+      }
+    },
+    "fallback_used": {"type": "boolean"},
+    "fallback_reason": {"type": ["string", "null"]},
+    "deterministic_result_ref": {"type": ["object", "null"]},
+    "route_result": {"type": ["object", "null"]}
+  }
+}
