@@ -7,6 +7,7 @@ scope.
 """
 from __future__ import annotations
 
+from html import escape as html_escape
 from typing import Any
 
 from .contracts import canonical_json, result, sha256, stable_hash
@@ -440,15 +441,99 @@ def render_markdown(review_package: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _html_list(items: list[str]) -> str:
+    if not items:
+        return "<p>—</p>"
+    return "<ul>" + "".join(f"<li>{html_escape(item)}</li>" for item in items) + "</ul>"
+
+
+def _html_checks(checks: list[dict[str, Any]]) -> str:
+    rows = []
+    for check in checks:
+        state = "OBSERVED" if check["status"] in {"passed", "failed"} else check["status"].upper()
+        refs = ", ".join(check["evidence_refs"]) or "—"
+        rows.append(
+            "<tr>"
+            f"<td>{html_escape(check['check_id'])}</td>"
+            f"<td>{html_escape(check['check_type'])}</td>"
+            f"<td>{html_escape(check['status'].upper())}</td>"
+            f"<td>{html_escape(state)}</td>"
+            f"<td>{html_escape(refs)}</td>"
+            "</tr>"
+        )
+    return "<table><thead><tr><th>Check</th><th>Type</th><th>Status</th><th>Evidence state</th><th>References</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table>"
+
+
+def _html_delta(delta: dict[str, Any]) -> str:
+    status = delta["status"]
+    if status == "not_applicable":
+        return "<p><strong>NOT_APPLICABLE</strong>: no contract comparison was declared.</p>"
+    if status == "unavailable":
+        return f"<p><strong>UNAVAILABLE</strong>: {html_escape(delta['unavailable_reason_id'])}</p>"
+    rows = [
+        ("Baseline", f"{delta['baseline']['contract_id']} @ {delta['baseline']['version_label']}"),
+        ("Candidate", f"{delta['candidate']['contract_id']} @ {delta['candidate']['version_label']}"),
+        ("Added fields", ", ".join(delta["added_field_ids"]) or "—"),
+        ("Removed fields", ", ".join(delta["removed_field_ids"]) or "—"),
+        ("Changed fields", ", ".join(delta["changed_field_ids"]) or "—"),
+    ]
+    detail = "".join(f"<dt>{html_escape(label)}</dt><dd>{html_escape(value)}</dd>" for label, value in rows)
+    return "<p><strong>STRUCTURAL_DELTA</strong>: caller-declared; compatibility is not assessed.</p><dl>" + detail + "</dl>"
+
+
+def render_html(review_package: dict[str, Any]) -> str:
+    """Render a validated ReviewPackage as self-contained, non-interactive HTML."""
+    package = _validate_render_package(review_package)
+    boundaries = ", ".join(package["affected_boundaries"]) or "—"
+    evidence_refs = ", ".join(package["evidence_refs"]) or "—"
+    unknowns = ", ".join(package["unknowns"]) or "—"
+    sections = [
+        "<!doctype html>",
+        '<html lang="en">',
+        "<head><meta charset=\"utf-8\"><title>LDW Review Package</title></head>",
+        "<body><main>",
+        f"<h1>LDW Review Package {html_escape(package['review_package_id'])}</h1>",
+        "<section><h2>Scope</h2>",
+        f"<p><strong>Objective:</strong> {html_escape(package['objective'])}</p>",
+        f"<p><strong>Profile:</strong> {html_escape(package['review_profile'])}</p>",
+        f"<p><strong>Boundaries:</strong> {html_escape(boundaries)}</p>",
+        "<h3>Invariants</h3>",
+        _html_list(package["affected_invariants"]),
+        "</section>",
+        "<section><h2>Required checks</h2>",
+        _html_checks(package["required_checks"]),
+        "</section>",
+        "<section><h2>Evidence states</h2>",
+        f"<p><strong>Observed/candidate references:</strong> {html_escape(evidence_refs)}</p>",
+        f"<p><strong>Missing or unknown IDs:</strong> {html_escape(unknowns)}</p>",
+        "</section>",
+    ]
+    if package["contract_version"] == "1.1.0":
+        sections.extend([
+            "<section><h2>Contract delta</h2>", _html_delta(package["contract_delta"]), "</section>",
+            "<section><h2>Evidence ledger</h2>",
+            f"<p>Derived rows: {len(package['evidence_ledger']['rows'])}; caller-retained evidence remains authoritative.</p>",
+            "</section>",
+        ])
+    sections.extend([
+        "<section><h2>Authority limits</h2>",
+        "<p>This HTML is derived from the supplied ReviewPackage; it is not evidence authority.</p>",
+        "<p>No model was invoked; this renderer cannot mutate source, infer root cause, promote, merge, or decide review outcome.</p>",
+        "</section>",
+        "</main></body></html>",
+    ])
+    return "\n".join(sections)
+
+
 def review_render(payload: dict[str, Any]) -> dict[str, Any]:
     raw = canonical_json(payload)
     try:
-        if not isinstance(payload, dict) or set(payload) != RENDER_ROOT or payload.get("contract_version") != "1.0.0" or payload.get("format") != "markdown":
+        if not isinstance(payload, dict) or set(payload) != RENDER_ROOT or payload.get("contract_version") != "1.0.0" or payload.get("format") not in {"markdown", "html"}:
             raise ValueError("invalid_review_render_input")
-        artifact = render_markdown(payload["review_package"])
+        artifact = render_markdown(payload["review_package"]) if payload["format"] == "markdown" else render_html(payload["review_package"])
         data = {
             "contract_version": "1.0.0",
-            "format": "markdown",
+            "format": payload["format"],
             "artifact": artifact,
             "artifact_sha256": sha256(artifact),
             "authority": {"source_package_authoritative": False, "rendered_artifact_status": "derived", "model_invoked": False, "source_mutation": False, "review_outcome_decided": False},
