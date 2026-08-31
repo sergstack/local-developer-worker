@@ -112,6 +112,12 @@ ledger and declared field-ID delta between opaque, hashed contract manifests.
 It does not assess compatibility or infer semantics from contract text. The
 `1.0.0` P0 input and output remain unchanged.
 
+Review P2 adds `ldw review render`, which accepts one validated ReviewPackage
+and produces byte-stable Markdown plus its SHA-256. The artifact is derived,
+does not write a file, and visibly preserves check/evidence states and
+authority limits. HTML, D2/SVG, MCP, and model-assisted rendering are outside
+this release.
+
 ## Context efficiency
 
 `ldw context pack` makes context selection explicit: every retained path has a

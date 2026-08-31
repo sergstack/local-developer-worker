@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ReviewRenderInputV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "format", "review_package"],
+  "properties": {
+    "contract_version": {"const": "1.0.0"},
+    "format": {"const": "markdown"},
+    "review_package": {"type": "object"}
+  }
+}
