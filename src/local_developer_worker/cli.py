@@ -20,7 +20,7 @@ from .ollama_advisor import ollama_advise
 from .routing_calibration import routing_calibrate, routing_explain, routing_stats
 from .routing_value import routing_value
 from .telemetry import codex_routing_event_v2, codex_run_event, telemetry_error_code, telemetry_event, telemetry_mark, telemetry_summary
-from .tools import benchmark_run, context_pack, context_refresh, context_route, doctor, evidence_build, file_inventory, git_facts, parse_log, parse_tests, report_summarize
+from .tools import benchmark_run, context_compact, context_pack, context_refresh, context_route, doctor, evidence_build, file_inventory, git_facts, parse_log, parse_tests, report_summarize
 
 COMMANDS: dict[tuple[str, ...], Callable[[dict], dict]] = {
     ("doctor",): doctor,
@@ -34,6 +34,7 @@ COMMANDS: dict[tuple[str, ...], Callable[[dict], dict]] = {
     ("context", "pack"): context_pack,
     ("context", "route"): context_route,
     ("context", "refresh"): context_refresh,
+    ("context", "compact"): context_compact,
     ("report", "summarize"): report_summarize,
     ("benchmark", "run"): benchmark_run,
     ("telemetry", "summary"): telemetry_summary,
@@ -49,7 +50,7 @@ CAPABILITIES = {
     ("log", "parse"): "structured_log_parser", ("log", "cluster"): "semantic_log_clustering", ("log", "process"): "structured_log_parser",
     ("test", "parse"): "test_result_parser",
     ("git", "facts"): "git_facts_collector", ("files", "inventory"): "file_inventory",
-    ("evidence", "build"): "context_packer", ("context", "pack"): "context_packer", ("context", "route"): "context_packer", ("context", "refresh"): "context_packer", ("report", "summarize"): "change_summarizer_facts_only",
+    ("evidence", "build"): "context_packer", ("context", "pack"): "context_packer", ("context", "route"): "context_packer", ("context", "refresh"): "context_packer", ("context", "compact"): "context_packer", ("report", "summarize"): "change_summarizer_facts_only",
 }
 
 
@@ -68,6 +69,7 @@ def _parser() -> argparse.ArgumentParser:
     context.add_parser("pack")
     context.add_parser("route")
     context.add_parser("refresh")
+    context.add_parser("compact")
     telemetry = sub.add_parser("telemetry").add_subparsers(dest="action", required=True)
     telemetry_summary_parser = telemetry.add_parser("summary")
     telemetry_summary_parser.add_argument("--from-date", dest="date_from")

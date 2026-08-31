@@ -29,6 +29,11 @@ WAVE2_EXCLUSION_REASONS = {
     "outside_repository_root", "sensitive_path", "ignored_by_policy", "binary",
     "generated_not_required", "over_context_limit", "not_selected", "redundant_content", "unsupported",
 }
+COMPACTION_PRESERVATION_FIELDS = (
+    "goal", "constraints", "requirement_ids", "defect_ids", "iteration",
+    "authority_state", "acceptance_criteria", "evidence_refs", "unknowns",
+    "no_repeat_actions", "resume_refs",
+)
 
 
 def _is_sensitive_path(path: str) -> bool:
@@ -809,6 +814,35 @@ def context_refresh(payload: dict[str, Any]) -> dict[str, Any]:
         "max_refreshes": max_refreshes,
         "metrics": {"context_bytes_resent": bytes_resent, "context_tokens_resent": None, "files_refreshed": len(refresh_files), "additional_tool_calls": 1},
     }, status="success" if localized else "partial")
+
+
+def context_compact(payload: dict[str, Any]) -> dict[str, Any]:
+    """Compact only caller-supplied narrative while preserving declared state exactly."""
+    raw = canonical_json(payload)
+    preservation = payload.get("preservation")
+    if not isinstance(preservation, dict):
+        return result("context_compactor", "stdin", raw, {}, status="invalid_input", errors=[{"code": "invalid_compaction_input"}])
+    missing = [field for field in COMPACTION_PRESERVATION_FIELDS if field not in preservation]
+    if missing:
+        return result("context_compactor", "stdin", raw, {"missing_preservation_fields": missing}, status="partial", errors=[{"code": "preservation_incomplete"}])
+    summary = payload.get("candidate_summary", "")
+    dropped = payload.get("dropped_items", [])
+    if not isinstance(summary, str) or not isinstance(dropped, list) or any(not isinstance(item, dict) or not isinstance(item.get("reason"), str) or not item["reason"] for item in dropped):
+        return result("context_compactor", "stdin", raw, {}, status="invalid_input", errors=[{"code": "invalid_compaction_input"}])
+    compacted_bytes = len(canonical_json({"preservation": preservation, "candidate_summary": summary, "dropped_items": dropped}).encode("utf-8"))
+    original_bytes = payload.get("original_context_bytes")
+    if not isinstance(original_bytes, int) or isinstance(original_bytes, bool) or original_bytes < compacted_bytes:
+        return result("context_compactor", "stdin", raw, {"preserved_items": preservation}, status="partial", errors=[{"code": "invalid_compaction_measurement"}])
+    return result("context_compactor", "stdin", raw, {
+        "contract_version": "1.0.0",
+        "preserved_items": preservation,
+        "candidate_summary": summary,
+        "candidate_summary_authoritative": False,
+        "dropped_or_superseded_items": dropped,
+        "local_model_usage": {"used": False},
+        "validation": {"preservation_complete": True, "missing_preservation_fields": []},
+        "metrics": {"original_context_bytes": original_bytes, "compacted_context_bytes": compacted_bytes, "context_bytes_reduced": original_bytes - compacted_bytes, "context_tokens": None},
+    })
 
 
 def report_summarize(payload: dict[str, Any]) -> dict[str, Any]:

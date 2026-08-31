@@ -31,6 +31,7 @@ For a one-file question or a trivial edit, direct reading is normally faster.
 | Establish test status | `ldw test parse` | Observed pass/fail evidence |
 | Inspect repository state | `ldw git facts` | Read-only branch, diff, and revision facts |
 | Select code context | `ldw context pack` | Bounded files with selection and exclusion reasons |
+| Compact working context | `ldw context compact` | Exact declared state plus a non-authoritative candidate summary |
 | Preserve task evidence | `ldw evidence build` | Source-linked evidence and resumable state |
 | Review a release portfolio | `ldw portfolio verify` | Complete gate reconciliation, including failures |
 | Inspect process health | `ldw telemetry summary` | Privacy-safe local aggregates |
@@ -98,6 +99,12 @@ come from a matched measurement study.
 Use `mode=expand` to request a bounded addition to a prior package instead of
 restarting a repository-wide scan. The packer repeats root, symlink, secret,
 binary, generated-file, and size-limit checks on each expansion.
+
+`ldw context compact` is deterministic: callers supply the preservation set
+and any candidate summary. It preserves the declared goal, constraints, IDs,
+authority, acceptance, evidence, unknowns, no-repeat actions, and resume refs
+exactly, or returns a visible non-success result. It never invokes a model or
+turns a summary into source evidence.
 
 See [the tool contracts](docs/tool-contracts.md) and
 [Wave 2 migration guide](docs/wave-2-migration.md) for the versioned contract.
