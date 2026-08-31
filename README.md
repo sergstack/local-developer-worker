@@ -38,6 +38,7 @@ For a one-file question or a trivial edit, direct reading is normally faster.
 | Route an isolated Codex run | `ldw codex run` | Opt-in routing and execution metadata |
 | Ask a local Ollama model | `ldw ollama advise` | Opt-in, read-only structured advisory |
 | Execute an AI-OS offload envelope | `ldw offload execute` | Caller-owned route, capability, fallback, and provenance result |
+| Analyze matched offload evidence | `ldw offload evaluate` | Privacy-safe evidence export for AI-OS review only |
 
 All commands read one JSON object from stdin and return one versioned JSON
 `ToolResult` on stdout. Diagnostics go to stderr.
@@ -165,6 +166,16 @@ disables the local path without affecting deterministic commands. Frontier
 fallback additionally requires the existing `ldw codex run` policy and an
 allowed repository root. That flag change is the rollback; no evidence migration
 or Ollama lifecycle action is required.
+
+## Matched offload evaluation
+
+`ldw offload evaluate` analyzes an explicitly supplied, sanitized matched-pair
+manifest. It never executes either arm, reads telemetry, or decides promotion.
+The report records opaque matched task IDs, route/verifier/acceptance outcomes,
+latency, provider-token and context deltas, local-compute burden, fallbacks,
+escalations, controlled failures, and available false accept/reject counts. Its
+highest result is `READY_FOR_AI_OS_REVIEW`; only AI-OS can make a promotion
+decision. See the [study contract](docs/offload-effect-study.md).
 
 ## Optional local Ollama advisory
 
