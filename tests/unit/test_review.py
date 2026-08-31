@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft202012Validator
 
-from local_developer_worker.review import build_review_package, review_build
+from local_developer_worker.review import build_review_package, build_review_package_v1_1, review_build
 
 
 def payload():
@@ -136,3 +136,75 @@ def test_tool_result_exposes_invalid_input_without_partial_package():
     assert outcome["status"] == "invalid_input"
     assert outcome["data"] == {}
     assert outcome["errors"][0]["code"] == "unobserved_check_must_not_claim_evidence"
+
+
+def p1_payload():
+    value = payload()
+    value["contract_version"] = "1.1.0"
+    value["scope"]["contract_change"] = True
+    value["contract_comparison"] = {
+        "availability": "available",
+        "unavailable_reason_id": None,
+        "baseline": {"contract_id": "CONTRACT_BASELINE", "version_label": "1.0.0", "content_hash": "b" * 64},
+        "candidate": {"contract_id": "CONTRACT_CANDIDATE", "version_label": "1.1.0", "content_hash": "c" * 64},
+        "added_field_ids": ["FIELD_LEDGER"],
+        "removed_field_ids": [],
+        "changed_field_ids": ["FIELD_EXPORT"],
+    }
+    return value
+
+
+def test_p1_builds_derived_evidence_ledger_and_structural_delta():
+    review_input = p1_payload()
+    package = build_review_package_v1_1(review_input)
+
+    assert package["contract_version"] == "1.1.0"
+    assert package["review_profile"] == "contract_change"
+    assert package["evidence_ledger"]["derived"] is True
+    assert package["evidence_ledger"]["authoritative_input"] == "caller_retained_evidence"
+    assert {row["state"] for row in package["evidence_ledger"]["rows"]} == {"observed", "candidate"}
+    assert package["contract_delta"] == {
+        "status": "structural_delta",
+        "baseline": review_input["contract_comparison"]["baseline"],
+        "candidate": review_input["contract_comparison"]["candidate"],
+        "added_field_ids": ["FIELD_LEDGER"],
+        "removed_field_ids": [],
+        "changed_field_ids": ["FIELD_EXPORT"],
+        "compatibility_assessment": "not_in_p1",
+    }
+    schema("review_build_input_v1_1.schema.json").validate(review_input)
+    schema("review_package_v1_1.schema.json").validate(package)
+
+
+def test_p1_preserves_unavailable_comparison_and_unknown_evidence():
+    review_input = p1_payload()
+    review_input["contract_comparison"] = {
+        "availability": "unavailable", "unavailable_reason_id": "COMPARISON_INPUT_MISSING",
+        "baseline": None, "candidate": None, "added_field_ids": None, "removed_field_ids": None, "changed_field_ids": None,
+    }
+    review_input["evidence"]["unknown_ids"] = ["UNKNOWN_EVIDENCE"]
+    review_input["required_checks"][1].update({"status": "unknown", "source_tool": "none", "evidence_refs": []})
+
+    package = build_review_package_v1_1(review_input)
+
+    assert package["review_profile"] == "evidence_risk"
+    assert package["contract_delta"] == {"status": "unavailable", "unavailable_reason_id": "COMPARISON_INPUT_MISSING"}
+    assert {row["state"] for row in package["evidence_ledger"]["rows"]} >= {"observed", "candidate", "unknown"}
+    assert any(row.get("check_id") == "CHECK_TEST_001" and row["state"] == "unknown" for row in package["evidence_ledger"]["rows"])
+
+
+@pytest.mark.parametrize(
+    ("mutate", "error"),
+    [
+        (lambda value: value["contract_comparison"].update({"raw_contract": "forbidden"}), "invalid_contract_comparison"),
+        (lambda value: value["contract_comparison"].update({"added_field_ids": [], "removed_field_ids": [], "changed_field_ids": []}), "contract_comparison_requires_declared_delta"),
+        (lambda value: value["contract_comparison"].update({"candidate": {"contract_id": "CONTRACT_CANDIDATE", "version_label": "1.1.0", "content_hash": "b" * 64}}), "contract_comparison_requires_distinct_hashes"),
+        (lambda value: value["contract_comparison"].update({"removed_field_ids": ["FIELD_LEDGER"]}), "contract_delta_field_state_conflict"),
+    ],
+)
+def test_p1_rejects_raw_or_ambiguous_contract_comparisons(mutate, error):
+    review_input = p1_payload()
+    mutate(review_input)
+
+    with pytest.raises(ValueError, match=error):
+        build_review_package_v1_1(review_input)
