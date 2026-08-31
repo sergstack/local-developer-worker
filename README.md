@@ -40,6 +40,7 @@ For a one-file question or a trivial edit, direct reading is normally faster.
 | Execute an AI-OS offload envelope | `ldw offload execute` | Caller-owned route, capability, fallback, and provenance result |
 | Analyze matched offload evidence | `ldw offload evaluate` | Privacy-safe evidence export for AI-OS review only |
 | Validate a candidate lesson | `ldw learn validate-candidate` | Schema and opaque-evidence lineage only; never promotion |
+| Prepare structural review excerpts | `ldw learn prepare-excerpts` | Removes session identifiers; marks missing human correction as unknown |
 
 All commands read one JSON object from stdin and return one versioned JSON
 `ToolResult` on stdout. Diagnostics go to stderr.

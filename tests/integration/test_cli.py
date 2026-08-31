@@ -39,6 +39,23 @@ def test_candidate_lesson_validator_is_non_promoting():
     assert data["privacy"]["model_invoked"] is False
 
 
+def test_structural_excerpt_preparer_excludes_session_ids():
+    root = Path(__file__).parents[2]
+    env = {**os.environ, "PYTHONPATH": str(root / "src"), "LDW_TELEMETRY_DISABLED": "1"}
+    payload = {"contract_version": "1.0.0", "cohort_id": "COHORT_001", "observations": [{
+        "observation_id": "OBS_001", "session_id": "SESSION_001", "root_class": "execution",
+        "signal": "turn_aborted", "occurrence_count": 2, "evidence_refs": ["EV_001"],
+    }]}
+    completed = subprocess.run(
+        [sys.executable, "-m", "local_developer_worker.cli", "learn", "prepare-excerpts"],
+        input=json.dumps(payload), text=True, capture_output=True, cwd=root, env=env, check=False,
+    )
+    assert completed.returncode == 0
+    data = json.loads(completed.stdout)["data"]
+    assert data["privacy"]["session_ids_exported"] is False
+    assert "SESSION_001" not in completed.stdout
+
+
 def test_cli_flushes_terminal_tool_result(monkeypatch):
     class RecordingStdout:
         def __init__(self):
