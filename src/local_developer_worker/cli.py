@@ -21,6 +21,7 @@ from .offload_effect_study import offload_evaluate
 from .offload_executor import offload_execute
 from .routing_calibration import routing_calibrate, routing_explain, routing_stats
 from .routing_value import routing_value
+from .rework_miner import learn_analyze
 from .telemetry import codex_routing_event_v2, codex_run_event, offload_execution_event, telemetry_error_code, telemetry_event, telemetry_mark, telemetry_summary
 from .tools import benchmark_run, context_compact, context_pack, context_refresh, context_route, doctor, evidence_build, file_inventory, git_facts, parse_log, parse_tests, report_summarize
 
@@ -48,6 +49,7 @@ COMMANDS: dict[tuple[str, ...], Callable[[dict], dict]] = {
     ("offload", "execute"): offload_execute,
     ("routing", "stats"): routing_stats,
     ("routing", "value"): routing_value,
+    ("learn", "analyze"): learn_analyze,
 }
 CAPABILITIES = {
     ("log", "parse"): "structured_log_parser", ("log", "cluster"): "semantic_log_clustering", ("log", "process"): "structured_log_parser",
@@ -96,6 +98,8 @@ def _parser() -> argparse.ArgumentParser:
     routing.add_parser("calibrate")
     routing.add_parser("explain")
     routing.add_parser("value")
+    learn = sub.add_parser("learn").add_subparsers(dest="action", required=True)
+    learn.add_parser("analyze")
     return parser
 
 
