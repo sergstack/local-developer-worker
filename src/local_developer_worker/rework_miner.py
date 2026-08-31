@@ -76,6 +76,54 @@ def learn_analyze(payload: dict[str, Any]) -> dict[str, Any]:
     return result("rework_miner", "stdin", raw, data)
 
 
+def prepare_sanitized_excerpts(payload: dict[str, Any]) -> dict[str, Any]:
+    """Build model-safe structural excerpts from P0 observations.
+
+    The input contract is intentionally identical to P0.  Session IDs are used
+    only while validating the caller-supplied input and are not returned.  The
+    result is useful for candidate review, but cannot establish the meaning of
+    a human correction that was never supplied as sanitized evidence.
+    """
+    summary = analyze(payload)
+    excerpts = []
+    for number, candidate in enumerate(summary["candidates"], 1):
+        excerpts.append({
+            "excerpt_id": f"EXCERPT_{number:03d}",
+            "root_class": candidate["root_class"],
+            "signal": candidate["signal"],
+            "occurrence_count": candidate["occurrence_count"],
+            "evidence_refs": candidate["evidence_refs"],
+            "sanitized_excerpt": (
+                f"Observed structural signal '{candidate['signal']}' in rework class "
+                f"'{candidate['root_class']}' with {candidate['occurrence_count']} occurrences."
+            ),
+            "human_correction_status": "not_observed",
+        })
+    return {
+        "contract_version": "1.0.0",
+        "cohort_id": summary["cohort_id"],
+        "excerpt_count": len(excerpts),
+        "excerpts": excerpts,
+        "privacy": {
+            "raw_session_content_read": False,
+            "raw_session_content_persisted": False,
+            "session_ids_exported": False,
+            "model_invoked": False,
+        },
+        "limitations": ["human_correction_not_observed_in_structural_input"],
+        "evidence_export": {"format": "rework_structural_excerpt_v1", "input_sha256": stable_hash(payload)},
+    }
+
+
+def learn_prepare_excerpts(payload: dict[str, Any]) -> dict[str, Any]:
+    raw = canonical_json(payload)
+    try:
+        data = prepare_sanitized_excerpts(payload)
+    except ValueError as exc:
+        return result("rework_excerpt_preparer", "stdin", raw, {}, status="invalid_input", errors=[{"code": str(exc)}])
+    return result("rework_excerpt_preparer", "stdin", raw, data)
+
+
 def validate_candidate_lesson(payload: dict[str, Any]) -> dict[str, Any]:
     """Validate a caller-supplied, already-sanitized candidate lesson.
 

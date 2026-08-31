@@ -54,6 +54,15 @@ sanitized evidence.  Any promotion then requires the applicable human or
 AI-OS owner decision.  If sanitization, evidence lineage, or a required Judge
 result is unavailable, reject or retain the candidate as unpromoted.
 
+## Structural excerpt preparation
+
+`ldw learn prepare-excerpts` accepts the same structural P0 input as
+`ldw learn analyze` and emits only root class, signal, count, opaque evidence
+references and a normalised structural sentence. It excludes session IDs from
+the result and reports `human_correction_status: not_observed`. Therefore it
+can prepare a local model-review package safely, but it cannot prove what a
+human meant or justify a positive general rule by itself.
+
 ## Rollback
 
 No source policy, skill, route, session, or telemetry record is mutated.  To

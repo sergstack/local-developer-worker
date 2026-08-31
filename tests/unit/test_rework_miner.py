@@ -1,5 +1,5 @@
 import pytest
-from local_developer_worker.rework_miner import analyze, validate_candidate_lesson
+from local_developer_worker.rework_miner import analyze, prepare_sanitized_excerpts, validate_candidate_lesson
 
 def payload():
     return {"contract_version":"1.0.0","cohort_id":"COHORT_001","observations":[
@@ -11,6 +11,14 @@ def test_candidate_only_pareto_summary():
     assert data["candidates"][0]["occurrence_count"] == 5
     assert data["candidates"][0]["promotion_status"] == "candidate_only"
     assert data["privacy"]["model_invoked"] is False
+
+
+def test_structural_excerpt_package_excludes_session_identifiers():
+    data = prepare_sanitized_excerpts(payload())
+    assert data["excerpt_count"] == 1
+    assert data["excerpts"][0]["human_correction_status"] == "not_observed"
+    assert "session_id" not in data["excerpts"][0]
+    assert data["privacy"]["session_ids_exported"] is False
 
 def test_rejects_raw_and_duplicate_inputs():
     raw=payload(); raw["observations"][0]["prompt"]="forbidden"
