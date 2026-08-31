@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OffloadExecutionInput",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "task", "task_class", "risk_floor", "offload_mode",
+    "verification_kind", "fallback_policy", "policy_revision"
+  ],
+  "properties": {
+    "task": {"type": "string", "minLength": 1, "maxLength": 4096},
+    "task_class": {"type": "string", "minLength": 1},
+    "risk_floor": {"enum": ["efficient", "balanced", "frontier"]},
+    "offload_mode": {"enum": ["local_first", "candidate_review", "frontier_floor", "blocked"]},
+    "verification_kind": {"type": "string", "minLength": 1},
+    "fallback_policy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["deterministic", "frontier"],
+      "properties": {
+        "deterministic": {"enum": ["use_if_available", "skip"]},
+        "frontier": {"enum": ["allowed", "forbidden"]}
+      }
+    },
+    "policy_revision": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "policy_path": {"type": "string", "minLength": 1},
+    "repository_root": {"type": "string", "minLength": 1},
+    "verification": {"type": "object"},
+    "deterministic_result": {"$ref": "tool_result.schema.json"}
+  }
+}

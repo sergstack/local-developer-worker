@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from local_developer_worker.ollama_advisor import _NoRedirect, ollama_advise
+from local_developer_worker.ollama_advisor import OllamaModelUnavailable, _NoRedirect, ollama_advise
 
 
 def _policy(*, endpoint: str = "http://127.0.0.1:11435/api/generate") -> dict:
@@ -50,3 +50,31 @@ def test_ollama_advisory_returns_only_validated_structured_advice(monkeypatch):
     assert output["data"]["advisory_status"] == "accepted"
     assert output["data"]["advice"] == {"summary": "Inspect the focused function first.", "next_actions": ["Run its focused tests."]}
     assert output["data"]["raw_response_retained"] is False
+    assert output["data"]["local_runtime_state"] == "available"
+    assert output["data"]["local_model_state"] == "available"
+
+
+def test_ollama_advisory_distinguishes_runtime_unavailable(monkeypatch):
+    monkeypatch.setattr(
+        "local_developer_worker.ollama_advisor.guarded_inference_call",
+        lambda endpoint, request, transport: (_ for _ in ()).throw(ConnectionRefusedError()),
+    )
+    output = ollama_advise({"task": "Review one function"}, _policy())
+
+    assert output["status"] == "partial"
+    assert output["data"]["local_runtime_state"] == "unavailable"
+    assert output["data"]["local_model_state"] == "unknown"
+    assert output["errors"] == [{"code": "ollama_runtime_unavailable"}]
+
+
+def test_ollama_advisory_distinguishes_requested_model_unavailable(monkeypatch):
+    monkeypatch.setattr(
+        "local_developer_worker.ollama_advisor.guarded_inference_call",
+        lambda endpoint, request, transport: (_ for _ in ()).throw(OllamaModelUnavailable()),
+    )
+    output = ollama_advise({"task": "Review one function"}, _policy())
+
+    assert output["status"] == "partial"
+    assert output["data"]["local_runtime_state"] == "available"
+    assert output["data"]["local_model_state"] == "unavailable"
+    assert output["errors"] == [{"code": "ollama_model_unavailable"}]
