@@ -189,6 +189,12 @@ loopback Ollama runtime.
 Only a schema-validated `summary` and up to five `next_actions` cross the
 boundary. Raw prompts, envelopes, and model responses are not retained.
 
+`ldw doctor` reports only the optional local-inference capability state:
+`available`, `model_unavailable`, `unavailable`, `incompatible`, or
+`policy_blocked`. Runtime and model availability are separate. Doctor never
+starts Ollama, installs it, or pulls a model; absence leaves all deterministic
+LDW commands available under their own policies.
+
 The currently supported use is narrow: high-volume semantic terminal triage
 whose small output is fully consumed by a deterministic verifier. Do not use
 it for code review, debugging hypotheses, architecture, generated patches, or

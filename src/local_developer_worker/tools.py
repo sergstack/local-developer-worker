@@ -889,10 +889,11 @@ def report_summarize(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def doctor(payload: dict[str, Any]) -> dict[str, Any]:
+    from .ollama_advisor import ollama_capability
     from .policy import load_policy
     raw = canonical_json(payload)
     policy = load_policy(payload.get("policy_path"))
-    data = {"python": os.sys.version.split()[0], "network_access": policy.get("network_access"), "profile": policy.get("profile"), "capabilities": policy.get("automatic", {}), "semantic_enabled": policy.get("semantic", {}).get("enabled", False), "test_status_reminder": TEST_STATUS_REMINDER}
+    data = {"python": os.sys.version.split()[0], "network_access": policy.get("network_access"), "profile": policy.get("profile"), "capabilities": policy.get("automatic", {}), "semantic_enabled": policy.get("semantic", {}).get("enabled", False), "local_inference": ollama_capability(policy), "test_status_reminder": TEST_STATUS_REMINDER}
     return result("doctor", "local", raw, data)
 
 

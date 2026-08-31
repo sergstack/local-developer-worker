@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import urllib.error
 import urllib.request
+from urllib.parse import urlsplit, urlunsplit
 from typing import Any, Callable
 
 from .contracts import canonical_json, result
@@ -76,6 +77,40 @@ def _safe_advice(value: Any) -> dict[str, Any] | None:
     ):
         return None
     return {"summary": summary.strip(), "next_actions": [item.strip() for item in actions]}
+
+
+def _tags_transport(endpoint: str, _: dict[str, Any], *, timeout: int) -> dict[str, Any]:
+    request = urllib.request.Request(endpoint, headers={"Accept": "application/json"}, method="GET")
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
+    with opener.open(request, timeout=timeout) as response:
+        body = response.read(65_537)
+    if len(body) > 65_536:
+        raise ValueError("model_response_too_large")
+    return json.loads(body)
+
+
+def ollama_capability(policy: dict[str, Any]) -> dict[str, str]:
+    """Observe optional local runtime/model availability without starting or pulling anything."""
+    config = policy.get("ollama", {})
+    automatic = policy.get("automatic", {})
+    if config.get("enabled") is not True or automatic.get("ollama_readonly_advisory") is not True:
+        return {"status": "policy_blocked", "runtime": "not_checked", "model": "not_checked"}
+    model, endpoint = config.get("model"), config.get("endpoint")
+    if not isinstance(model, str) or not model or not isinstance(endpoint, str) or not endpoint:
+        return {"status": "incompatible", "runtime": "not_configured", "model": "not_configured"}
+    parsed = urlsplit(endpoint)
+    tags_endpoint = urlunsplit((parsed.scheme, parsed.netloc, "/api/tags", "", ""))
+    timeout = int(config.get("timeout_seconds", policy.get("limits", {}).get("timeout_seconds", 60)))
+    try:
+        verified, listing = guarded_inference_call(tags_endpoint, {}, lambda safe, body: _tags_transport(safe, body, timeout=timeout))
+    except (OSError, TimeoutError, ValueError, urllib.error.HTTPError, urllib.error.URLError, json.JSONDecodeError):
+        return {"status": "unavailable", "runtime": "unavailable", "model": "not_checked"}
+    if verified["status"] != "success":
+        code = verified.get("errors", [{}])[0].get("code")
+        return {"status": "policy_blocked" if code == "non_loopback_inference_endpoint" else "unavailable", "runtime": "policy_blocked" if code == "non_loopback_inference_endpoint" else "unavailable", "model": "not_checked"}
+    models = listing.get("models", []) if isinstance(listing, dict) else []
+    names = {item.get("name") for item in models if isinstance(item, dict) and isinstance(item.get("name"), str)}
+    return {"status": "available" if model in names else "model_unavailable", "runtime": "available", "model": "available" if model in names else "missing"}
 
 
 def ollama_advise(
