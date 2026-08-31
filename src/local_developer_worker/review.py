@@ -48,6 +48,18 @@ def _identifier(value: Any, label: str) -> str:
     return value
 
 
+def _source_run_id(value: Any, label: str, *, allow_canonical: bool) -> str:
+    if (
+        allow_canonical
+        and isinstance(value, str)
+        and len(value) == 20
+        and value.startswith("RUN-")
+        and all(character in "0123456789abcdef" for character in value[4:])
+    ):
+        return value
+    return _identifier(value, label)
+
+
 def _safe_text(value: Any, label: str, *, limit: int) -> str:
     if not isinstance(value, str) or not value or len(value) > limit or any(ord(character) < 32 for character in value):
         raise ValueError(f"invalid_{label}")
@@ -104,24 +116,24 @@ def _validate_scope(value: Any) -> dict[str, Any]:
     return value
 
 
-def _validate_git_facts(value: Any, component_ids: set[str]) -> dict[str, Any]:
+def _validate_git_facts(value: Any, component_ids: set[str], *, allow_canonical_run_ids: bool = False) -> dict[str, Any]:
     if not isinstance(value, dict) or set(value) != GIT_FACTS:
         raise ValueError("invalid_review_git_facts")
     if value["source_tool"] != "git_facts_collector" or not isinstance(value["working_tree_clean"], bool):
         raise ValueError("invalid_review_git_facts")
-    _identifier(value["source_run_id"], "git_source_run_id")
+    _source_run_id(value["source_run_id"], "git_source_run_id", allow_canonical=allow_canonical_run_ids)
     changed = _identifiers(value["changed_component_ids"], "changed_component_id")
     if not set(changed).issubset(component_ids):
         raise ValueError("git_component_outside_scope")
     return value
 
 
-def _validate_evidence(value: Any) -> dict[str, Any]:
+def _validate_evidence(value: Any, *, allow_canonical_run_ids: bool = False) -> dict[str, Any]:
     if not isinstance(value, dict) or set(value) != EVIDENCE:
         raise ValueError("invalid_review_evidence")
     if value["source_tool"] != "evidence_package_builder" or not isinstance(value["lineage_complete"], bool):
         raise ValueError("invalid_review_evidence")
-    _identifier(value["source_run_id"], "evidence_source_run_id")
+    _source_run_id(value["source_run_id"], "evidence_source_run_id", allow_canonical=allow_canonical_run_ids)
     _hash(value["content_hash"], "evidence_content_hash")
     for field in ("observed_evidence_refs", "candidate_evidence_refs", "missing_evidence_ids", "unknown_ids"):
         _identifiers(value[field], field[:-1])
@@ -328,10 +340,43 @@ def build_review_package_v1_1(payload: dict[str, Any]) -> dict[str, Any]:
     return base
 
 
+def build_review_package_v1_2(payload: dict[str, Any]) -> dict[str, Any]:
+    """Versioned lineage repair for canonical LDW ToolResult run IDs only."""
+    if not isinstance(payload, dict) or set(payload) != P1_ROOT or payload.get("contract_version") != "1.2.0":
+        raise ValueError("invalid_review_build_input")
+    comparison = payload["contract_comparison"]
+    if comparison is not None:
+        comparison = _validate_contract_comparison(comparison)
+    objective = _safe_text(payload["objective"], "objective", limit=1000)
+    scope = _validate_scope(payload["scope"])
+    component_ids = {component["component_id"] for component in scope["changed_components"]}
+    git_facts = _validate_git_facts(payload["git_facts"], component_ids, allow_canonical_run_ids=True)
+    evidence = _validate_evidence(payload["evidence"], allow_canonical_run_ids=True)
+    checks = _validate_checks(payload["required_checks"], set(evidence["observed_evidence_refs"]))
+    profile, activation_reasons = _profile(scope, evidence, checks)
+    invariants, derived_views = _profile_details(profile)
+    package_hash = stable_hash(payload)
+    findings = []
+    for check in sorted(checks, key=lambda item: item["check_id"]):
+        findings.append({"finding_id": f"FINDING_{check['check_id']}", "kind": "required_check_status", "status": check["status"], "evidence_state": "observed" if check["status"] in {"passed", "failed"} else check["status"], "evidence_refs": check["evidence_refs"]})
+    unknowns = sorted(set(evidence["missing_evidence_ids"] + evidence["unknown_ids"] + [check["check_id"] for check in checks if check["status"] in {"not_run", "unknown"}]))
+    evidence_refs = sorted(set(evidence["observed_evidence_refs"] + evidence["candidate_evidence_refs"] + [reference for check in checks for reference in check["evidence_refs"]]))
+    return {
+        "contract_version": "1.2.0", "review_package_id": f"REVIEW_{package_hash[:12].upper()}", "objective": objective,
+        "diagnosis": {"review_profile": profile, "activation_reasons": activation_reasons, "deterministic": True}, "review_profile": profile,
+        "affected_invariants": invariants, "affected_boundaries": sorted(scope["declared_boundaries"]), "required_checks": sorted(checks, key=lambda item: item["check_id"]), "findings": findings,
+        "unknowns": unknowns, "evidence_refs": evidence_refs,
+        "derived_view_plan": {"views": derived_views, "rendering": "not_in_p1", "authoritative_input": "caller_retained_evidence"},
+        "authority": {"evidence_manifest_authoritative": True, "review_package_status": "derived", "promotion_authority": "human_or_ai_os_only", "model_invoked": False, "source_mutation": False, "root_cause_inferred": False},
+        "evidence_ledger": _evidence_ledger(evidence, checks), "contract_delta": _contract_delta(comparison),
+        "evidence_export": {"format": "review_package_v1_2", "input_sha256": package_hash, "git_source_run_id": git_facts["source_run_id"], "evidence_source_run_id": evidence["source_run_id"]},
+    }
+
+
 def review_build(payload: dict[str, Any]) -> dict[str, Any]:
     raw = canonical_json(payload)
     try:
-        data = build_review_package(payload) if payload.get("contract_version") == "1.0.0" else build_review_package_v1_1(payload)
+        data = build_review_package(payload) if payload.get("contract_version") == "1.0.0" else build_review_package_v1_1(payload) if payload.get("contract_version") == "1.1.0" else build_review_package_v1_2(payload)
     except ValueError as exc:
         return result("review_package_builder", "stdin", raw, {}, status="invalid_input", errors=[{"code": str(exc)}])
     return result("review_package_builder", "stdin", raw, data)
@@ -355,7 +400,7 @@ def _validate_authority(value: Any) -> None:
 
 
 def _validate_render_package(value: Any) -> dict[str, Any]:
-    if not isinstance(value, dict) or value.get("contract_version") not in {"1.0.0", "1.1.0"}:
+    if not isinstance(value, dict) or value.get("contract_version") not in {"1.0.0", "1.1.0", "1.2.0"}:
         raise ValueError("unsupported_review_package_version")
     version = value["contract_version"]
     if set(value) != (P0_PACKAGE_FIELDS if version == "1.0.0" else P1_PACKAGE_FIELDS):
@@ -372,9 +417,30 @@ def _validate_render_package(value: Any) -> dict[str, Any]:
     if not isinstance(value["derived_view_plan"], dict) or value["derived_view_plan"].get("authoritative_input") != "caller_retained_evidence":
         raise ValueError("invalid_review_package")
     _validate_authority(value["authority"])
-    if not isinstance(value["evidence_export"], dict) or not isinstance(value["evidence_export"].get("input_sha256"), str):
+    export = value["evidence_export"]
+    expected_export_format = {
+        "1.0.0": "review_package_v1",
+        "1.1.0": "review_package_v1_1",
+        "1.2.0": "review_package_v1_2",
+    }[version]
+    if (
+        not isinstance(export, dict)
+        or set(export) != {"format", "input_sha256", "git_source_run_id", "evidence_source_run_id"}
+        or export["format"] != expected_export_format
+    ):
         raise ValueError("invalid_review_package")
-    if version == "1.1.0":
+    _hash(export["input_sha256"], "review_package_input_hash")
+    _source_run_id(
+        export["git_source_run_id"],
+        "git_source_run_id",
+        allow_canonical=version == "1.2.0",
+    )
+    _source_run_id(
+        export["evidence_source_run_id"],
+        "evidence_source_run_id",
+        allow_canonical=version == "1.2.0",
+    )
+    if version in {"1.1.0", "1.2.0"}:
         ledger = value["evidence_ledger"]
         if not isinstance(ledger, dict) or ledger.get("derived") is not True or ledger.get("authoritative_input") != "caller_retained_evidence" or not isinstance(ledger.get("rows"), list):
             raise ValueError("invalid_review_ledger")
@@ -427,7 +493,7 @@ def render_markdown(review_package: dict[str, Any]) -> str:
         f"- Observed/candidate references: {', '.join(package['evidence_refs']) or '—'}",
         f"- Missing or unknown IDs: {', '.join(package['unknowns']) or '—'}",
     ]
-    if package["contract_version"] == "1.1.0":
+    if package["contract_version"] in {"1.1.0", "1.2.0"}:
         lines.extend(["", "## Contract delta", *_markdown_delta(package["contract_delta"])])
         ledger_rows = package["evidence_ledger"]["rows"]
         lines.extend(["", "## Evidence ledger", f"- Derived rows: {len(ledger_rows)}; caller-retained evidence remains authoritative."])
@@ -508,7 +574,7 @@ def render_html(review_package: dict[str, Any]) -> str:
         f"<p><strong>Missing or unknown IDs:</strong> {html_escape(unknowns)}</p>",
         "</section>",
     ]
-    if package["contract_version"] == "1.1.0":
+    if package["contract_version"] in {"1.1.0", "1.2.0"}:
         sections.extend([
             "<section><h2>Contract delta</h2>", _html_delta(package["contract_delta"]), "</section>",
             "<section><h2>Evidence ledger</h2>",

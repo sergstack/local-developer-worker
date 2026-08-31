@@ -72,6 +72,27 @@ def test_review_build_cli_v1_1_returns_ledger_without_renderer_or_model():
     assert output["data"]["derived_view_plan"]["rendering"] == "not_in_p1"
 
 
+def test_review_build_cli_v1_2_preserves_canonical_ldw_run_ids():
+    root = Path(__file__).parents[2]
+    environment = {**os.environ, "PYTHONPATH": str(root / "src"), "LDW_TELEMETRY_DISABLED": "1"}
+    payload = {
+        "contract_version": "1.2.0", "objective": "Preserve canonical LDW run identifiers.",
+        "scope": {"scope_id": "SCOPE_003", "change_size": "local", "changed_components": [{"component_id": "COMPONENT_REVIEW", "kind": "contract"}], "declared_boundaries": ["review"], "contract_change": True},
+        "git_facts": {"source_tool": "git_facts_collector", "source_run_id": "RUN-f93fa534e6572dce", "working_tree_clean": False, "changed_component_ids": ["COMPONENT_REVIEW"]},
+        "evidence": {"source_tool": "evidence_package_builder", "source_run_id": "RUN-0a03b39836c4fb48", "content_hash": "a" * 64, "lineage_complete": True, "observed_evidence_refs": ["EV_TEST_003"], "candidate_evidence_refs": [], "missing_evidence_ids": [], "unknown_ids": []},
+        "required_checks": [{"check_id": "CHECK_TEST_003", "check_type": "test", "status": "passed", "source_tool": "test_result_parser", "evidence_refs": ["EV_TEST_003"]}],
+        "contract_comparison": None,
+    }
+
+    completed = subprocess.run([sys.executable, "-m", "local_developer_worker.cli", "review", "build"], input=json.dumps(payload), text=True, capture_output=True, cwd=root, env=environment, check=False)
+
+    assert completed.returncode == 0
+    output = json.loads(completed.stdout)
+    assert output["status"] == "success"
+    assert output["data"]["contract_version"] == "1.2.0"
+    assert output["data"]["evidence_export"]["git_source_run_id"] == "RUN-f93fa534e6572dce"
+
+
 def test_review_render_cli_emits_derived_markdown_only():
     root = Path(__file__).parents[2]
     environment = {**os.environ, "PYTHONPATH": str(root / "src"), "LDW_TELEMETRY_DISABLED": "1"}

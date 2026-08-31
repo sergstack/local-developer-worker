@@ -123,6 +123,12 @@ semantic HTML view. It has no scripts, external URLs, imported assets, or
 interactive behavior; all displayable text is escaped. Markdown behavior is
 unchanged. D2/SVG and MCP remain pilot-gated.
 
+Review P1.2 is an owner-authorized versioned lineage repair. It leaves the
+historical P0/P1 contracts and results immutable, while allowing only source
+run fields to carry either the legacy opaque identifier or an exact canonical
+LDW `RUN-[0-9a-f]{16}` value. All other evidence identifiers remain subject to
+the original opaque-identifier rules; no evidence content is added or rewritten.
+
 ## Context efficiency
 
 `ldw context pack` makes context selection explicit: every retained path has a
