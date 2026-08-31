@@ -10,10 +10,24 @@ ROOT = {"contract_version", "cohort_id", "observations"}
 OBSERVATION = {"observation_id", "session_id", "root_class", "signal", "occurrence_count", "evidence_refs"}
 ROOT_CLASSES = {"scope", "evidence", "acceptance", "role_routing", "execution", "observability", "workspace_hygiene"}
 SIGNALS = {"turn_aborted", "thread_rolled_back", "context_compacted", "repeated_user_message", "repeated_tool_call", "other_observed"}
+CANDIDATE_LESSON_ROOT = {"contract_version", "candidate", "allowed_evidence_refs"}
+CANDIDATE_LESSON = {
+    "candidate_id", "trigger", "observed_problem", "human_correction", "rework_class",
+    "generalizable_rule", "scope", "counterexamples", "evidence_refs", "occurrence_count",
+    "candidate_destination", "confidence",
+}
+CANDIDATE_DESTINATIONS = {"regression", "skill", "ai_os_rule", "execution_handling", "reject"}
+CONFIDENCE = {"low", "medium", "high"}
 
 
 def _id(value: Any, label: str) -> str:
     if not isinstance(value, str) or not value or len(value) > 64 or not all(c.isascii() and (c.isupper() or c.isdigit() or c in "_-") for c in value):
+        raise ValueError(f"invalid_{label}")
+    return value
+
+
+def _sanitized_text(value: Any, label: str, limit: int = 1000) -> str:
+    if not isinstance(value, str) or not value or len(value) > limit or any(ord(char) < 32 for char in value):
         raise ValueError(f"invalid_{label}")
     return value
 
@@ -60,3 +74,59 @@ def learn_analyze(payload: dict[str, Any]) -> dict[str, Any]:
     try: data = analyze(payload)
     except ValueError as exc: return result("rework_miner", "stdin", raw, {}, status="invalid_input", errors=[{"code": str(exc)}])
     return result("rework_miner", "stdin", raw, data)
+
+
+def validate_candidate_lesson(payload: dict[str, Any]) -> dict[str, Any]:
+    """Validate a caller-supplied, already-sanitized candidate lesson.
+
+    This boundary deliberately does not read sessions or invoke a model.  It
+    proves only shape and opaque-evidence lineage; a Judge and owner remain
+    required before a candidate can be reused or promoted.
+    """
+    if not isinstance(payload, dict) or set(payload) != CANDIDATE_LESSON_ROOT or payload.get("contract_version") != "1.0.0":
+        raise ValueError("invalid_candidate_lesson_study")
+    allowed_refs = payload["allowed_evidence_refs"]
+    if not isinstance(allowed_refs, list) or not allowed_refs:
+        raise ValueError("invalid_allowed_evidence_refs")
+    allowed = {_id(value, "allowed_evidence_ref") for value in allowed_refs}
+    if len(allowed) != len(allowed_refs):
+        raise ValueError("duplicate_allowed_evidence_ref")
+    candidate = payload["candidate"]
+    if not isinstance(candidate, dict) or set(candidate) != CANDIDATE_LESSON:
+        raise ValueError("invalid_candidate_lesson")
+    _id(candidate["candidate_id"], "candidate_id")
+    for field in ("trigger", "observed_problem", "human_correction", "generalizable_rule", "scope"):
+        _sanitized_text(candidate[field], field)
+    counterexamples = candidate["counterexamples"]
+    if not isinstance(counterexamples, list) or any(_sanitized_text(item, "counterexample", 500) != item for item in counterexamples):
+        raise ValueError("invalid_counterexamples")
+    if candidate["rework_class"] not in ROOT_CLASSES:
+        raise ValueError("invalid_rework_class")
+    if candidate["candidate_destination"] not in CANDIDATE_DESTINATIONS or candidate["confidence"] not in CONFIDENCE:
+        raise ValueError("invalid_candidate_disposition")
+    if not isinstance(candidate["occurrence_count"], int) or isinstance(candidate["occurrence_count"], bool) or candidate["occurrence_count"] < 1:
+        raise ValueError("invalid_occurrence_count")
+    refs = candidate["evidence_refs"]
+    if not isinstance(refs, list) or not refs:
+        raise ValueError("invalid_evidence_refs")
+    checked_refs = [_id(value, "evidence_ref") for value in refs]
+    if len(set(checked_refs)) != len(checked_refs):
+        raise ValueError("duplicate_evidence_ref")
+    if not set(checked_refs).issubset(allowed):
+        raise ValueError("unknown_evidence_ref")
+    return {
+        "contract_version": "1.0.0",
+        "candidate": candidate,
+        "validation": {"schema": "passed", "evidence_references": "passed", "promotion_status": "candidate_only", "reuse_status": "judge_required"},
+        "privacy": {"raw_session_content_read": False, "raw_session_content_persisted": False, "model_invoked": False},
+        "evidence_export": {"format": "candidate_lesson_v1", "input_sha256": stable_hash(payload)},
+    }
+
+
+def learn_validate_candidate(payload: dict[str, Any]) -> dict[str, Any]:
+    raw = canonical_json(payload)
+    try:
+        data = validate_candidate_lesson(payload)
+    except ValueError as exc:
+        return result("candidate_lesson_validator", "stdin", raw, {}, status="invalid_input", errors=[{"code": str(exc)}])
+    return result("candidate_lesson_validator", "stdin", raw, data)
