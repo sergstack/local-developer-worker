@@ -70,3 +70,26 @@ def test_review_build_cli_v1_1_returns_ledger_without_renderer_or_model():
     assert output["data"]["contract_delta"]["compatibility_assessment"] == "not_in_p1"
     assert output["data"]["authority"]["model_invoked"] is False
     assert output["data"]["derived_view_plan"]["rendering"] == "not_in_p1"
+
+
+def test_review_render_cli_emits_derived_markdown_only():
+    root = Path(__file__).parents[2]
+    environment = {**os.environ, "PYTHONPATH": str(root / "src"), "LDW_TELEMETRY_DISABLED": "1"}
+    build_payload = {
+        "contract_version": "1.0.0", "objective": "Render a review package.",
+        "scope": {"scope_id": "SCOPE_RENDER", "change_size": "local", "changed_components": [{"component_id": "COMPONENT_RENDER", "kind": "source"}], "declared_boundaries": ["review"], "contract_change": False},
+        "git_facts": {"source_tool": "git_facts_collector", "source_run_id": "RUN_GIT_RENDER", "working_tree_clean": False, "changed_component_ids": ["COMPONENT_RENDER"]},
+        "evidence": {"source_tool": "evidence_package_builder", "source_run_id": "RUN_EVIDENCE_RENDER", "content_hash": "a" * 64, "lineage_complete": True, "observed_evidence_refs": ["EV_RENDER"], "candidate_evidence_refs": [], "missing_evidence_ids": [], "unknown_ids": []},
+        "required_checks": [{"check_id": "CHECK_RENDER", "check_type": "test", "status": "passed", "source_tool": "test_result_parser", "evidence_refs": ["EV_RENDER"]}],
+    }
+    built = subprocess.run([sys.executable, "-m", "local_developer_worker.cli", "review", "build"], input=json.dumps(build_payload), text=True, capture_output=True, cwd=root, env=environment, check=False)
+    package = json.loads(built.stdout)["data"]
+
+    completed = subprocess.run([sys.executable, "-m", "local_developer_worker.cli", "review", "render"], input=json.dumps({"contract_version": "1.0.0", "format": "markdown", "review_package": package}), text=True, capture_output=True, cwd=root, env=environment, check=False)
+
+    assert completed.returncode == 0
+    output = json.loads(completed.stdout)
+    assert output["tool"] == "review_package_renderer"
+    assert output["data"]["format"] == "markdown"
+    assert output["data"]["authority"]["model_invoked"] is False
+    assert "# LDW Review Package" in output["data"]["artifact"]

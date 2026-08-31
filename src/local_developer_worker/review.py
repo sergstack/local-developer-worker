@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .contracts import canonical_json, result, stable_hash
+from .contracts import canonical_json, result, sha256, stable_hash
 
 
 ROOT = {"contract_version", "objective", "scope", "git_facts", "evidence", "required_checks"}
@@ -29,6 +29,13 @@ CHECK_TYPES = {"test", "schema", "git", "manual"}
 CHECK_STATUSES = {"passed", "failed", "not_run", "unknown"}
 CHECK_SOURCES = {"test_result_parser", "git_facts_collector", "evidence_package_builder", "none"}
 PROFILES = {"local", "contract_change", "cross_boundary", "evidence_risk"}
+RENDER_ROOT = {"contract_version", "format", "review_package"}
+P0_PACKAGE_FIELDS = {
+    "contract_version", "review_package_id", "objective", "diagnosis", "review_profile", "affected_invariants",
+    "affected_boundaries", "required_checks", "findings", "unknowns", "evidence_refs", "derived_view_plan",
+    "authority", "evidence_export",
+}
+P1_PACKAGE_FIELDS = P0_PACKAGE_FIELDS | {"evidence_ledger", "contract_delta"}
 
 
 def _identifier(value: Any, label: str) -> str:
@@ -327,3 +334,125 @@ def review_build(payload: dict[str, Any]) -> dict[str, Any]:
     except ValueError as exc:
         return result("review_package_builder", "stdin", raw, {}, status="invalid_input", errors=[{"code": str(exc)}])
     return result("review_package_builder", "stdin", raw, data)
+
+
+def _markdown_text(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("|", "\\|").replace("\n", " ")
+
+
+def _validate_authority(value: Any) -> None:
+    expected = {
+        "evidence_manifest_authoritative": True,
+        "review_package_status": "derived",
+        "promotion_authority": "human_or_ai_os_only",
+        "model_invoked": False,
+        "source_mutation": False,
+        "root_cause_inferred": False,
+    }
+    if value != expected:
+        raise ValueError("invalid_review_package_authority")
+
+
+def _validate_render_package(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict) or value.get("contract_version") not in {"1.0.0", "1.1.0"}:
+        raise ValueError("unsupported_review_package_version")
+    version = value["contract_version"]
+    if set(value) != (P0_PACKAGE_FIELDS if version == "1.0.0" else P1_PACKAGE_FIELDS):
+        raise ValueError("invalid_review_package")
+    _identifier(value["review_package_id"], "review_package_id")
+    if not value["review_package_id"].startswith("REVIEW_"):
+        raise ValueError("invalid_review_package")
+    _safe_text(value["objective"], "review_package_objective", limit=1000)
+    if value["review_profile"] not in PROFILES or not isinstance(value["diagnosis"], dict) or value["diagnosis"].get("review_profile") != value["review_profile"] or value["diagnosis"].get("deterministic") is not True:
+        raise ValueError("invalid_review_package")
+    if not all(isinstance(item, str) for item in value["affected_invariants"] + value["affected_boundaries"] + value["unknowns"] + value["evidence_refs"]):
+        raise ValueError("invalid_review_package")
+    _validate_checks(value["required_checks"], set(value["evidence_refs"]))
+    if not isinstance(value["derived_view_plan"], dict) or value["derived_view_plan"].get("authoritative_input") != "caller_retained_evidence":
+        raise ValueError("invalid_review_package")
+    _validate_authority(value["authority"])
+    if not isinstance(value["evidence_export"], dict) or not isinstance(value["evidence_export"].get("input_sha256"), str):
+        raise ValueError("invalid_review_package")
+    if version == "1.1.0":
+        ledger = value["evidence_ledger"]
+        if not isinstance(ledger, dict) or ledger.get("derived") is not True or ledger.get("authoritative_input") != "caller_retained_evidence" or not isinstance(ledger.get("rows"), list):
+            raise ValueError("invalid_review_ledger")
+        if not isinstance(value["contract_delta"], dict) or value["contract_delta"].get("status") not in {"not_applicable", "unavailable", "structural_delta"}:
+            raise ValueError("invalid_contract_delta")
+    return value
+
+
+def _markdown_checks(checks: list[dict[str, Any]]) -> list[str]:
+    rows = ["| Check | Type | Status | Evidence |", "| --- | --- | --- | --- |"]
+    for check in checks:
+        state = "OBSERVED" if check["status"] in {"passed", "failed"} else check["status"].upper()
+        refs = ", ".join(check["evidence_refs"]) or "—"
+        rows.append(f"| {check['check_id']} | {check['check_type']} | {check['status'].upper()} | {state}: {refs} |")
+    return rows
+
+
+def _markdown_delta(delta: dict[str, Any]) -> list[str]:
+    status = delta["status"]
+    if status == "not_applicable":
+        return ["- Status: NOT_APPLICABLE", "- Reason: no contract comparison was declared."]
+    if status == "unavailable":
+        return ["- Status: UNAVAILABLE", f"- Reason ID: {delta['unavailable_reason_id']}"]
+    return [
+        "- Status: STRUCTURAL_DELTA (caller-declared; compatibility is not assessed).",
+        f"- Baseline: {delta['baseline']['contract_id']} @ {delta['baseline']['version_label']}",
+        f"- Candidate: {delta['candidate']['contract_id']} @ {delta['candidate']['version_label']}",
+        f"- Added fields: {', '.join(delta['added_field_ids']) or '—'}",
+        f"- Removed fields: {', '.join(delta['removed_field_ids']) or '—'}",
+        f"- Changed fields: {', '.join(delta['changed_field_ids']) or '—'}",
+    ]
+
+
+def render_markdown(review_package: dict[str, Any]) -> str:
+    """Render a verified ReviewPackage as deterministic, non-authoritative Markdown."""
+    package = _validate_render_package(review_package)
+    lines = [
+        f"# LDW Review Package {package['review_package_id']}",
+        "",
+        "## Scope",
+        f"- Objective: {_markdown_text(package['objective'])}",
+        f"- Profile: {package['review_profile']}",
+        f"- Boundaries: {', '.join(package['affected_boundaries']) or '—'}",
+        f"- Invariants: {', '.join(package['affected_invariants']) or '—'}",
+        "",
+        "## Required checks",
+        *_markdown_checks(package["required_checks"]),
+        "",
+        "## Evidence states",
+        f"- Observed/candidate references: {', '.join(package['evidence_refs']) or '—'}",
+        f"- Missing or unknown IDs: {', '.join(package['unknowns']) or '—'}",
+    ]
+    if package["contract_version"] == "1.1.0":
+        lines.extend(["", "## Contract delta", *_markdown_delta(package["contract_delta"])])
+        ledger_rows = package["evidence_ledger"]["rows"]
+        lines.extend(["", "## Evidence ledger", f"- Derived rows: {len(ledger_rows)}; caller-retained evidence remains authoritative."])
+    lines.extend([
+        "",
+        "## Authority limits",
+        "- This Markdown is derived from the supplied ReviewPackage; it is not evidence authority.",
+        "- No model was invoked; this renderer cannot mutate source, infer root cause, promote, merge, or decide review outcome.",
+        "",
+    ])
+    return "\n".join(lines)
+
+
+def review_render(payload: dict[str, Any]) -> dict[str, Any]:
+    raw = canonical_json(payload)
+    try:
+        if not isinstance(payload, dict) or set(payload) != RENDER_ROOT or payload.get("contract_version") != "1.0.0" or payload.get("format") != "markdown":
+            raise ValueError("invalid_review_render_input")
+        artifact = render_markdown(payload["review_package"])
+        data = {
+            "contract_version": "1.0.0",
+            "format": "markdown",
+            "artifact": artifact,
+            "artifact_sha256": sha256(artifact),
+            "authority": {"source_package_authoritative": False, "rendered_artifact_status": "derived", "model_invoked": False, "source_mutation": False, "review_outcome_decided": False},
+        }
+    except ValueError as exc:
+        return result("review_package_renderer", "stdin", raw, {}, status="invalid_input", errors=[{"code": str(exc)}])
+    return result("review_package_renderer", "stdin", raw, data)

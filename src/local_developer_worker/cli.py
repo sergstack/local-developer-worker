@@ -22,7 +22,7 @@ from .offload_executor import offload_execute
 from .routing_calibration import routing_calibrate, routing_explain, routing_stats
 from .routing_value import routing_value
 from .rework_miner import learn_analyze, learn_prepare_excerpts, learn_validate_candidate
-from .review import review_build
+from .review import review_build, review_render
 from .telemetry import codex_routing_event_v2, codex_run_event, offload_execution_event, telemetry_error_code, telemetry_event, telemetry_mark, telemetry_summary
 from .tools import benchmark_run, context_compact, context_pack, context_refresh, context_route, doctor, evidence_build, file_inventory, git_facts, parse_log, parse_tests, report_summarize
 
@@ -54,6 +54,7 @@ COMMANDS: dict[tuple[str, ...], Callable[[dict], dict]] = {
     ("learn", "prepare-excerpts"): learn_prepare_excerpts,
     ("learn", "validate-candidate"): learn_validate_candidate,
     ("review", "build"): review_build,
+    ("review", "render"): review_render,
 }
 CAPABILITIES = {
     ("log", "parse"): "structured_log_parser", ("log", "cluster"): "semantic_log_clustering", ("log", "process"): "structured_log_parser",
@@ -108,6 +109,7 @@ def _parser() -> argparse.ArgumentParser:
     learn.add_parser("validate-candidate")
     review = sub.add_parser("review").add_subparsers(dest="action", required=True)
     review.add_parser("build")
+    review.add_parser("render")
     return parser
 
 

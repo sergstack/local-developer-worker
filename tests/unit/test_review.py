@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft202012Validator
 
-from local_developer_worker.review import build_review_package, build_review_package_v1_1, review_build
+from local_developer_worker.review import build_review_package, build_review_package_v1_1, render_markdown, review_build, review_render
 
 
 def payload():
@@ -208,3 +208,51 @@ def test_p1_rejects_raw_or_ambiguous_contract_comparisons(mutate, error):
 
     with pytest.raises(ValueError, match=error):
         build_review_package_v1_1(review_input)
+
+
+def test_markdown_renderer_is_deterministic_and_preserves_not_run():
+    review_input = p1_payload()
+    review_input["required_checks"][1].update({"status": "not_run", "source_tool": "none", "evidence_refs": []})
+    package = build_review_package_v1_1(review_input)
+    render_input = {"contract_version": "1.0.0", "format": "markdown", "review_package": package}
+
+    first = review_render(render_input)
+    second = review_render(copy.deepcopy(render_input))
+
+    assert first == second
+    assert first["status"] == "success"
+    artifact = first["data"]["artifact"]
+    assert "# LDW Review Package" in artifact
+    assert "| CHECK_TEST_001 | test | NOT_RUN | NOT_RUN: — |" in artifact
+    assert "STRUCTURAL_DELTA" in artifact
+    assert "compatibility is not assessed" in artifact
+    assert first["data"]["authority"]["rendered_artifact_status"] == "derived"
+    schema("review_render_input_v1.schema.json").validate(render_input)
+    schema("review_render_output_v1.schema.json").validate(first["data"])
+
+
+@pytest.mark.parametrize(
+    ("mutate", "error"),
+    [
+        (lambda value: value.update({"raw_evidence": "forbidden"}), "invalid_review_render_input"),
+        (lambda value: value.update({"format": "html"}), "invalid_review_render_input"),
+        (lambda value: value["review_package"].update({"raw_log": "forbidden"}), "invalid_review_package"),
+        (lambda value: value["review_package"]["authority"].update({"model_invoked": True}), "invalid_review_package_authority"),
+    ],
+)
+def test_markdown_renderer_rejects_unsupported_or_untrusted_input(mutate, error):
+    render_input = {"contract_version": "1.0.0", "format": "markdown", "review_package": build_review_package(payload())}
+    mutate(render_input)
+
+    output = review_render(render_input)
+
+    assert output["status"] == "invalid_input"
+    assert output["data"] == {}
+    assert output["errors"][0]["code"] == error
+
+
+def test_render_markdown_accepts_p0_without_contract_delta():
+    artifact = render_markdown(build_review_package(payload()))
+
+    assert "## Contract delta" not in artifact
+    assert "## Authority limits" in artifact
