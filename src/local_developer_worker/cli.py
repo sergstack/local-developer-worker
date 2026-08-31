@@ -20,7 +20,7 @@ from .ollama_advisor import ollama_advise
 from .offload_executor import offload_execute
 from .routing_calibration import routing_calibrate, routing_explain, routing_stats
 from .routing_value import routing_value
-from .telemetry import codex_routing_event_v2, codex_run_event, telemetry_error_code, telemetry_event, telemetry_mark, telemetry_summary
+from .telemetry import codex_routing_event_v2, codex_run_event, offload_execution_event, telemetry_error_code, telemetry_event, telemetry_mark, telemetry_summary
 from .tools import benchmark_run, context_compact, context_pack, context_refresh, context_route, doctor, evidence_build, file_inventory, git_facts, parse_log, parse_tests, report_summarize
 
 COMMANDS: dict[tuple[str, ...], Callable[[dict], dict]] = {
@@ -151,6 +151,8 @@ def _emit(output: dict, key: tuple[str, ...], payload: dict, raw: str, started: 
             calibration = _calibration_event(output, payload, elapsed_ms)
             if calibration is not None:
                 events.append(calibration)
+        elif key == ("offload", "execute") and isinstance(output.get("data"), dict) and output["data"].get("contract_version") == "1.0.0":
+            events.append(offload_execution_event({"run_id": output["run_id"], **output["data"], "end_to_end_latency_ms": elapsed_ms}))
         else:
             events.append(telemetry_event({
                 "tool": telemetry_tool,

@@ -33,6 +33,14 @@ CODEX_RUN_FIELDS = {
     "reasoning_output_tokens",
 }
 CODEX_RUN_V2_FIELDS = CODEX_RUN_FIELDS | {"execution_id"}
+OFFLOAD_EVENT_FIELDS = {
+    "record_type", "schema_version", "run_id", "task_class", "risk_floor", "offload_mode", "policy_revision",
+    "selected_route", "terminal_status", "verification_status", "local_runtime", "local_model", "local_model_invoked",
+    "local_latency_ms", "end_to_end_latency_ms", "fallback_used", "fallback_reason",
+    "context_bytes_before", "context_bytes_after", "context_bytes_reduced",
+    "frontier_input_tokens", "frontier_cached_input_tokens", "frontier_output_tokens", "frontier_reasoning_output_tokens",
+    "frontier_fallback_count", "frontier_escalation_count",
+}
 CODEX_ROUTING_V21_FIELDS = {
     "record_type", "schema_version", "run_id", "task_class", "routing_signal",
     "deterministic_risk_floor", "initial_profile", "initial_effort", "final_profile",
@@ -85,6 +93,7 @@ KNOWN_ERROR_CODES = frozenset(
         "invalid_output_schema",
         "invalid_deterministic_result",
         "invalid_offload_fallback_policy",
+        "invalid_offload_context_measurement",
         "invalid_offload_policy_envelope",
         "invalid_offload_policy_revision",
         "invalid_offload_task",
@@ -145,6 +154,7 @@ EXECUTION_ID_PATTERN = re.compile(r"EXEC-[0-9a-f]{32}\Z")
 CODEX_PROFILES = {"efficient", "balanced", "frontier"}
 CODEX_TERMINAL_STATUSES = {"pass", "failed", "blocked"}
 CODEX_VERIFICATION_STATUSES = {"passed", "failed", "uncertain", "not_run"}
+OFFLOAD_VERIFICATION_STATUSES = CODEX_VERIFICATION_STATUSES | {"schema_valid", "observed_success"}
 CALIBRATION_FIRST_PASS_STATUSES = CODEX_VERIFICATION_STATUSES | {"not_observed"}
 
 
@@ -203,6 +213,41 @@ def codex_run_event(values: dict[str, Any]) -> dict[str, Any]:
     if not valid_codex_run_event(event):
         raise ValueError("invalid Codex telemetry event")
     return event
+
+
+def offload_execution_event(values: dict[str, Any]) -> dict[str, Any]:
+    route = values.get("route_result") if isinstance(values.get("route_result"), dict) else {}
+    context = values.get("context_metrics") if isinstance(values.get("context_metrics"), dict) else {}
+    capability = values.get("local_capability") if isinstance(values.get("local_capability"), dict) else {}
+    event = {
+        "record_type": "offload_execution_event_v1", "schema_version": "1.0.0", "run_id": values.get("run_id"),
+        "task_class": values.get("task_class"), "risk_floor": values.get("risk_floor"), "offload_mode": values.get("offload_mode"), "policy_revision": values.get("policy_revision"),
+        "selected_route": values.get("selected_route"), "terminal_status": values.get("terminal_status"), "verification_status": values.get("verification_status", "not_run"),
+        "local_runtime": capability.get("runtime"), "local_model": capability.get("model"), "local_model_invoked": values.get("local_model_invoked", False),
+        "local_latency_ms": values.get("local_latency_ms"), "end_to_end_latency_ms": values.get("end_to_end_latency_ms"),
+        "fallback_used": values.get("fallback_used", False), "fallback_reason": values.get("fallback_reason"),
+        "context_bytes_before": context.get("before_bytes"), "context_bytes_after": context.get("after_bytes"), "context_bytes_reduced": context.get("reduced_bytes"),
+        "frontier_input_tokens": route.get("input_tokens"), "frontier_cached_input_tokens": route.get("cached_input_tokens"), "frontier_output_tokens": route.get("output_tokens"), "frontier_reasoning_output_tokens": route.get("reasoning_output_tokens"),
+        "frontier_fallback_count": route.get("fallback_count", 0), "frontier_escalation_count": route.get("escalation_count", 0),
+    }
+    if not valid_offload_execution_event(event):
+        raise ValueError("invalid offload telemetry event")
+    return event
+
+
+def valid_offload_execution_event(event: Any) -> bool:
+    if not isinstance(event, dict) or set(event) != OFFLOAD_EVENT_FIELDS or event.get("record_type") != "offload_execution_event_v1" or event.get("schema_version") != "1.0.0": return False
+    if not isinstance(event["run_id"], str) or RUN_ID_PATTERN.fullmatch(event["run_id"]) is None: return False
+    if not isinstance(event["task_class"], str) or re.fullmatch(r"[a-z][a-z0-9_]{0,63}", event["task_class"]) is None: return False
+    if event["risk_floor"] not in CODEX_PROFILES or event["offload_mode"] not in {"local_first", "candidate_review", "frontier_floor", "blocked"}: return False
+    if not isinstance(event["policy_revision"], str) or re.fullmatch(r"[0-9a-f]{64}", event["policy_revision"]) is None: return False
+    if event["selected_route"] not in {"local", "deterministic", "frontier", None} or event["terminal_status"] not in {"candidate_ready", "pass", "failed", "blocked"} or event["verification_status"] not in OFFLOAD_VERIFICATION_STATUSES: return False
+    if event["local_runtime"] not in {"not_checked", "available", "unavailable", "policy_blocked", "incompatible", "not_configured", "unknown"} or event["local_model"] not in {"not_checked", "available", "unavailable", "not_configured", "unknown"} or not isinstance(event["local_model_invoked"], bool): return False
+    if event["fallback_reason"] not in {None, "local_route_unavailable", "frontier_floor"} or not isinstance(event["fallback_used"], bool): return False
+    nullable = ("local_latency_ms", "context_bytes_before", "context_bytes_after", "context_bytes_reduced", "frontier_input_tokens", "frontier_cached_input_tokens", "frontier_output_tokens", "frontier_reasoning_output_tokens")
+    if any(event[key] is not None and (not isinstance(event[key], int) or isinstance(event[key], bool) or event[key] < 0) for key in nullable): return False
+    if not isinstance(event["end_to_end_latency_ms"], int) or isinstance(event["end_to_end_latency_ms"], bool) or event["end_to_end_latency_ms"] < 0: return False
+    return all(isinstance(event[key], int) and not isinstance(event[key], bool) and event[key] >= 0 for key in ("frontier_fallback_count", "frontier_escalation_count"))
 
 
 def valid_codex_run_event(event: Any) -> bool:
@@ -367,7 +412,7 @@ def usefulness_mark(values: dict[str, Any]) -> dict[str, str]:
 
 
 def valid_session_record(record: Any) -> bool:
-    return normalize_telemetry_event(record) is not None or valid_usefulness_mark(record) or valid_codex_run_event(record) or valid_codex_routing_event_v2(record)
+    return normalize_telemetry_event(record) is not None or valid_usefulness_mark(record) or valid_codex_run_event(record) or valid_codex_routing_event_v2(record) or valid_offload_execution_event(record)
 
 
 def telemetry_mark(payload: dict[str, Any]) -> dict[str, Any]:
@@ -420,6 +465,7 @@ def telemetry_summary(payload: dict[str, Any]) -> dict[str, Any]:
         )
     events = [record for record in records if valid_telemetry_event(record)]
     codex_events = [record for record in records if valid_codex_run_event(record)]
+    offload_events = [record for record in records if valid_offload_execution_event(record)]
     mark_records = [record for record in records if valid_usefulness_mark(record)]
     latest_marks = {record["run_id"]: record["mark"] for record in mark_records}
     mark_counts = {mark: sum(value == mark for value in latest_marks.values()) for mark in sorted(USEFULNESS_MARKS)}
@@ -476,6 +522,14 @@ def telemetry_summary(payload: dict[str, Any]) -> dict[str, Any]:
                 field: sum(event[field] or 0 for event in codex_events)
                 for field in ("input_tokens", "cached_input_tokens", "output_tokens", "reasoning_output_tokens")
             },
+        },
+        "offload": {
+            "run_count": len(offload_events), "local_model_invocation_count": sum(event["local_model_invoked"] for event in offload_events),
+            "route_counts": {route: sum(event["selected_route"] == route for event in offload_events) for route in ("local", "deterministic", "frontier")} | {"not_selected": sum(event["selected_route"] is None for event in offload_events)},
+            "terminal_status_counts": {status: sum(event["terminal_status"] == status for event in offload_events) for status in ("candidate_ready", "pass", "failed", "blocked")},
+            "fallback_count": sum(event["fallback_used"] for event in offload_events),
+            "context_bytes": {key: sum(event[key] or 0 for event in offload_events) for key in ("context_bytes_before", "context_bytes_after", "context_bytes_reduced")},
+            "frontier_tokens": {key: sum(event[key] or 0 for event in offload_events) for key in ("frontier_input_tokens", "frontier_cached_input_tokens", "frontier_output_tokens", "frontier_reasoning_output_tokens")},
         },
         "invalid_records": invalid_records,
         "date_from": payload.get("date_from"),

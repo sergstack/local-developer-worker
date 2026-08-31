@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from local_developer_worker.session_log import append_event, iter_events, iter_records
-from local_developer_worker.telemetry import codex_run_event, telemetry_event, telemetry_summary, usefulness_mark
+from local_developer_worker.telemetry import codex_run_event, offload_execution_event, telemetry_event, telemetry_summary, usefulness_mark
 
 
 def _event(tool, input_bytes, output_bytes, *, fallback=False, reduction=None, error_code=None):
@@ -185,3 +185,12 @@ def test_telemetry_summary_aggregates_privacy_safe_codex_events(tmp_path):
         "escalation_count": 2,
         "tokens": {"input_tokens": 10, "cached_input_tokens": 4, "output_tokens": 3, "reasoning_output_tokens": 0},
     }
+
+
+def test_telemetry_summary_aggregates_privacy_safe_offload_events(tmp_path):
+    append_event(offload_execution_event({"run_id":"RUN-offload","task_class":"bounded_text_classification","risk_floor":"balanced","offload_mode":"local_first","policy_revision":"a" * 64,"selected_route":"local","terminal_status":"candidate_ready","verification_status":"schema_valid","local_capability":{"runtime":"available","model":"available"},"local_model_invoked":True,"local_latency_ms":12,"end_to_end_latency_ms":15,"fallback_used":False,"fallback_reason":None,"context_metrics":{"before_bytes":100,"after_bytes":40,"reduced_bytes":60}}), tmp_path, event_date=date(2026, 8, 2))
+    data = telemetry_summary({"journal_root": str(tmp_path)})["data"]["offload"]
+    assert data["run_count"] == 1
+    assert data["local_model_invocation_count"] == 1
+    assert data["route_counts"]["local"] == 1
+    assert data["context_bytes"] == {"context_bytes_before": 100, "context_bytes_after": 40, "context_bytes_reduced": 60}
