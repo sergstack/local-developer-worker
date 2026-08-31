@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from local_developer_worker.context_efficiency_replay import analyze_replay, build_replay_manifest, observe_agent_jsonl
+from local_developer_worker.context_efficiency_replay import analyze_replay, build_replay_manifest, observe_agent_jsonl, summarize_replay_diagnostics
 
 
 def test_dry_replay_is_bounded_and_cannot_promote():
@@ -145,6 +145,25 @@ def _capture_study(*captures):
     }
 
 
+def _diagnostic_capture(pair_id, arm, **overrides):
+    value = _capture(pair_id, arm)
+    value.update({
+        "expansion_bytes": 200 if arm == "candidate" else 0,
+        "compaction_count": 1 if arm == "candidate" else 0,
+        "reread_after_compaction_count": 1 if arm == "candidate" else 0,
+        "preliminary_attempt_count": 2 if arm == "candidate" else 0,
+        "reason_codes": ["EXPAND_MISSING_DEPENDENCY"] if arm == "candidate" else ["DIRECT_PATH_SUFFICIENT"],
+    })
+    value.update(overrides)
+    return value
+
+
+def _diagnostic_study(*captures):
+    value = _capture_study(*captures)
+    value["contract_version"] = "1.2.0"
+    return value
+
+
 def test_capture_builds_pass_eligible_manifest_from_aggregate_arms_only():
     manifest = build_replay_manifest(_capture_study(_capture("PAIR-002", "candidate"), _capture("PAIR-001", "baseline"), _capture("PAIR-002", "baseline"), _capture("PAIR-001", "candidate")))
     assert [pair["pair_id"] for pair in manifest["pairs"]] == ["PAIR-001", "PAIR-002"]
@@ -164,6 +183,27 @@ def test_capture_rejects_raw_payload_and_nonmatched_arms(mutation):
     mutation(study)
     with pytest.raises(ValueError, match="invalid_capture_study"):
         build_replay_manifest(study)
+
+
+def test_diagnostic_summary_is_aggregate_only_and_non_promoting():
+    data = summarize_replay_diagnostics(_diagnostic_study(
+        _diagnostic_capture("PAIR-001", "baseline"), _diagnostic_capture("PAIR-001", "candidate"),
+    ))
+    assert data["promotion_status"] == "diagnostic_only"
+    assert data["pairs"][0]["candidate"]["expansion_bytes"] == 200
+    assert data["pairs"][0]["reason_codes"]["candidate"] == ["EXPAND_MISSING_DEPENDENCY"]
+
+
+@pytest.mark.parametrize("mutation", [
+    lambda study: study["captures"][0].update({"raw_transcript": "forbidden"}),
+    lambda study: study["captures"][1].update({"reason_codes": ["UNKNOWN_REASON"]}),
+    lambda study: study["captures"][1].update({"task_id": "different-task"}),
+])
+def test_diagnostic_summary_rejects_raw_unknown_or_unmatched_input(mutation):
+    study = _diagnostic_study(_diagnostic_capture("PAIR-001", "baseline"), _diagnostic_capture("PAIR-001", "candidate"))
+    mutation(study)
+    with pytest.raises(ValueError, match="invalid_diagnostic_study"):
+        summarize_replay_diagnostics(study)
 
 
 def test_agent_observer_returns_only_aggregate_tool_and_token_evidence():
