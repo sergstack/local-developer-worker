@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from local_developer_worker.ollama_advisor import OllamaModelUnavailable, _NoRedirect, ollama_advise
+from local_developer_worker.ollama_advisor import OllamaModelUnavailable, _NoRedirect, ollama_advise, ollama_capability
 
 
 def _policy(*, endpoint: str = "http://127.0.0.1:11435/api/generate") -> dict:
@@ -78,3 +78,12 @@ def test_ollama_advisory_distinguishes_requested_model_unavailable(monkeypatch):
     assert output["data"]["local_runtime_state"] == "available"
     assert output["data"]["local_model_state"] == "unavailable"
     assert output["errors"] == [{"code": "ollama_model_unavailable"}]
+
+
+def test_ollama_capability_distinguishes_disabled_missing_model_and_runtime(monkeypatch):
+    assert ollama_capability({})["status"] == "policy_blocked"
+    policy = {"ollama": {**_policy()["ollama"], "enabled": True}, "automatic": {"ollama_readonly_advisory": True}}
+    monkeypatch.setattr("local_developer_worker.ollama_advisor.guarded_inference_call", lambda *args: ({"status": "success", "data": {}}, {"models": []}))
+    assert ollama_capability(policy)["status"] == "model_unavailable"
+    monkeypatch.setattr("local_developer_worker.ollama_advisor.guarded_inference_call", lambda *args: ({"status": "policy_blocked", "errors": [{"code": "local_inference_runtime_unverified"}]}, None))
+    assert ollama_capability(policy)["status"] == "unavailable"
