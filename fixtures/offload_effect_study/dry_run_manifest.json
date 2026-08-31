@@ -1,0 +1,16 @@
+{
+  "contract_version": "1.0.0",
+  "study_id": "OFS_DRY_RUN_001",
+  "mode": "dry_run",
+  "evidence_status": "synthetic",
+  "pairs": [
+    {
+      "match_id": "MATCH_001",
+      "task_class": "bounded_text_classification",
+      "acceptance_source": "gold",
+      "gold_accepted": true,
+      "control": {"route": "frontier", "terminal_status": "pass", "verification_status": "passed", "accepted": true, "latency_ms": 1000, "provider_input_tokens": 300, "provider_output_tokens": 100, "context_bytes": 4096, "local_compute_ms": null, "fallback_count": 0, "escalation_count": 0, "failure_code": null, "policy_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+      "candidate": {"route": "local", "terminal_status": "candidate_ready", "verification_status": "schema_valid", "accepted": true, "latency_ms": 600, "provider_input_tokens": 0, "provider_output_tokens": 0, "context_bytes": 1024, "local_compute_ms": 550, "fallback_count": 0, "escalation_count": 0, "failure_code": null, "policy_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+    }
+  ]
+}
