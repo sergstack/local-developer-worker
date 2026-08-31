@@ -93,3 +93,26 @@ def test_review_render_cli_emits_derived_markdown_only():
     assert output["data"]["format"] == "markdown"
     assert output["data"]["authority"]["model_invoked"] is False
     assert "# LDW Review Package" in output["data"]["artifact"]
+
+
+def test_review_render_cli_emits_self_contained_html():
+    root = Path(__file__).parents[2]
+    environment = {**os.environ, "PYTHONPATH": str(root / "src"), "LDW_TELEMETRY_DISABLED": "1"}
+    build_payload = {
+        "contract_version": "1.0.0", "objective": "Render <unsafe> HTML safely.",
+        "scope": {"scope_id": "SCOPE_HTML", "change_size": "local", "changed_components": [{"component_id": "COMPONENT_HTML", "kind": "source"}], "declared_boundaries": ["review"], "contract_change": False},
+        "git_facts": {"source_tool": "git_facts_collector", "source_run_id": "RUN_GIT_HTML", "working_tree_clean": False, "changed_component_ids": ["COMPONENT_HTML"]},
+        "evidence": {"source_tool": "evidence_package_builder", "source_run_id": "RUN_EVIDENCE_HTML", "content_hash": "a" * 64, "lineage_complete": True, "observed_evidence_refs": ["EV_HTML"], "candidate_evidence_refs": [], "missing_evidence_ids": [], "unknown_ids": []},
+        "required_checks": [{"check_id": "CHECK_HTML", "check_type": "test", "status": "passed", "source_tool": "test_result_parser", "evidence_refs": ["EV_HTML"]}],
+    }
+    built = subprocess.run([sys.executable, "-m", "local_developer_worker.cli", "review", "build"], input=json.dumps(build_payload), text=True, capture_output=True, cwd=root, env=environment, check=False)
+    package = json.loads(built.stdout)["data"]
+
+    completed = subprocess.run([sys.executable, "-m", "local_developer_worker.cli", "review", "render"], input=json.dumps({"contract_version": "1.0.0", "format": "html", "review_package": package}), text=True, capture_output=True, cwd=root, env=environment, check=False)
+
+    assert completed.returncode == 0
+    output = json.loads(completed.stdout)
+    assert output["data"]["format"] == "html"
+    assert output["data"]["artifact"].startswith("<!doctype html>")
+    assert "&lt;unsafe&gt;" in output["data"]["artifact"]
+    assert "<script" not in output["data"]["artifact"].lower()

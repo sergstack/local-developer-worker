@@ -116,7 +116,12 @@ Review P2 adds `ldw review render`, which accepts one validated ReviewPackage
 and produces byte-stable Markdown plus its SHA-256. The artifact is derived,
 does not write a file, and visibly preserves check/evidence states and
 authority limits. HTML, D2/SVG, MCP, and model-assisted rendering are outside
-this release.
+P2; D2/SVG, MCP, and model-assisted rendering remain outside this release.
+
+Review P3 extends the same renderer with a byte-stable, self-contained
+semantic HTML view. It has no scripts, external URLs, imported assets, or
+interactive behavior; all displayable text is escaped. Markdown behavior is
+unchanged. D2/SVG and MCP remain pilot-gated.
 
 ## Context efficiency
 

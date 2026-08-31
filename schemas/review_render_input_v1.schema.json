@@ -6,7 +6,7 @@
   "required": ["contract_version", "format", "review_package"],
   "properties": {
     "contract_version": {"const": "1.0.0"},
-    "format": {"const": "markdown"},
+    "format": {"enum": ["markdown", "html"]},
     "review_package": {"type": "object"}
   }
 }

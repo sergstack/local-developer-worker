@@ -6,7 +6,7 @@
   "required": ["contract_version", "format", "artifact", "artifact_sha256", "authority"],
   "properties": {
     "contract_version": {"const": "1.0.0"},
-    "format": {"const": "markdown"},
+    "format": {"enum": ["markdown", "html"]},
     "artifact": {"type": "string"},
     "artifact_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "authority": {"type": "object", "additionalProperties": false, "required": ["source_package_authoritative", "rendered_artifact_status", "model_invoked", "source_mutation", "review_outcome_decided"], "properties": {"source_package_authoritative": {"const": false}, "rendered_artifact_status": {"const": "derived"}, "model_invoked": {"const": false}, "source_mutation": {"const": false}, "review_outcome_decided": {"const": false}}}
