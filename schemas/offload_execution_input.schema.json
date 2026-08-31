@@ -25,6 +25,8 @@
     "policy_path": {"type": "string", "minLength": 1},
     "repository_root": {"type": "string", "minLength": 1},
     "verification": {"type": "object"},
-    "deterministic_result": {"$ref": "tool_result.schema.json"}
+    "deterministic_result": {"$ref": "tool_result.schema.json"},
+    "context_bytes_before": {"type": "integer", "minimum": 0},
+    "context_bytes_after": {"type": "integer", "minimum": 0}
   }
 }

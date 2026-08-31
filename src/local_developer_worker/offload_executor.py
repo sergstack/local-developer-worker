@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import time
 from pathlib import Path
 from typing import Any, Callable
 
@@ -15,6 +16,7 @@ RISK_FLOORS = frozenset({"efficient", "balanced", "frontier"})
 DETERMINISTIC_POLICIES = frozenset({"use_if_available", "skip"})
 FRONTIER_POLICIES = frozenset({"allowed", "forbidden"})
 POLICY_REVISION = re.compile(r"^[0-9a-f]{64}$")
+OPAQUE_IDENTIFIER = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 DETERMINISTIC_TOOLS = frozenset({
     "structured_log_parser", "test_result_parser", "git_facts_collector",
     "file_inventory", "context_packer", "context_refresher", "context_compactor",
@@ -43,6 +45,10 @@ def _public_data(payload: dict[str, Any], **updates: Any) -> dict[str, Any]:
         "fallback_reason": None,
         "deterministic_result_ref": None,
         "route_result": None,
+        "local_model_invoked": False,
+        "local_latency_ms": None,
+        "verification_status": "not_run",
+        "context_metrics": {"before_bytes": None, "after_bytes": None, "reduced_bytes": None},
         **updates,
     }
 
@@ -51,13 +57,13 @@ def _validate(payload: dict[str, Any]) -> str | None:
     allowed_fields = {
         "task", "task_class", "risk_floor", "offload_mode", "verification_kind",
         "fallback_policy", "policy_revision", "policy_path", "repository_root",
-        "verification", "deterministic_result",
+        "verification", "deterministic_result", "context_bytes_before", "context_bytes_after",
     }
     if set(payload) - allowed_fields:
         return "unknown_offload_input_fields"
     if not isinstance(payload.get("task"), str) or not payload["task"].strip() or len(payload["task"].encode()) > 4096:
         return "invalid_offload_task"
-    if not isinstance(payload.get("task_class"), str) or not payload["task_class"].strip():
+    if not isinstance(payload.get("task_class"), str) or OPAQUE_IDENTIFIER.fullmatch(payload["task_class"]) is None:
         return "invalid_offload_task_class"
     if payload.get("risk_floor") not in RISK_FLOORS or payload.get("offload_mode") not in OFFLOAD_MODES:
         return "invalid_offload_policy_envelope"
@@ -73,6 +79,12 @@ def _validate(payload: dict[str, Any]) -> str | None:
         or fallback.get("frontier") not in FRONTIER_POLICIES
     ):
         return "invalid_offload_fallback_policy"
+    before, after = payload.get("context_bytes_before"), payload.get("context_bytes_after")
+    if (before is None) != (after is None) or (before is not None and (
+        not isinstance(before, int) or isinstance(before, bool) or before < 0
+        or not isinstance(after, int) or isinstance(after, bool) or after < 0 or after > before
+    )):
+        return "invalid_offload_context_measurement"
     deterministic = payload.get("deterministic_result")
     if deterministic is not None and (
         not isinstance(deterministic, dict)
@@ -84,6 +96,11 @@ def _validate(payload: dict[str, Any]) -> str | None:
     ):
         return "invalid_deterministic_result"
     return None
+
+
+def _context_metrics(payload: dict[str, Any]) -> dict[str, int | None]:
+    before, after = payload.get("context_bytes_before"), payload.get("context_bytes_after")
+    return {"before_bytes": before, "after_bytes": after, "reduced_bytes": before - after if isinstance(before, int) and isinstance(after, int) else None}
 
 
 def _local_capability(local: dict[str, Any]) -> dict[str, str]:
@@ -147,7 +164,11 @@ def _frontier(
             "tool": frontier.get("tool"), "run_id": frontier.get("run_id"),
             "status": frontier.get("status"), "terminal_status": frontier_data.get("terminal_status"),
             "verification_status": frontier_data.get("verification_status"),
+            "input_tokens": frontier_data.get("input_tokens"), "cached_input_tokens": frontier_data.get("cached_input_tokens"),
+            "output_tokens": frontier_data.get("output_tokens"), "reasoning_output_tokens": frontier_data.get("reasoning_output_tokens"),
+            "fallback_count": frontier_data.get("fallback_count", 0), "escalation_count": frontier_data.get("escalation_count", 0),
         },
+        "verification_status": frontier_data.get("verification_status", "not_run"),
     }
     if passed:
         return result("offload_executor", "stdin", raw, public)
@@ -167,7 +188,7 @@ def offload_execute(
     error = _validate(payload)
     if error:
         return result("offload_executor", "stdin", raw, {}, status="invalid_input", errors=[{"code": error}])
-    data = _public_data(payload)
+    data = _public_data(payload, context_metrics=_context_metrics(payload))
     mode = payload["offload_mode"]
     if mode == "blocked":
         return result("offload_executor", "stdin", raw, data, status="policy_blocked", errors=[{"code": "offload_policy_blocked"}])
@@ -176,13 +197,16 @@ def offload_execute(
 
     local_enabled = policy.get("ollama", {}).get("enabled") is True and allowed(policy, "ollama_readonly_advisory")
     if local_enabled:
+        local_started = time.perf_counter()
         local = local_executor({"task": payload["task"], "policy_path": payload.get("policy_path")}, policy)
+        local_latency_ms = round((time.perf_counter() - local_started) * 1000)
     else:
         local = result(
             "ollama_advisory", "stdin", raw,
             {"local_runtime_state": "policy_blocked", "local_model_state": "unknown"},
             status="policy_blocked", errors=[{"code": "ollama_advisory_disabled"}],
         )
+        local_latency_ms = None
     capability = _local_capability(local)
     local_data = local.get("data", {}) if isinstance(local.get("data"), dict) else {}
     if local.get("status") == "success" and local_data.get("advisory_status") == "accepted":
@@ -196,6 +220,9 @@ def offload_execute(
                 "candidate_provenance": {"source": "local_model", "tool": local.get("tool"), "run_id": local.get("run_id")},
                 "candidate": local_data.get("advice"),
                 "local_capability": capability,
+                "local_model_invoked": True,
+                "local_latency_ms": local_latency_ms,
+                "verification_status": "schema_valid",
                 "route_result": {"tool": local.get("tool"), "run_id": local.get("run_id"), "status": local.get("status")},
             },
         )
@@ -210,6 +237,9 @@ def offload_execute(
                 "selected_route": "deterministic",
                 "terminal_status": "pass",
                 "local_capability": capability,
+                "local_model_invoked": local_enabled,
+                "local_latency_ms": local_latency_ms,
+                "verification_status": "observed_success",
                 "fallback_used": True,
                 "fallback_reason": reason,
                 "deterministic_result_ref": {"tool": deterministic.get("tool"), "run_id": deterministic["run_id"]},
@@ -218,6 +248,6 @@ def offload_execute(
         )
     return _frontier(
         payload, policy, raw,
-        {**data, "local_capability": capability},
+        {**data, "local_capability": capability, "local_model_invoked": local_enabled, "local_latency_ms": local_latency_ms},
         frontier_executor, reason,
     )

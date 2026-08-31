@@ -8,11 +8,11 @@
     "verification_kind", "fallback_policy", "policy_revision", "selected_route",
     "terminal_status", "authority_status", "candidate_provenance", "candidate",
     "local_capability", "fallback_used", "fallback_reason",
-    "deterministic_result_ref", "route_result"
+    "deterministic_result_ref", "route_result", "local_model_invoked", "local_latency_ms", "verification_status", "context_metrics"
   ],
   "properties": {
     "contract_version": {"const": "1.0.0"},
-    "task_class": {"type": "string", "minLength": 1},
+    "task_class": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"},
     "risk_floor": {"enum": ["efficient", "balanced", "frontier"]},
     "offload_mode": {"enum": ["local_first", "candidate_review", "frontier_floor", "blocked"]},
     "verification_kind": {"type": "string", "minLength": 1},
@@ -71,5 +71,9 @@
     "fallback_reason": {"type": ["string", "null"]},
     "deterministic_result_ref": {"type": ["object", "null"]},
     "route_result": {"type": ["object", "null"]}
+    ,"local_model_invoked": {"type": "boolean"}
+    ,"local_latency_ms": {"type": ["integer", "null"], "minimum": 0}
+    ,"verification_status": {"enum": ["passed", "failed", "uncertain", "not_run", "schema_valid", "observed_success"]}
+    ,"context_metrics": {"type": "object", "additionalProperties": false, "required": ["before_bytes", "after_bytes", "reduced_bytes"], "properties": {"before_bytes": {"type": ["integer", "null"], "minimum": 0}, "after_bytes": {"type": ["integer", "null"], "minimum": 0}, "reduced_bytes": {"type": ["integer", "null"], "minimum": 0}}}
   }
 }

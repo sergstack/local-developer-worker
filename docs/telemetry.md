@@ -27,13 +27,23 @@ totals use `input_tokens + output_tokens` without adding cached or reasoning a
 second time. See
 `docs/adaptive-codex-routing/calibration.md` for the complete contract.
 
+`ldw offload execute` writes a fourth versioned record,
+`offload_execution_event_v1`. Its exact allowlist records an opaque task-class
+identifier, risk floor, offload mode, policy revision hash, selected abstract
+route, terminal/verifier/capability states, fallback counters, measured local
+and end-to-end latency, caller-supplied context-byte measurements, and nullable
+frontier token counters where the existing route reports them. It excludes the
+task, prompt, source text, paths, candidate content, raw model/provider output,
+concrete model/provider names, and thread/session IDs. Missing measurements are
+`null`; byte deltas are not claimed as token or time savings.
+
 ## Append-only journal
 
 The CLI appends canonical JSON records to `.repo_index/ldw_sessions/YYYY-MM-DD.jsonl`. The date lives in the partition name so it does not expand either record type. Telemetry events and usefulness marks both use append mode and never truncate or mutate an existing record. Generated journal data is ignored by Git. Calls made by pytest are excluded from automatic real-session telemetry unless a telemetry test explicitly opts in; an explicit `telemetry mark` command remains the requested write itself. If automatic telemetry is unavailable, the original evidence result remains unchanged and the CLI emits only the generic `telemetry_write_failed` diagnostic to stderr. A failed manual mark remains visibly partial and is not reported as recorded.
 
 ## Summary
 
-`ldw telemetry summary` reads the date partitions and returns total input/output bytes, measured context-mode calls and average context reduction, fallback count and ratio, evidence/report automation calls, `error_code_counts`, and separate `usefulness` and `codex` aggregates. The Codex aggregate reports run, profile, terminal-status, fallback, escalation, and observed token totals. `error_code_counts` contains counts for observed non-null known codes in the selected period; events with `error_code: null` are omitted from that breakdown. Usefulness counts and ratios use the latest appended mark for each `run_id`; `mark_records` retains the full append-only history while `marked_runs` is the denominator for `helped`, `not_helped`, and `unclear`. Optional `--from-date` and `--to-date` filters use ISO dates. The summary reads the journal before its own automatic event is appended, so the current summary call appears only in the next summary.
+`ldw telemetry summary` reads the date partitions and returns total input/output bytes, measured context-mode calls and average context reduction, fallback count and ratio, evidence/report automation calls, `error_code_counts`, and separate `usefulness`, `codex`, and `offload` aggregates. The offload aggregate reports observed abstract routes, candidate/terminal states, local invocation/fallback counts, context bytes, and nullable frontier token totals; it does not infer saved Codex tokens, savings, or quality. `error_code_counts` contains counts for observed non-null known codes in the selected period; events with `error_code: null` are omitted from that breakdown. Usefulness counts and ratios use the latest appended mark for each `run_id`; `mark_records` retains the full append-only history while `marked_runs` is the denominator for `helped`, `not_helped`, and `unclear`. Optional `--from-date` and `--to-date` filters use ISO dates. The summary reads the journal before its own automatic event is appended, so the current summary call appears only in the next summary.
 
 Wave 2 does not expand `SAFE_FIELDS`. Detailed candidate counts, byte volumes, exclusion counts, sensitive blocks, expansion results, and lineage completeness live in the command output and sanitized acceptance evaluator rather than the production journal. Repository identifiers, paths, raw contents, prompts, and provider data are not added to telemetry. Operator time, raw-reread rate, and time-to-actionable-context remain `NOT MEASURED` until directly observed.
 
