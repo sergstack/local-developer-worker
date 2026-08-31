@@ -17,6 +17,15 @@ CAPTURE = {
     "tool_calls", "latency_ms", "task_accepted", "provider_cost_usd",
 }
 CAPTURE_STUDY = ROOT_V11 - {"pairs"} | {"captures"}
+DIAGNOSTIC_CAPTURE = CAPTURE | {
+    "expansion_bytes", "compaction_count", "reread_after_compaction_count",
+    "preliminary_attempt_count", "reason_codes",
+}
+DIAGNOSTIC_REASON_CODES = frozenset({
+    "DIRECT_PATH_SUFFICIENT", "EXPAND_MISSING_DEPENDENCY", "EXPAND_MISSING_TEST_CONTEXT",
+    "EXPAND_OTHER_BOUNDED_REASON", "REREAD_AFTER_COMPACTION", "ROUTE_UNDERSHOOT",
+    "ROUTE_OVERSHOOT", "REPEATED_TOOL_READ", "STALE_CONTEXT_OR_EVIDENCE_REFRESH",
+})
 OBSERVED_TOOL_ITEM_TYPES = frozenset({"command_execution", "custom_tool_call", "function_call", "mcp_tool_call", "web_search"})
 
 
@@ -56,6 +65,18 @@ def _valid_capture(capture: Any) -> bool:
     if capture["provider_cost_usd"] is not None and (not isinstance(capture["provider_cost_usd"], (int, float)) or isinstance(capture["provider_cost_usd"], bool) or capture["provider_cost_usd"] < 0):
         return False
     return isinstance(capture["task_accepted"], bool)
+
+
+def _valid_diagnostic_capture(capture: Any) -> bool:
+    if not isinstance(capture, dict) or set(capture) != DIAGNOSTIC_CAPTURE:
+        return False
+    base = {field: capture[field] for field in CAPTURE}
+    if not _valid_capture(base):
+        return False
+    integer_fields = ("expansion_bytes", "compaction_count", "reread_after_compaction_count", "preliminary_attempt_count")
+    if any(not isinstance(capture[field], int) or isinstance(capture[field], bool) or capture[field] < 0 for field in integer_fields):
+        return False
+    return isinstance(capture["reason_codes"], list) and all(code in DIAGNOSTIC_REASON_CODES for code in capture["reason_codes"]) and len(set(capture["reason_codes"])) == len(capture["reason_codes"])
 
 
 def observe_agent_jsonl(text: str) -> dict[str, int | bool | None]:
@@ -150,6 +171,55 @@ def build_replay_manifest(study: dict[str, Any]) -> dict[str, Any]:
         "owner_approval_id": study["owner_approval_id"],
         "materiality_threshold_percent": study["materiality_threshold_percent"],
         "pairs": pairs,
+    }
+
+
+def summarize_replay_diagnostics(study: dict[str, Any]) -> dict[str, Any]:
+    """Summarize bounded overhead diagnostics without changing replay promotion.
+
+    This v1.2 extension is diagnostic-only.  It preserves the v1.1 acceptance
+    gate and refuses raw payloads by requiring an exact aggregate allowlist.
+    A future caller must still obtain a separate owner authorization before a
+    fresh provider replay.
+    """
+    if not isinstance(study, dict) or set(study) != CAPTURE_STUDY or study.get("contract_version") != "1.2.0":
+        raise ValueError("invalid_diagnostic_study")
+    if study.get("mode") != "live" or study.get("evidence_status") != "observed" or not all(
+        _is_nonempty_string(study.get(field)) for field in ("baseline_revision", "candidate_revision", "owner_approval_id")
+    ) or study["baseline_revision"] == study["candidate_revision"] or not _valid_thresholds(study.get("materiality_threshold_percent")):
+        raise ValueError("invalid_diagnostic_study")
+    captures = study.get("captures")
+    if not isinstance(captures, list) or not captures or not all(_valid_diagnostic_capture(capture) for capture in captures):
+        raise ValueError("invalid_diagnostic_study")
+    grouped: dict[str, dict[str, dict[str, Any]]] = {}
+    for capture in captures:
+        arms = grouped.setdefault(capture["pair_id"], {})
+        if capture["arm"] in arms:
+            raise ValueError("invalid_diagnostic_study")
+        arms[capture["arm"]] = capture
+    pairs = []
+    shared_fields = ("task_id", "environment_revision", "budget", "timeout_ms", "verifier_id")
+    diagnostic_fields = ("context_expansions", "expansion_bytes", "compaction_count", "reread_after_compaction_count", "preliminary_attempt_count")
+    for pair_id in sorted(grouped):
+        arms = grouped[pair_id]
+        if set(arms) != {"baseline", "candidate"}:
+            raise ValueError("invalid_diagnostic_study")
+        baseline, candidate = arms["baseline"], arms["candidate"]
+        if baseline["evidence_id"] == candidate["evidence_id"] or any(baseline[field] != candidate[field] for field in shared_fields):
+            raise ValueError("invalid_diagnostic_study")
+        pairs.append({
+            "pair_id": pair_id,
+            "baseline": {field: baseline[field] for field in diagnostic_fields},
+            "candidate": {field: candidate[field] for field in diagnostic_fields},
+            "reason_codes": {"baseline": baseline["reason_codes"], "candidate": candidate["reason_codes"]},
+        })
+    return {
+        "contract_version": "1.2.0",
+        "pair_count": len(pairs),
+        "pairs": pairs,
+        "promotion_status": "diagnostic_only",
+        "provider_calls": False,
+        "limitations": ["does_not_establish_causality", "does_not_change_v1_1_replay_acceptance"],
     }
 
 

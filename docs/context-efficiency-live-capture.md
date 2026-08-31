@@ -21,3 +21,13 @@ no task-success regression before it can return `PASS`.
 This module is preparation, not live evidence. It does not freeze a corpus,
 authorize a write-capable agent, choose materiality thresholds, or establish
 any Context Efficiency benefit.
+
+## Diagnostic extension v1.2
+
+`summarize_replay_diagnostics` accepts the v1.2 form of the same supplied
+aggregate study. In addition to the v1.1 fields, each arm has only aggregate
+`expansion_bytes`, `compaction_count`, `reread_after_compaction_count`,
+`preliminary_attempt_count`, and allowlisted reason codes. It returns a
+diagnostic-only comparison and cannot be supplied to `analyze_replay` as a
+promotion manifest. Historical v1.1 evidence and all of its acceptance
+semantics remain unchanged.
