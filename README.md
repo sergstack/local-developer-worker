@@ -39,6 +39,7 @@ For a one-file question or a trivial edit, direct reading is normally faster.
 | Ask a local Ollama model | `ldw ollama advise` | Opt-in, read-only structured advisory |
 | Execute an AI-OS offload envelope | `ldw offload execute` | Caller-owned route, capability, fallback, and provenance result |
 | Analyze matched offload evidence | `ldw offload evaluate` | Privacy-safe evidence export for AI-OS review only |
+| Validate a candidate lesson | `ldw learn validate-candidate` | Schema and opaque-evidence lineage only; never promotion |
 
 All commands read one JSON object from stdin and return one versioned JSON
 `ToolResult` on stdout. Diagnostics go to stderr.
