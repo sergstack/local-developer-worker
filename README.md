@@ -33,6 +33,7 @@ For a one-file question or a trivial edit, direct reading is normally faster.
 | Select code context | `ldw context pack` | Bounded files with selection and exclusion reasons |
 | Compact working context | `ldw context compact` | Exact declared state plus a non-authoritative candidate summary |
 | Preserve task evidence | `ldw evidence build` | Source-linked evidence and resumable state |
+| Compile review semantics | `ldw review build` | Deterministic derived ReviewPackage v1 over compact evidence references |
 | Review a release portfolio | `ldw portfolio verify` | Complete gate reconciliation, including failures |
 | Inspect process health | `ldw telemetry summary` | Privacy-safe local aggregates |
 | Route an isolated Codex run | `ldw codex run` | Opt-in routing and execution metadata |
@@ -92,6 +93,19 @@ Example authoritative test capture:
 
 `ldw test parse` reports only what the runner output establishes. A partial,
 blocked, unsupported, invalid, or timed-out result is never a passing check.
+
+## Review Layer P0
+
+`ldw review build` compiles a declared change scope, compact provenance
+references from `git facts` and `evidence build`, and required-check statuses
+into a deterministic `ReviewPackage` v1. It selects one of four profiles:
+`local`, `contract_change`, `cross_boundary`, or `evidence_risk`.
+
+The caller retains the authoritative evidence package. Review P0 accepts no
+raw repository content, logs, prompts, or full evidence payloads; it neither
+invokes a model nor renders Markdown/HTML/D2/SVG. `not_run` and `unknown`
+checks remain visible, and the package cannot promote a finding, change a
+repository, or infer root cause.
 
 ## Context efficiency
 
