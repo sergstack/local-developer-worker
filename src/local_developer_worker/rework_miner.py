@@ -7,7 +7,7 @@ from typing import Any
 from .contracts import canonical_json, result, stable_hash
 
 ROOT = {"contract_version", "cohort_id", "observations"}
-OBSERVATION = {"session_id", "root_class", "signal", "occurrence_count", "evidence_refs"}
+OBSERVATION = {"observation_id", "session_id", "root_class", "signal", "occurrence_count", "evidence_refs"}
 ROOT_CLASSES = {"scope", "evidence", "acceptance", "role_routing", "execution", "observability", "workspace_hygiene"}
 SIGNALS = {"turn_aborted", "thread_rolled_back", "context_compacted", "repeated_user_message", "repeated_tool_call", "other_observed"}
 
@@ -30,9 +30,10 @@ def analyze(payload: dict[str, Any]) -> dict[str, Any]:
     for item in observations:
         if not isinstance(item, dict) or set(item) != OBSERVATION:
             raise ValueError("invalid_rework_observation")
-        session_id = _id(item["session_id"], "session_id")
-        if session_id in seen: raise ValueError("duplicate_session_id")
-        seen.add(session_id)
+        _id(item["session_id"], "session_id")
+        observation_id = _id(item["observation_id"], "observation_id")
+        if observation_id in seen: raise ValueError("duplicate_observation_id")
+        seen.add(observation_id)
         if item["root_class"] not in ROOT_CLASSES or item["signal"] not in SIGNALS:
             raise ValueError("invalid_rework_observation")
         if not isinstance(item["occurrence_count"], int) or isinstance(item["occurrence_count"], bool) or item["occurrence_count"] < 1:
