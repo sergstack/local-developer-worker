@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft202012Validator
 
-from local_developer_worker.review import build_review_package, build_review_package_v1_1, render_html, render_markdown, review_build, review_render
+from local_developer_worker.review import build_review_package, build_review_package_v1_1, build_review_package_v1_2, render_html, render_markdown, review_build, review_render
 
 
 def payload():
@@ -191,6 +191,65 @@ def test_p1_preserves_unavailable_comparison_and_unknown_evidence():
     assert package["contract_delta"] == {"status": "unavailable", "unavailable_reason_id": "COMPARISON_INPUT_MISSING"}
     assert {row["state"] for row in package["evidence_ledger"]["rows"]} >= {"observed", "candidate", "unknown"}
     assert any(row.get("check_id") == "CHECK_TEST_001" and row["state"] == "unknown" for row in package["evidence_ledger"]["rows"])
+
+
+def p1_2_payload():
+    value = p1_payload()
+    value["contract_version"] = "1.2.0"
+    value["git_facts"]["source_run_id"] = "RUN-f93fa534e6572dce"
+    value["evidence"]["source_run_id"] = "RUN-0a03b39836c4fb48"
+    return value
+
+
+def test_p1_2_preserves_canonical_ldw_source_run_ids_without_rewriting_history():
+    review_input = p1_2_payload()
+
+    package = build_review_package_v1_2(review_input)
+
+    assert package["contract_version"] == "1.2.0"
+    assert package["evidence_export"]["git_source_run_id"] == "RUN-f93fa534e6572dce"
+    assert package["evidence_export"]["evidence_source_run_id"] == "RUN-0a03b39836c4fb48"
+    schema("review_build_input_v1_2.schema.json").validate(review_input)
+    schema("review_package_v1_2.schema.json").validate(package)
+
+
+@pytest.mark.parametrize("run_id", ["RUN-f93fa534e6572dc", "RUN-f93fa534e6572dce0", "RUN-f93fa534e6572dcz"])
+def test_p1_2_rejects_malformed_canonical_ldw_source_run_ids(run_id):
+    review_input = p1_2_payload()
+    review_input["git_facts"]["source_run_id"] = run_id
+
+    with pytest.raises(ValueError, match="invalid_git_source_run_id"):
+        build_review_package_v1_2(review_input)
+
+
+def test_p1_2_keeps_legacy_opaque_source_run_ids_compatible():
+    review_input = p1_2_payload()
+    review_input["git_facts"]["source_run_id"] = "RUN-F93FA534E6572DCE"
+
+    package = build_review_package_v1_2(review_input)
+
+    assert package["evidence_export"]["git_source_run_id"] == "RUN-F93FA534E6572DCE"
+
+
+def test_p0_and_p1_historical_contracts_still_reject_canonical_ldw_source_run_ids():
+    review_input = payload()
+    review_input["git_facts"]["source_run_id"] = "RUN-f93fa534e6572dce"
+
+    with pytest.raises(ValueError, match="invalid_git_source_run_id"):
+        build_review_package(review_input)
+
+    p1_input = p1_payload()
+    p1_input["git_facts"]["source_run_id"] = "RUN-f93fa534e6572dce"
+    with pytest.raises(ValueError, match="invalid_git_source_run_id"):
+        build_review_package_v1_1(p1_input)
+
+
+def test_p1_2_renderer_preserves_canonical_ldw_source_run_ids():
+    package = build_review_package_v1_2(p1_2_payload())
+
+    output = review_render({"contract_version": "1.0.0", "format": "markdown", "review_package": package})
+
+    assert output["status"] == "success"
 
 
 @pytest.mark.parametrize(
